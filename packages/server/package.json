@@ -1,0 +1,41 @@
+{
+  "name": "@memento/server",
+  "version": "0.1.0",
+  "description": "JSMemento server: Fastify app, Drizzle/PostgreSQL storage, tenant isolation, API key auth.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@memento/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "drizzle"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch --conditions=@memento/source src/main.ts",
+    "start": "node dist/main.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --conditions=@memento/source src/migrate-cli.ts",
+    "db:migrate:test": "MIGRATE_TARGET=test tsx --conditions=@memento/source src/migrate-cli.ts",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@memento/core": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.12.7",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11"
+  }
+}

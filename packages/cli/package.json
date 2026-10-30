@@ -1,0 +1,32 @@
+{
+  "name": "@memento/cli",
+  "version": "0.1.0",
+  "description": "JSMemento CLI: tenant, API key and template management.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "memento": "./dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "@memento/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx --conditions=@memento/source src/main.ts",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@memento/core": "workspace:*",
+    "@memento/server": "workspace:*",
+    "commander": "^15.0.0"
+  }
+}
