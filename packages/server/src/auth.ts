@@ -1,4 +1,4 @@
-import { extractApiKey, hasScope, type Scope } from "@memento/core";
+import { extractApiKey, extractSubprotocolKey, hasScope, type Scope } from "@memento/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { runWithTenant, type TenantContext } from "./context.js";
 import type { Database } from "./db/client.js";
@@ -16,10 +16,17 @@ declare module "fastify" {
   }
 }
 
+/** The key of a WebSocket upgrade offered as subprotocol `bearer.<key>` (browsers). */
+function websocketKey(request: FastifyRequest): string | null {
+  if (request.headers.upgrade?.toLowerCase() !== "websocket") return null;
+  return extractSubprotocolKey(request.headers["sec-websocket-protocol"]);
+}
+
 /**
  * Installs API key auth on `app` (and every route registered in it after this call):
- * 1. `onRequest` resolves the key (Authorization: Bearer / X-Api-Key) to a tenant and
- *    checks the route's `config.scope`;
+ * 1. `onRequest` resolves the key (Authorization: Bearer / X-Api-Key, or the
+ *    `bearer.<key>` subprotocol of a WebSocket upgrade) to a tenant and checks the route's
+ *    `config.scope`;
  * 2. `preHandler` runs the rest of the request inside that tenant's AsyncLocalStorage
  *    context, so services read the tenant from `requireTenant()`, never from input.
  */
@@ -29,7 +36,7 @@ export function installAuth(app: FastifyInstance, db: Database): void {
   app.addHook("onRequest", async (request: FastifyRequest, _reply: FastifyReply) => {
     const required = request.routeOptions.config?.scope;
     if (!required || request.is404) return;
-    const key = extractApiKey(request.headers);
+    const key = extractApiKey(request.headers) ?? websocketKey(request);
     if (!key) throw new MementoError("unauthorized", "missing API key");
     const tenant = await authenticateApiKey(db, key);
     if (!hasScope(tenant.scopes, required)) {

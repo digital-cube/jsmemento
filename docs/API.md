@@ -1,8 +1,9 @@
-# JSMemento HTTP API (Phases 1–3)
+# JSMemento HTTP API (Phases 1–4)
 
 Base path: `/memento` (configurable with `MEMENTO_API_PREFIX`). All bodies are JSON.
 Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
-(`/memento/chats…`): [CHATS.md](CHATS.md).
+(`/memento/chats…`): [CHATS.md](CHATS.md). Real-time WebSocket stream (`/memento/ws`):
+[STREAMING.md](STREAMING.md).
 
 ## Authentication
 
@@ -109,8 +110,8 @@ curl -X POST http://localhost:8000/memento/events \
 ```
 
 After storing, the event is published (same JSON as `data`) on the Redis channel
-`memento:events:<tenant_slug>` when `REDIS_URL` is configured. A Redis failure does not
-fail the push.
+`memento:events:<tenant_slug>` when `REDIS_URL` is configured, and streamed to the tenant's
+WebSocket clients (`GET /memento/ws`, below). A Redis failure does not fail the push.
 
 Invalid event → `422`:
 ```json
@@ -205,7 +206,7 @@ Scope: `read`. What this server can do for the key's tenant.
     "collection": "events",
     "tenant": { "slug": "acme", "name": "Acme Inc" },
     "capabilities": { "push": true, "query": true, "entity_history": true,
-                      "realtime": false, "templates": true, "seen": false, "star": false,
+                      "realtime": true, "templates": true, "seen": false, "star": false,
                       "chats": true },
     "scopes": ["read", "write", "admin"],
     "schema": { "event_input": { "type": "object", … JSON Schema … }, "event": { … } },
@@ -217,6 +218,22 @@ Scope: `read`. What this server can do for the key's tenant.
   }
 }
 ```
+
+## `GET /memento/ws` — real-time stream (WebSocket)
+
+Scope `read`. Key as subprotocol `bearer.<key>` (offer `memento.v1` too), or
+`Authorization: Bearer`. Filters: `event_type`, `instance_type`, `instance_id`, `actor_id`
+(exact match, ANDed); `locale` re-renders `rendered`. Refused before the upgrade with `401`
+/ `403` / `422`; a plain GET is `400`.
+
+```
+→ ws://localhost:8000/memento/ws?event_type=USER_LOGIN   Sec-WebSocket-Protocol: memento.v1, bearer.mk_…
+← {"kind":"memento.welcome","payload":{"protocol_version":"1","tenant":"acme","filter":{"event_type":"USER_LOGIN"},"heartbeat_interval_ms":30000,"max_buffered_messages":1000}}
+← {"kind":"memento.event.new","id":"0199…","payload":{"id":"0199…","event_type":"USER_LOGIN", … the stored event … }}
+```
+
+Heartbeat ping every 30 s; slow consumers (1000 unwritten messages) are closed with `4008`;
+shutdown closes with `1001`. Full protocol: [STREAMING.md](STREAMING.md).
 
 ## `GET /memento/health`
 

@@ -30,6 +30,8 @@ const ConfigSchema = z.object({
   MEMENTO_CANDIDATES_DIR: z.string().optional(),
   MEMENTO_RECORD_CANDIDATES: booleanish.default(true),
   MEMENTO_LOOKUPS_STRICT: booleanish.default(false),
+  MEMENTO_WS_HEARTBEAT_MS: z.coerce.number().int().min(1000).default(30_000),
+  MEMENTO_WS_MAX_BUFFERED: z.coerce.number().int().min(1).default(1000),
 });
 
 export interface Config {
@@ -50,6 +52,12 @@ export interface Config {
     /** `undefined` → `<dir of path>/var/candidates`; `null` → recording off. */
     candidatesDir: string | null | undefined;
     strict: boolean;
+  };
+  /** WebSocket stream `/ws`. */
+  stream: {
+    heartbeatIntervalMs: number;
+    /** Unwritten messages per connection before it is dropped as a slow consumer. */
+    maxBufferedMessages: number;
   };
 }
 
@@ -73,6 +81,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       translationsPath: parsed.MEMENTO_TRANSLATIONS_PATH,
       candidatesDir: parsed.MEMENTO_RECORD_CANDIDATES ? parsed.MEMENTO_CANDIDATES_DIR : null,
       strict: parsed.MEMENTO_LOOKUPS_STRICT,
+    },
+    stream: {
+      heartbeatIntervalMs: parsed.MEMENTO_WS_HEARTBEAT_MS,
+      maxBufferedMessages: parsed.MEMENTO_WS_MAX_BUFFERED,
     },
   };
 }

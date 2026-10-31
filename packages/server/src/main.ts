@@ -3,7 +3,8 @@ import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { connect, runMigrations } from "./db/client.js";
 import { emptyLookups, initLookups, type Lookups } from "./lookups.js";
-import { type EventPublisher, NoopPublisher, RedisPublisher } from "./publisher.js";
+import { type EventPublisher, RedisPublisher } from "./publisher.js";
+import { type EventFeed, LocalBus, RedisFeed } from "./stream/feed.js";
 
 const config = loadConfig();
 const database = connect(config.databaseUrl);
@@ -26,9 +27,21 @@ if (existsSync(config.lookups.path)) {
   lookups = emptyLookups();
   lookupWarnings.push(`${config.lookups.path} not found: lookups disabled`);
 }
-const publisher: EventPublisher = config.redisUrl
-  ? new RedisPublisher(config.redisUrl, config.redisChannelPrefix)
-  : new NoopPublisher();
+// With Redis, every process publishes there and streams what any process stored; without
+// it, one process streams its own events through an in-memory bus.
+let publisher: EventPublisher;
+let feed: EventFeed;
+if (config.redisUrl) {
+  publisher = new RedisPublisher(config.redisUrl, config.redisChannelPrefix);
+  feed = new RedisFeed(config.redisUrl, {
+    prefix: config.redisChannelPrefix,
+    onError: (error, channel) => app.log.warn({ err: error, channel }, "redis feed error"),
+  });
+} else {
+  const bus = new LocalBus();
+  publisher = bus;
+  feed = bus;
+}
 
 const app = await buildApp({
   db: database.db,
@@ -37,6 +50,11 @@ const app = await buildApp({
   logger: { level: config.logLevel },
   lookups,
   defaultLocale: config.defaultLocale,
+  stream: {
+    feed,
+    heartbeatIntervalMs: config.stream.heartbeatIntervalMs,
+    maxBufferedMessages: config.stream.maxBufferedMessages,
+  },
 });
 app.log.info(
   { path: config.lookups.path, sections: lookups.registry.sectionNames(), strict: lookups.strict },
@@ -46,6 +64,7 @@ for (const warning of lookupWarnings) app.log.warn(warning);
 
 app.addHook("onClose", async () => {
   await publisher.close();
+  await feed.close();
   await database.close();
 });
 

@@ -5,6 +5,8 @@ export {
   type MementoPluginOptions,
   mementoPlugin,
   requestId,
+  type StreamOptions,
+  selectSubprotocol,
 } from "./app.js";
 export { installAuth } from "./auth.js";
 export { type Config, loadConfig } from "./config.js";
@@ -76,6 +78,16 @@ export {
   serializeTemplate,
 } from "./services/templates.js";
 export { createTenant, getTenantBySlug, listTenants, serializeTenant } from "./services/tenants.js";
+export { type EventFeed, LocalBus, RedisFeed, type RedisFeedOptions } from "./stream/feed.js";
+export {
+  type ConnectionInfo,
+  DEFAULT_HEARTBEAT_INTERVAL_MS,
+  DEFAULT_MAX_BUFFERED_MESSAGES,
+  StreamConnection,
+  StreamHub,
+  type StreamHubOptions,
+  type StreamSocket,
+} from "./stream/hub.js";
 export {
   RENDERED_MAX,
   type RenderContext,

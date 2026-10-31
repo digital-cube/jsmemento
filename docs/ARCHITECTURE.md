@@ -1,9 +1,10 @@
-# JSMemento — Architecture (Phases 1–3)
+# JSMemento — Architecture (Phases 1–4)
 
 > Status: Phase 1 (core API & multitenancy), Phase 2 (Handlebars templates, i18n fallback,
 > YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) and Phase 3 (chats as first-class
-> instances — see [CHATS.md](CHATS.md)) implemented. WebSocket streaming, per-event
-> seen/star endpoints and UDC integration come later; their tables already exist.
+> instances — see [CHATS.md](CHATS.md)) and Phase 4 (WebSocket streaming `/memento/ws` over
+> Redis Pub/Sub — see [STREAMING.md](STREAMING.md)) implemented. Per-event seen/star
+> endpoints and UDC integration come later; their tables already exist.
 
 Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
 Endpoint reference: [API.md](API.md).
@@ -53,6 +54,7 @@ the same purpose.
 | `view.ts` | `ViewConfigSchema`, `DEFAULT_EVENT_VIEW` (columns, default sort, page size) |
 | `describe.ts` | `buildDescribe()` — the `/describe` document incl. JSON Schemas generated from Zod |
 | `template.ts` | `LocaleSchema`, `TemplateSchema`, `TemplateInputSchema`, `GENERIC_TEMPLATE` (`_generic`), `FREE_TEXT_EVENT_TYPES` (`NOTE`) |
+| `stream.ts` | WebSocket protocol: `StreamFilterSchema` + `matchesStreamFilter()`, `StreamMessageSchema` (`memento.welcome` / `memento.event.new` / `memento.pong` / `memento.error`), `streamSubprotocols()` / `extractSubprotocolKey()` (`bearer.<key>`), `STREAM_CLOSE_CODES` |
 | `lookups.generated.ts` | generated from `lookups.yaml`: `EVENT_TYPES` / `EventType` enum / `KnownEventTypeSchema` (`z.enum`), same for instance and actor types |
 
 Every type is inferred from its schema (`z.infer`), so server, CLI and clients cannot drift.
@@ -162,13 +164,15 @@ src/
 ├── context.ts        AsyncLocalStorage tenant context: runWithTenant / requireTenant
 ├── errors.ts         MementoError(code, message, details) → envelope + HTTP status
 ├── publisher.ts      EventPublisher: RedisPublisher | MemoryPublisher | NoopPublisher
+├── stream/           feed.ts (EventFeed: RedisFeed | LocalBus), hub.ts (StreamHub fan-out,
+│                     StreamConnection: buffer limit, heartbeat)
 ├── config.ts         loadConfig() from env (.env.example)
 ├── lookups.ts        initLookups (YAML + translations + candidate recorder), strict check
 ├── templates/        engine.ts (sandboxed Handlebars + helpers), renderer.ts (locale chain,
 │                     tenant overrides, bundled templates from ../templates/*.hbs)
 ├── db/               schema.ts, client.ts (connect, runMigrations), filter.ts (DSL → SQL)
 ├── services/         tenants.ts, apikeys.ts, events.ts, templates.ts — all business logic
-├── routes/           health, events, entities, describe — thin HTTP adapters
+├── routes/           health, events, entities, chats, describe, stream (/ws) — thin adapters
 ├── main.ts           standalone entry (migrates, listens, graceful shutdown)
 └── migrate-cli.ts    `pnpm db:migrate`
 ```
@@ -205,7 +209,19 @@ in `?locale` unless the producer sent it → `INSERT … RETURNING` → publish 
 channel `memento:events:<tenant_slug>` (JSON of the stored event) → record unknown lookup
 values as candidates → `201`. Publishing is
 best effort: the event is already durable, a Redis failure is logged as a warning and does
-not fail the request. With no `REDIS_URL` a `NoopPublisher` is used.
+not fail the request. With no `REDIS_URL` the standalone server uses a `LocalBus` (in-memory
+publisher that feeds the WebSocket hub directly).
+
+### Real-time stream
+
+`GET /ws` (WebSocket) → `onRequest` auth (the key may also come as subprotocol
+`bearer.<key>`) → `preValidation` parses the filter → upgrade → `StreamHub.add`: the first
+connection of a tenant subscribes `RedisFeed` to `memento:events:<tenant_slug>` → welcome.
+Each message from the feed is dispatched in order to the tenant's connections whose filter
+matches (re-rendered once per `?locale`). Per connection, messages not yet flushed to the
+socket are counted; at 1000 the client is closed (`4008`) as a slow consumer. One 30 s
+interval pings every connection and terminates those that missed the previous pong. Details:
+[STREAMING.md](STREAMING.md).
 
 ### Queries and pagination
 
@@ -230,8 +246,9 @@ tenant's templates for the page's event types.
 
 ### Deployment modes
 
-- **Embedded**: `app.register(mementoPlugin, { prefix: "/memento", db, publisher })` in your
-  own Fastify app (the plugin is encapsulated: its error handler and auth hooks do not leak).
+- **Embedded**: `app.register(mementoPlugin, { prefix: "/memento", db, publisher, stream })`
+  in your own Fastify app (the plugin is encapsulated: its error handler and auth hooks do not
+  leak). `stream: { feed }` enables `/ws`.
 - **Standalone**: `node packages/server/dist/main.js` (or `pnpm dev`) — applies migrations on
   start, then listens on `HOST:PORT`.
 
@@ -262,6 +279,9 @@ usage errors.
 Vitest per package, run by Turbo (`pnpm test`, `pnpm test:cov`). Server and CLI suites run
 against a real PostgreSQL test database (`TEST_DATABASE_URL`), migrated once per run and
 truncated per test file; Turbo orders `@memento/cli#test` after `@memento/server#test` so
-they never truncate each other's data. The Redis publisher test uses `REDIS_URL` (default
-`redis://localhost:6379/0`) and is skipped with a warning when Redis is unreachable.
+they never truncate each other's data. The Redis publisher test and the Redis stream test
+(`RedisPublisher` → `RedisFeed` → WebSocket clients) use `REDIS_URL` (default
+`redis://localhost:6379/0`) and are skipped with a warning when Redis is unreachable. The
+stream suites: `test/stream-hub.test.ts` (hub with fake sockets: filters, tenant isolation,
+slow consumer, heartbeat) and `test/stream.test.ts` (real server + `ws` clients).
 Coverage thresholds: 80 % lines / statements / functions / branches in every package.

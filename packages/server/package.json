@@ -28,6 +28,7 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
+    "@fastify/websocket": "^11.3.4",
     "@memento/core": "workspace:*",
     "@memento/lookups": "workspace:*",
     "drizzle-orm": "^0.45.4",
@@ -35,10 +36,12 @@
     "handlebars": "^4.7.10",
     "ioredis": "^6.0.0",
     "pg": "^8.23.1",
+    "ws": "^8.22.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
     "drizzle-kit": "^0.31.11"
   }
 }

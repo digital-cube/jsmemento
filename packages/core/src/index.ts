@@ -9,6 +9,7 @@ export * from "./interactions.js";
 export * from "./lookups.generated.js";
 export * from "./query.js";
 export * from "./scopes.js";
+export * from "./stream.js";
 export * from "./template.js";
 export * from "./tenant.js";
 export * from "./user.js";

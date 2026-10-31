@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { type Capabilities, ERROR_CODES, type ErrorCode, fail } from "@memento/core";
+import fastifyWebsocket from "@fastify/websocket";
+import {
+  type Capabilities,
+  ERROR_CODES,
+  type ErrorCode,
+  fail,
+  STREAM_SUBPROTOCOL,
+} from "@memento/core";
 import Fastify, {
   type FastifyError,
   type FastifyInstance,
@@ -17,7 +24,19 @@ import { describeRoutes } from "./routes/describe.js";
 import { entityRoutes } from "./routes/entities.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
+import { streamRoutes } from "./routes/stream.js";
+import type { EventFeed } from "./stream/feed.js";
+import { StreamHub } from "./stream/hub.js";
 import { EventRenderer } from "./templates/renderer.js";
+
+export interface StreamOptions {
+  /** Where stored events come from: a `RedisFeed`, or the `LocalBus` that is also the publisher. */
+  feed: EventFeed;
+  /** Default 30 000. */
+  heartbeatIntervalMs?: number;
+  /** Unwritten messages per connection before it is dropped as a slow consumer. Default 1000. */
+  maxBufferedMessages?: number;
+}
 
 export interface MementoPluginOptions {
   db: Database;
@@ -30,6 +49,15 @@ export interface MementoPluginOptions {
   defaultLocale?: string;
   /** Default: an `EventRenderer` over the bundled templates and the tenant overrides. */
   renderer?: EventRenderer;
+  /** Enables the WebSocket stream `GET /ws` (and `realtime: true` in `/describe`). */
+  stream?: StreamOptions;
+}
+
+/** Selects `memento.v1` when offered, else the `bearer.<key>` protocol the client sent. */
+export function selectSubprotocol(protocols: Set<string>): string | false {
+  if (protocols.has(STREAM_SUBPROTOCOL)) return STREAM_SUBPROTOCOL;
+  for (const protocol of protocols) if (protocol.startsWith("bearer.")) return protocol;
+  return false;
 }
 
 export interface RouteDeps {
@@ -63,7 +91,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   const deps: RouteDeps = {
     db: options.db,
     publisher: options.publisher ?? new NoopPublisher(),
-    capabilities: options.capabilities ?? {},
+    capabilities: { ...(options.stream ? { realtime: true } : {}), ...options.capabilities },
     lookups,
     renderer:
       options.renderer ??
@@ -109,7 +137,34 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
     ),
   );
 
+  // Order matters: the hub's preClose must run before @fastify/websocket's (which closes
+  // sockets without a code), and the plugin's onRequest before auth's (a refused upgrade
+  // socket is only destroyed when the plugin saw the request first).
+  let hub: StreamHub | null = null;
+  if (options.stream) {
+    const stream = options.stream;
+    hub = new StreamHub({
+      feed: stream.feed,
+      log: app.log,
+      renderer: deps.renderer,
+      ...(stream.heartbeatIntervalMs !== undefined
+        ? { heartbeatIntervalMs: stream.heartbeatIntervalMs }
+        : {}),
+      ...(stream.maxBufferedMessages !== undefined
+        ? { maxBufferedMessages: stream.maxBufferedMessages }
+        : {}),
+    });
+    const closing = hub;
+    app.addHook("preClose", async () => closing.close());
+    if (!app.hasDecorator("websocketServer")) {
+      await app.register(fastifyWebsocket, {
+        options: { maxPayload: 64 * 1024, handleProtocols: selectSubprotocol },
+      });
+    }
+  }
+
   installAuth(app, deps.db);
+  if (hub) await app.register(streamRoutes, { hub });
   await app.register(healthRoutes, deps);
   await app.register(eventRoutes, deps);
   await app.register(entityRoutes, deps);
