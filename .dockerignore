@@ -6,5 +6,8 @@
 .git
 .thilo
 .claude
-.env
+# Local env files: a VITE_* value in one would be inlined into the public UI bundle.
+**/.env
+**/.env.*
+!**/.env.example
 var

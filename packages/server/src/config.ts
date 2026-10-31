@@ -32,6 +32,7 @@ const ConfigSchema = z.object({
   MEMENTO_LOOKUPS_STRICT: booleanish.default(false),
   MEMENTO_WS_HEARTBEAT_MS: z.coerce.number().int().min(1000).default(30_000),
   MEMENTO_WS_MAX_BUFFERED: z.coerce.number().int().min(1).default(1000),
+  MEMENTO_UI_DIR: z.string().optional(),
 });
 
 export interface Config {
@@ -59,6 +60,8 @@ export interface Config {
     /** Unwritten messages per connection before it is dropped as a slow consumer. */
     maxBufferedMessages: number;
   };
+  /** Built web UI served at `/` and `/en/` (`MEMENTO_UI_DIR`); `null` → API only. */
+  uiDir: string | null;
 }
 
 /** Reads the configuration from the environment (see `.env.example`). */
@@ -86,5 +89,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       heartbeatIntervalMs: parsed.MEMENTO_WS_HEARTBEAT_MS,
       maxBufferedMessages: parsed.MEMENTO_WS_MAX_BUFFERED,
     },
+    uiDir: parsed.MEMENTO_UI_DIR ?? null,
   };
 }

@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     // Use the workspace packages' TypeScript sources: no build step before `pnpm dev`.
     resolve: { conditions: ["@memento/source", ...defaultClientConditions] },
+    // Production bundle (served by @memento/server from MEMENTO_UI_DIR): no source maps.
+    build: { outDir: "dist", sourcemap: false },
     server: { port: 5173, proxy },
     preview: { proxy },
   };

@@ -45,6 +45,12 @@ To run against the Docker stack (`docker-compose.yaml`, memento on :3000) instea
 page with `MEMENTO_SERVER=http://localhost:3000 pnpm dev` and point the CLI at it with
 `--url http://localhost:3000/memento`.
 
+The Docker image also ships the built page: the server serves it at `/` and `/en/`
+(`MEMENTO_UI_DIR=/app/ui`), so `http://localhost:3000/` opens the monitor with no Vite at all —
+same origin as the API, the default base URL `/memento` just works. Outside Docker:
+`pnpm --filter @memento/cpu-monitor build` and start the server with
+`MEMENTO_UI_DIR=apps/cpu-monitor/dist`.
+
 ## What is on the page
 
 | | |
