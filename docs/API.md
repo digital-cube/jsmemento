@@ -7,7 +7,7 @@ Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
 
 ## Authentication
 
-Every endpoint except `/health` needs an API key, sent either way:
+Every endpoint except `/api/health` needs an API key, sent either way:
 
 ```
 Authorization: Bearer mk_ab12cd34_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -235,6 +235,6 @@ Scope `read`. Key as subprotocol `bearer.<key>` (offer `memento.v1` too), or
 Heartbeat ping every 30 s; slow consumers (1000 unwritten messages) are closed with `4008`;
 shutdown closes with `1001`. Full protocol: [STREAMING.md](STREAMING.md).
 
-## `GET /memento/health`
+## `GET /memento/api/health`
 
 No key. `200 {"ok":true,"data":{"status":"ok"}}` when the server can reach PostgreSQL.

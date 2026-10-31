@@ -7,6 +7,13 @@ share one version.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the health check moved from `GET <prefix>/health` to `GET <prefix>/api/health`
+  (default `/memento/api/health`), so it sits under the `/api/` path like other API endpoints
+  behind a proxy. The image's `memento-healthcheck` probe follows it; external monitors and
+  load-balancer probes have to be pointed at the new path.
+
 ## [1.0.0] - 2026-10-31
 
 First stable release: a self-hosted, tenant-isolated activity ledger with an HTTP API,

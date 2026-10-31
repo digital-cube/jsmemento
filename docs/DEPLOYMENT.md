@@ -26,7 +26,7 @@ docker compose -f docker-compose.yaml exec memento memento create-tenant acme --
 docker compose -f docker-compose.yaml exec memento \
   memento create-key --tenant acme --scopes read,write --name backend   # prints mk_… once
 
-curl localhost:3000/memento/health                    # {"ok":true,"data":{"status":"ok"}}
+curl localhost:3000/memento/api/health                    # {"ok":true,"data":{"status":"ok"}}
 curl -X POST localhost:3000/memento/events -H "Authorization: Bearer mk_…" \
   -H 'content-type: application/json' \
   -d '{"event_type":"USER_LOGIN","instance_type":"user","instance_id":42,"actor_id":"igor"}'
@@ -38,7 +38,7 @@ full stack.
 
 | service | port (host) | volume | health check |
 |---|---|---|---|
-| `memento` | `${MEMENTO_PORT:-3000}` → 3000 | `memento-data:/data` | `memento-healthcheck` (`GET /memento/health`) |
+| `memento` | `${MEMENTO_PORT:-3000}` → 3000 | `memento-data:/data` | `memento-healthcheck` (`GET /memento/api/health`) |
 | `postgres` | `127.0.0.1:${POSTGRES_PORT:-5432}` | `postgres-data:/var/lib/postgresql` | `pg_isready` |
 | `redis` | `127.0.0.1:${REDIS_PORT:-6379}` | `redis-data:/data` (AOF on) | `redis-cli ping` |
 
@@ -67,7 +67,7 @@ docker run -d -p 3000:3000 \
 - `/usr/local/bin/memento` — the CLI (`create-tenant`, `create-key`, `revoke-key`,
   `create-template`, `lookups validate`, …; see [CLI.md](CLI.md)). It uses the same
   `DATABASE_URL` / `REDIS_URL` as the server.
-- `/usr/local/bin/memento-healthcheck` — exit 0 when `GET <prefix>/health` answers 200;
+- `/usr/local/bin/memento-healthcheck` — exit 0 when `GET <prefix>/api/health` answers 200;
   also the image's `HEALTHCHECK`.
 - `/app/config/lookups.yaml` and `/app/config/i18n/translations.csv` — the bundled vocabulary.
   Mount your own over `/app/config` (or point `MEMENTO_LOOKUPS_PATH` elsewhere).

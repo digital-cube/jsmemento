@@ -9,7 +9,7 @@ beforeAll(async () => {
 
 describe("push event → query → WebSocket stream", () => {
   it("serves the stack's health and describes it as realtime", async () => {
-    const health = await fetch(`${pushServer}/health`);
+    const health = await fetch(`${pushServer}/api/health`);
     expect(health.status).toBe(200);
     const info = await api<{ tenant: { slug: string }; capabilities: { realtime: boolean } }>(
       acme.read,

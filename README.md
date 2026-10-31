@@ -23,7 +23,7 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 docker compose -f docker-compose.yaml up -d --wait      # memento :3000 + PostgreSQL + Redis
 docker compose -f docker-compose.yaml exec memento memento create-tenant acme --name "Acme Inc"
 docker compose -f docker-compose.yaml exec memento memento create-key --tenant acme --scopes read,write
-curl localhost:3000/memento/health
+curl localhost:3000/memento/api/health
 ```
 
 Image: `ghcr.io/digital-cube/jsmemento:<version>` (`latest`, `main`). Environment variables,
