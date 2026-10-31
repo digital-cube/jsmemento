@@ -1,0 +1,290 @@
+# JSMemento — Architecture (Phases 1–5)
+
+> Status: Phase 1 (core API & multitenancy), Phase 2 (Handlebars templates, i18n fallback,
+> YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) and Phase 3 (chats as first-class
+> instances — see [CHATS.md](CHATS.md)) and Phase 4 (WebSocket streaming `/memento/ws` over
+> Redis Pub/Sub — see [STREAMING.md](STREAMING.md)) and Phase 5 (`@memento/react` UI, the
+> example app and CLI polish — see [REACT.md](REACT.md), [CLI.md](CLI.md)) implemented. Per-event seen/star
+> endpoints and UDC integration come later; their tables already exist.
+
+Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
+Endpoint reference: [API.md](API.md).
+
+## 1. Repository layout
+
+```
+jsmemento/
+├── pnpm-workspace.yaml        # packages/* and apps/*
+├── turbo.json                 # build / typecheck / test / test:cov pipelines
+├── tsconfig.base.json         # strict TS, NodeNext, custom condition "@memento/source"
+├── biome.json                 # lint + format
+├── compose.yaml               # PostgreSQL 18 + Redis 7 (+ creates <db>_test)
+├── .env.example               # every variable the server and CLI read
+├── lookups.yaml               # vocabulary: EventTypes, InstanceTypes, ActorTypes
+├── i18n/translations.csv      # lookup labels per locale
+├── var/candidates/            # unknown lookup values recorded at ingestion
+├── packages/
+│   ├── core/    @memento/core    Zod schemas, inferred types, helpers (only dep: zod)
+│   ├── lookups/ @memento/lookups YAML vocabulary, CSV translations, candidates, codegen
+│   ├── server/  @memento/server  Fastify plugin + app, Drizzle schema & migrations,
+│   │                             Handlebars renderer + bundled templates (templates/*.hbs)
+│   ├── cli/     @memento/cli     `memento` command (Commander, chalk, ora, @inquirer/prompts)
+│   └── react/   @memento/react   React components + hooks over the HTTP API and /ws
+└── apps/
+    └── example/ @memento/example Vite + React demo (proxies /memento to the server)
+```
+
+Dependency direction: `cli → server → core`, `react → core`, `server → lookups` (`lookups` depends only on `yaml`). `core` has no Node-only APIs (it hashes with
+Web Crypto), so the same package serves browsers, React and the future client SDK.
+
+Packages export `dist/` for consumers, plus a `@memento/source` export condition pointing
+at `src/` — `tsx` (dev server, CLI in dev) and `tsc --noEmit` resolve workspace packages
+from source, so no build step is needed during development. Vitest uses path aliases for
+the same purpose.
+
+## 2. `@memento/core` — the protocol
+
+| Module | Contents |
+|--------|----------|
+| `common.ts` | `EventTypeSchema` (`SCREAMING_SNAKE_CASE`), `InstanceTypeSchema` (`snake_case`), `InstanceIdSchema` / `ActorIdSchema` (string or integer → string, 1–200 chars), `SlugSchema`, `TimestampSchema` (ISO-8601 with offset) |
+| `event.ts` | `EventInputSchema` (what producers push; strict — unknown fields are rejected), `EventSchema` (stored event), `EntityRefSchema` |
+| `tenant.ts`, `apikey.ts`, `user.ts`, `interactions.ts` (Seen, Star), `template.ts`, `chat.ts` | Entity schemas |
+| `scopes.ts` | `SCOPES = read, write, admin`; `hasScope()` (admin implies all), `parseScopes()` |
+| `apikey.ts` | `generateApiKey()`, `parseApiKey()`, `hashApiKey()` (SHA-256), `timingSafeEqual()`, `extractApiKey()` |
+| `envelope.ts` | `{ ok: true, data, meta? }` / `{ ok: false, error: { code, message, details? }, request_id }`, `ERROR_CODES` → HTTP status |
+| `filter.ts` | Filter DSL (below), `matchCondition()` for `*` wildcards |
+| `query.ts` | `EventQuerySchema` (GET query string), `eventQueryToFilter()`, keyset cursor encode/decode |
+| `view.ts` | `ViewConfigSchema`, `DEFAULT_EVENT_VIEW` (columns, default sort, page size) |
+| `describe.ts` | `buildDescribe()` — the `/describe` document incl. JSON Schemas generated from Zod |
+| `template.ts` | `LocaleSchema`, `TemplateSchema`, `TemplateInputSchema`, `GENERIC_TEMPLATE` (`_generic`), `FREE_TEXT_EVENT_TYPES` (`NOTE`) |
+| `stream.ts` | WebSocket protocol: `StreamFilterSchema` + `matchesStreamFilter()`, `StreamMessageSchema` (`memento.welcome` / `memento.event.new` / `memento.pong` / `memento.error`), `streamSubprotocols()` / `extractSubprotocolKey()` (`bearer.<key>`), `STREAM_CLOSE_CODES` |
+| `lookups.generated.ts` | generated from `lookups.yaml`: `EVENT_TYPES` / `EventType` enum / `KnownEventTypeSchema` (`z.enum`), same for instance and actor types |
+
+Every type is inferred from its schema (`z.infer`), so server, CLI and clients cannot drift.
+
+### Filter DSL
+
+```ts
+type Filter =
+  | { field: FilterField; op: "eq"|"ne"|"lt"|"lte"|"gt"|"gte"|"prefix"|"contains"; value: scalar }
+  | { field: FilterField; op: "in"|"nin"; value: scalar[] }
+  | { field: FilterField; op: "between"; value: [scalar, scalar] }
+  | { field: FilterField; op: "is_null"; value: boolean }
+  | { and: Filter[] } | { or: Filter[] } | { not: Filter };
+
+FilterField = event_type | instance_type | instance_id | actor_id | occurred_at | received_at
+```
+
+`payload` is deliberately not filterable in Phase 1. The server compiles the tree to SQL
+(`packages/server/src/db/filter.ts`); `prefix`/`contains` escape `%`, `_` and `\`, so
+`CHAT_*` matches a literal underscore.
+
+## 3. Database schema (PostgreSQL + Drizzle)
+
+Source of truth: `packages/server/src/db/schema.ts`. Migrations are generated by
+`drizzle-kit generate` into `packages/server/drizzle/`:
+
+- `0000_init.sql` — all tables and indexes (generated)
+- `0001_event_immutability.sql` — custom: the immutability trigger on `memento_event`
+
+All ids are `uuid` (`gen_random_uuid()`), all timestamps `timestamptz`.
+
+### `memento_tenant`
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | |
+| slug | varchar(63) UNIQUE | `^[a-z0-9]+(-[a-z0-9]+)*$` |
+| name | varchar(200) | |
+| is_active | boolean, default true | keys of an inactive tenant fail auth |
+| created_at | timestamptz | |
+
+### `memento_apikey`
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | |
+| tenant_id | uuid → tenant (cascade) | the key's tenant binding |
+| name | varchar(200) | what the key is for |
+| prefix | varchar(16) UNIQUE | the 8 chars after `mk_`, stored in clear to find the row |
+| key_hash | varchar(64) | SHA-256 hex of the full key — the key itself is never stored |
+| scopes | text[] | subset of `read`, `write`, `admin` |
+| created_at, last_used_at, expires_at, revoked_at | timestamptz | `last_used_at` updated on every auth |
+
+Key format: `mk_<8 × [a-z0-9]>_<32 × [A-Za-z0-9]>` (≈190 bits of secret).
+
+### `memento_event` — the immutable log
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | |
+| tenant_id | uuid → tenant (restrict) | |
+| occurred_at | timestamptz(3) | producer time; defaults to receive time |
+| received_at | timestamptz(3), default now() | |
+| event_type | varchar(100) | `USER_LOGIN` |
+| instance_type | varchar(64) | `user`, `ticket`, `chat` |
+| instance_id | varchar(200) | |
+| actor_id | varchar(200) NULL | |
+| payload | jsonb, default `{}` | |
+| rendered | text NULL | rendered at push from the templates, or sent pre-rendered |
+| rendered_locale | varchar(35) NULL | locale of `rendered`; NULL = verbatim (pre-rendered or `NOTE`) — migration `0002` |
+| archived_at | timestamptz NULL | soft delete |
+
+Indexes (all lead with `tenant_id`): `(tenant_id, occurred_at desc, id desc)` for the feed
+and keyset pagination; `(tenant_id, instance_type, instance_id, occurred_at desc)` for
+entity history; `(tenant_id, event_type, occurred_at desc)`; partial
+`(tenant_id, actor_id, occurred_at desc) WHERE actor_id IS NOT NULL`.
+
+Timestamps use millisecond precision on purpose: JavaScript `Date` cannot carry
+microseconds, and a cursor that lost precision would skip or repeat rows.
+
+**Immutability is enforced by the database**: trigger `memento_event_immutable` rejects
+every `DELETE`, and every `UPDATE` except setting `archived_at` once from `NULL`.
+(`TRUNCATE` is not a row operation; the test suites use it.)
+
+### `memento_seen`, `memento_star`
+`(event_id, user_id)` primary key, `tenant_id` + `(tenant_id, user_id)` index;
+`seen_at` / `starred_at`, `memento_star.note`. Endpoints arrive with Phase 4b.
+
+### `memento_template`
+`tenant_id, event_type, locale, body, created_at, updated_at`, unique
+`(tenant_id, event_type, locale)`. A tenant's Handlebars template for an event type (or
+`_generic`); beats the bundled template at the same locale step. See [TEMPLATES.md](TEMPLATES.md).
+
+### `memento_chat`, `memento_chat_participant`
+`memento_chat`: `tenant_id, instance_id ("chat-<id>"), kind ('direct' | 'room'), name,
+created_at, last_message_at, archived_at`, unique `(tenant_id, instance_id)`.
+`memento_chat_participant`: `tenant_id, chat_id, user_id, added_at, last_seen_event_id,
+last_seen_at`, primary key `(chat_id, user_id)`, index `(tenant_id, user_id)`. A chat is an
+instance with `instance_type = "chat"`; its messages, read markers and joins are ordinary
+events (`CHAT_MESSAGE_SENT`, `CHAT_MESSAGE_SEEN`, `CHAT_PARTICIPANT_ADDED`). Migration 0003
+moved the old `participants text[]` into the participant table and renamed `title` → `name`.
+See [CHATS.md](CHATS.md).
+
+## 4. `@memento/server`
+
+```
+src/
+├── app.ts            mementoPlugin (encapsulated Fastify plugin) + buildApp (standalone)
+├── auth.ts           API key auth hooks + tenant context
+├── context.ts        AsyncLocalStorage tenant context: runWithTenant / requireTenant
+├── errors.ts         MementoError(code, message, details) → envelope + HTTP status
+├── publisher.ts      EventPublisher: RedisPublisher | MemoryPublisher | NoopPublisher
+├── stream/           feed.ts (EventFeed: RedisFeed | LocalBus), hub.ts (StreamHub fan-out,
+│                     StreamConnection: buffer limit, heartbeat)
+├── config.ts         loadConfig() from env (.env.example)
+├── lookups.ts        initLookups (YAML + translations + candidate recorder), strict check
+├── templates/        engine.ts (sandboxed Handlebars + helpers), renderer.ts (locale chain,
+│                     tenant overrides, bundled templates from ../templates/*.hbs)
+├── db/               schema.ts, client.ts (connect, runMigrations), filter.ts (DSL → SQL)
+├── services/         tenants.ts, apikeys.ts, events.ts, templates.ts — all business logic
+├── routes/           health, events, entities, chats, describe, stream (/ws) — thin adapters
+├── server.ts         standalone entry (migrates, listens, graceful shutdown)
+└── migrate-cli.ts    `pnpm db:migrate`
+```
+
+### Request lifecycle
+
+```
+request
+  │  genReqId: accept a sane X-Request-Id, else UUID → logged as request_id, echoed back
+  ▼
+onRequest (auth.ts) — only for routes with config.scope
+  │  key from "Authorization: Bearer mk_…" or "X-Api-Key"
+  │  prefix lookup → SHA-256 compare (constant time) → not revoked / expired / tenant active
+  │  401 unauthorized (one message for every failure) | 403 forbidden (scope missing)
+  │  request.tenant = { tenantId, tenantSlug, tenantName, apiKeyId, scopes }
+  │  request.log = child logger { tenant, api_key }
+  ▼
+preHandler — runWithTenant(request.tenant, …)   (AsyncLocalStorage ≈ Python ContextVar)
+  ▼
+route handler → service
+  │  services call requireTenant(); the tenant id NEVER comes from the request body/query,
+  │  and every query has WHERE tenant_id = <context tenant>
+  ▼
+envelope { ok: true, data, meta? }      or error handler → { ok: false, error, request_id }
+```
+
+Multitenancy is enforced in the service layer, not in routes: a service called outside a
+tenant context throws `unauthorized`, so a new route cannot accidentally run unscoped.
+
+### Event push
+
+`POST /memento/events` → `EventInputSchema` → (strict lookups check) → render `rendered`
+in `?locale` unless the producer sent it → `INSERT … RETURNING` → publish to Redis
+channel `memento:events:<tenant_slug>` (JSON of the stored event) → record unknown lookup
+values as candidates → `201`. Publishing is
+best effort: the event is already durable, a Redis failure is logged as a warning and does
+not fail the request. With no `REDIS_URL` the standalone server uses a `LocalBus` (in-memory
+publisher that feeds the WebSocket hub directly).
+
+### Real-time stream
+
+`GET /ws` (WebSocket) → `onRequest` auth (the key may also come as subprotocol
+`bearer.<key>`) → `preValidation` parses the filter → upgrade → `StreamHub.add`: the first
+connection of a tenant subscribes `RedisFeed` to `memento:events:<tenant_slug>` → welcome.
+Each message from the feed is dispatched in order to the tenant's connections whose filter
+matches (re-rendered once per `?locale`). Per connection, messages not yet flushed to the
+socket are counted; at 1000 the client is closed (`4008`) as a slow consumer. One 30 s
+interval pings every connection and terminates those that missed the previous pong. Details:
+[STREAMING.md](STREAMING.md).
+
+### Queries and pagination
+
+`GET /memento/events` turns the query string into a Filter (`eventQueryToFilter`), ANDs
+`tenant_id = …` and `archived_at IS NULL` (unless `include_archived`), and pages with a
+keyset cursor over `(occurred_at, id)` — stable under concurrent inserts, no `OFFSET` scans.
+`next_cursor` is `null` on the last page. With `?locale=` the page's events whose stored
+text is in another locale (or missing) are rendered in one batch — one query loads the
+tenant's templates for the page's event types.
+
+### Error handling
+
+| code | HTTP | when |
+|---|---|---|
+| `bad_request` | 400 / 413 / 415 | malformed JSON, bad cursor, unsupported content type |
+| `unauthorized` | 401 | missing / invalid / revoked / expired key, inactive tenant |
+| `forbidden` | 403 | key lacks the route's scope |
+| `not_found` | 404 | unknown route, unknown tenant |
+| `conflict` | 409 | duplicate tenant slug, duplicate template without `--replace` |
+| `validation_error` | 422 | Zod validation failed (`details` = Zod issues) |
+| `internal_error` | 500 | anything unexpected (logged with stack, message hidden) |
+
+### Deployment modes
+
+- **Embedded**: `app.register(mementoPlugin, { prefix: "/memento", db, publisher, stream })`
+  in your own Fastify app (the plugin is encapsulated: its error handler and auth hooks do not
+  leak). `stream: { feed }` enables `/ws`.
+- **Standalone**: `node packages/server/dist/main.js` (or `pnpm dev`) — applies migrations on
+  start, then listens on `HOST:PORT`.
+
+## 5. `@memento/cli`
+
+`memento [--json] <command>`; reads `DATABASE_URL`.
+
+| command | what it does |
+|---|---|
+| `migrate` | apply pending migrations |
+| `create-tenant <slug> --name <name>` | create a tenant |
+| `list-tenants` | list tenants |
+| `create-key --tenant <slug> --scopes read,write --name <name> [--expires-in-days N]` | create a key; prints the plaintext once |
+| `revoke-key <prefix>` | revoke a key |
+| `create-template --tenant --event-type --locale (--body \| --file) [--replace]` | write a tenant template into `memento_template` (compiled first) |
+| `list-templates --tenant` / `delete-template --tenant --event-type --locale` | manage tenant templates |
+| `lookups validate [--path] [--translations]` | check `lookups.yaml` + translations CSV (`file:line` errors/warnings) |
+| `lookups codegen [--path] [--out] [--check]` | regenerate `@memento/core`'s typed lookups; `--check` fails when stale |
+| `lookups candidates [--path] [--dir]` | list recorded unknown values |
+| `create-chat --tenant --participants a,b [--name] [--kind] [--chat-id]` | create a chat (`--tenant` defaults to `$MEMENTO_TENANT`) |
+| `send-message --tenant --chat-id --user --content [--locale]` | send a chat message as a participant (rendered, published to Redis when `REDIS_URL` is set) |
+
+Exit codes: `0` ok, `1` domain/validation error (`error: …` on stderr), commander's code for
+usage errors.
+
+## 6. Testing
+
+Vitest per package, run by Turbo (`pnpm test`, `pnpm test:cov`). Server and CLI suites run
+against a real PostgreSQL test database (`TEST_DATABASE_URL`), migrated once per run and
+truncated per test file; Turbo orders `@memento/cli#test` after `@memento/server#test` so
+they never truncate each other's data. The Redis publisher test and the Redis stream test
+(`RedisPublisher` → `RedisFeed` → WebSocket clients) use `REDIS_URL` (default
+`redis://localhost:6379/0`) and are skipped with a warning when Redis is unreachable. The
+stream suites: `test/stream-hub.test.ts` (hub with fake sockets: filters, tenant isolation,
+slow consumer, heartbeat) and `test/stream.test.ts` (real server + `ws` clients).
+Coverage thresholds: 80 % lines / statements / functions / branches in every package.

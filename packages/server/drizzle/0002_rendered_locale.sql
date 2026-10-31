@@ -1,0 +1,1 @@
+ALTER TABLE "memento_event" ADD COLUMN "rendered_locale" varchar(35);

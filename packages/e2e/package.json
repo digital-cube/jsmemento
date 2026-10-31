@@ -1,0 +1,20 @@
+{
+  "name": "@memento/e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "JSMemento end-to-end tests: the built server against real PostgreSQL + Redis, over HTTP and WebSocket.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:e2e": "vitest run"
+  },
+  "dependencies": {
+    "@memento/core": "workspace:*",
+    "@memento/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2",
+    "ws": "^8.22.0"
+  }
+}

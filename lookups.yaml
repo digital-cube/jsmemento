@@ -1,0 +1,31 @@
+# JSMemento — controlled vocabulary for event_type / instance_type / actor_type.
+#
+# Terms are UPPER_SNAKE_CASE. Wire values: event types as written (USER_LOGIN),
+# instance and actor types in lower case (USER → "user").
+#
+# Unknown values seen on POST /memento/events are NOT rejected (unless
+# MEMENTO_LOOKUPS_STRICT=true): they are recorded under var/candidates/ for review.
+# To promote one: add it here, add its row to i18n/translations.csv, then run
+# `pnpm memento lookups validate` and `pnpm memento lookups codegen`.
+
+EventTypes:
+  - USER_LOGIN
+  - USER_LOGOUT
+  - USER_CREATED
+  - TICKET_CREATED
+  - TICKET_MODIFIED
+  - TICKET_CLOSED
+  - CHAT_MESSAGE_SENT
+  - CHAT_MESSAGE_SEEN
+  - CHAT_PARTICIPANT_ADDED
+  - NOTE
+
+InstanceTypes:
+  - USER
+  - TICKET
+  - CHAT
+
+ActorTypes:
+  - USER
+  - BOT
+  - SYSTEM

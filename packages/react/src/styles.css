@@ -1,0 +1,430 @@
+/*
+ * @memento/react default styles. Import once: `import "@memento/react/styles.css";`
+ * Theme by overriding the custom properties on `.memento` (or any ancestor).
+ */
+.memento {
+  --memento-paper: #eef2f0;
+  --memento-surface: #f8faf9;
+  --memento-ink: #1c2b2a;
+  --memento-muted: #5e706c;
+  --memento-rule: #c9d3cf;
+  --memento-live: #0f8b6c;
+  --memento-offline: #c2412d;
+  --memento-wait: #b7791f;
+  --memento-highlight: #ffe9a8;
+  --memento-focus: #2a6fdb;
+  --memento-story-font:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --memento-radius: 6px;
+
+  font: inherit;
+  color: var(--memento-ink);
+  background: var(--memento-surface);
+  border: 1px solid var(--memento-rule);
+  border-radius: var(--memento-radius);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.memento *,
+.memento *::before,
+.memento *::after {
+  box-sizing: border-box;
+}
+
+.memento :focus-visible {
+  outline: 2px solid var(--memento-focus);
+  outline-offset: 2px;
+}
+
+.memento-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1.25rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--memento-rule);
+}
+
+.memento-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-right: auto;
+  align-self: center;
+}
+
+.memento-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.memento-search__form {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--memento-rule);
+}
+
+.memento-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--memento-muted);
+}
+
+.memento-field--grow {
+  flex: 1 1 12rem;
+}
+
+.memento-field select,
+.memento-field input,
+.memento-chat__compose input {
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--memento-ink);
+  background: #fff;
+  border: 1px solid var(--memento-rule);
+  border-radius: 4px;
+  padding: 0.375rem 0.5rem;
+  min-height: 2.25rem;
+}
+
+.memento-button,
+.memento-chat__compose button {
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--memento-ink);
+  border: 0;
+  border-radius: 4px;
+  padding: 0 1rem;
+  min-height: 2.25rem;
+  cursor: pointer;
+}
+
+.memento-chat__compose button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.memento-link {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Status: a dot that is green while live, red while offline. */
+.memento-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--memento-muted);
+  white-space: nowrap;
+  align-self: center;
+}
+
+.memento-status__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--memento-rule);
+}
+
+.memento-status[data-status="live"] .memento-status__dot {
+  background: var(--memento-live);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--memento-live) 22%, transparent);
+}
+
+.memento-status[data-status="connecting"] .memento-status__dot {
+  background: var(--memento-wait);
+}
+
+.memento-status[data-status="offline"] .memento-status__dot,
+.memento-status[data-status="closed"] .memento-status__dot {
+  background: var(--memento-offline);
+}
+
+.memento-status[data-status="live"] {
+  color: var(--memento-live);
+}
+
+.memento-status[data-status="offline"] {
+  color: var(--memento-offline);
+}
+
+.memento-error {
+  margin: 0;
+  padding: 0.625rem 1rem;
+  color: var(--memento-offline);
+  background: color-mix(in srgb, var(--memento-offline) 8%, transparent);
+  border-bottom: 1px solid var(--memento-rule);
+  font-size: 0.875rem;
+}
+
+.memento-hint {
+  margin: 0;
+  padding: 2rem 1rem;
+  color: var(--memento-muted);
+}
+
+.memento-muted {
+  color: var(--memento-muted);
+}
+
+/* Table */
+.memento-table-wrap {
+  overflow-x: auto;
+}
+
+.memento-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.memento-table caption {
+  text-align: left;
+  padding: 0.5rem 1rem;
+  color: var(--memento-muted);
+}
+
+.memento-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--memento-muted);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--memento-rule);
+  white-space: nowrap;
+}
+
+.memento-table td {
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--memento-rule) 55%, transparent);
+  vertical-align: top;
+}
+
+.memento-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.memento-sort {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.memento-sort[data-active] {
+  color: var(--memento-ink);
+}
+
+.memento-sort__arrow {
+  font-size: 0.625rem;
+  opacity: 0.7;
+}
+
+.memento-table td.memento-table__empty {
+  color: var(--memento-muted);
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.memento-cell-when time {
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.memento-cell-when__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.memento-cell-when__date {
+  font-size: 0.75rem;
+  color: var(--memento-muted);
+}
+
+.memento-type {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.125rem 0.4rem;
+  border-radius: 3px;
+  background: var(--memento-paper);
+  border: 1px solid var(--memento-rule);
+  white-space: nowrap;
+}
+
+.memento-cell-instance {
+  white-space: nowrap;
+}
+
+.memento-cell-instance__type {
+  color: var(--memento-muted);
+  margin-right: 0.35rem;
+}
+
+.memento-cell-instance__type::after {
+  content: " /";
+}
+
+.memento-cell-story {
+  font-family: var(--memento-story-font);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  max-width: 42rem;
+}
+
+/* The one moment of motion: a new event is marked with a highlighter that fades out. */
+.memento-table tbody tr.memento-row--new td {
+  animation: memento-highlight 3s ease-out forwards;
+}
+
+.memento-table tbody tr.memento-row--new td:first-child {
+  box-shadow: inset 3px 0 0 var(--memento-live);
+}
+
+@keyframes memento-highlight {
+  0%,
+  35% {
+    background-color: var(--memento-highlight);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memento-table tbody tr.memento-row--new td {
+    animation: none;
+  }
+}
+
+/* Chat */
+.memento-chat {
+  min-height: 22rem;
+}
+
+.memento-chat__messages {
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  max-height: 32rem;
+  background: var(--memento-paper);
+}
+
+.memento-chat__empty {
+  color: var(--memento-muted);
+  margin: auto;
+}
+
+.memento-message {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  max-width: 85%;
+}
+
+.memento-message[data-own] {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+}
+
+.memento-avatar {
+  --memento-avatar-hue: 170;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: hsl(var(--memento-avatar-hue) 45% 22%);
+  background: hsl(var(--memento-avatar-hue) 55% 84%);
+  object-fit: cover;
+}
+
+.memento-message__body {
+  background: #fff;
+  border: 1px solid var(--memento-rule);
+  border-radius: 10px 10px 10px 2px;
+  padding: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.memento-message[data-own] .memento-message__body {
+  background: color-mix(in srgb, var(--memento-live) 10%, #fff);
+  border-radius: 10px 10px 2px 10px;
+}
+
+.memento-message__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.75rem;
+  color: var(--memento-muted);
+}
+
+.memento-message__sender {
+  font-weight: 650;
+  color: var(--memento-ink);
+}
+
+.memento-message__meta time {
+  font-variant-numeric: tabular-nums;
+}
+
+.memento-message__text {
+  margin: 0.125rem 0 0;
+  font-family: var(--memento-story-font);
+  font-size: 1rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.memento-chat__compose {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--memento-rule);
+}
+
+.memento-chat__compose input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.memento-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
