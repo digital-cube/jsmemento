@@ -1,12 +1,13 @@
 import type { AddressInfo } from "node:net";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocketServer, WebSocket as WsClient } from "ws";
 import {
   dayStart,
   MementoDataView,
   MementoProvider,
   MementoSearch,
+  searchQuery,
   type WebSocketConstructor,
 } from "../src/index.js";
 import { FakeSocket, fakeFetch, makeEvent, wrapper } from "./fixtures.js";
@@ -36,13 +37,20 @@ describe("MementoSearch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     await waitFor(() => expect(rows()).toEqual([hit.id]));
-    const url = new URL(String(fetch.mock.calls[0]?.[0]));
-    expect(Object.fromEntries(url.searchParams)).toEqual({
-      instance_type: "ticket",
-      instance_id: "T-7",
-      after: dayStart("2026-10-01"),
-      before: dayStart("2026-11-01"),
-      limit: "100",
+    // The search is a Filter DSL tree in the body of POST /events/query.
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(String(url)).toBe("http://memento.test/memento/events/query");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      filter: {
+        and: [
+          { field: "instance_type", op: "eq", value: "ticket" },
+          { field: "instance_id", op: "eq", value: "T-7" },
+          { field: "occurred_at", op: "gte", value: dayStart("2026-10-01") },
+          { field: "occurred_at", op: "lt", value: dayStart("2026-11-01") },
+        ],
+      },
+      limit: 100,
     });
     // A closed range is history: nothing to stream.
     expect(FakeSocket.all).toHaveLength(0);
@@ -90,9 +98,105 @@ describe("MementoSearch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(Object.fromEntries(new URL(String(fetch.mock.calls[0]?.[0])).searchParams)).toEqual({
-      after: dayStart("2026-10-31"),
-      limit: "100",
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      filter: { field: "occurred_at", op: "gte", value: dayStart("2026-10-31") },
+      limit: 100,
+    });
+  });
+
+  it("sends a prefix as `prefix`, no filter for an empty search, and the provider's locale", async () => {
+    const fetch = fakeFetch(() => []);
+    render(<MementoSearch />, { wrapper: wrapper(fetch, { locale: "sr" }) });
+    fireEvent.change(screen.getByLabelText("Instance type"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      filter: null,
+      limit: 100,
+      locale: "sr",
+    });
+
+    fireEvent.change(screen.getByLabelText("Instance ID"), { target: { value: "T-1*" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body)).filter).toEqual({
+      field: "instance_id",
+      op: "prefix",
+      value: "T-1",
+    });
+  });
+
+  it("can be controlled: shows the given search, reports submits, follows changes", async () => {
+    const fetch = fakeFetch(() => [makeEvent({ instance_type: "ticket", instance_id: "T-3" })]);
+    const onSearch = vi.fn();
+    const search = { instanceType: "ticket", instanceId: "T-3", from: "", to: "2026-10-31" };
+    const { rerender } = render(
+      <MementoSearch search={search} onSearch={onSearch} instanceTypes={["ticket", "user"]} />,
+      { wrapper: wrapper(fetch) },
+    );
+    // A search given from outside runs at once, and the form shows it.
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect((screen.getByLabelText("Instance ID") as HTMLInputElement).value).toBe("T-3");
+    expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-31");
+
+    // Submitting reports the values; it is the caller who changes the search.
+    fireEvent.change(screen.getByLabelText("Instance ID"), { target: { value: " T-4 " } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(onSearch).toHaveBeenCalledWith({ ...search, instanceId: "T-4" });
+    expect(fetch).toHaveBeenCalledOnce();
+
+    // The caller's search changes (browser back): the form follows.
+    rerender(
+      <MementoSearch
+        search={{ ...search, instanceType: "user", instanceId: "ana" }}
+        onSearch={onSearch}
+        instanceTypes={["ticket", "user"]}
+      />,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect((screen.getByLabelText("Instance ID") as HTMLInputElement).value).toBe("ana");
+    expect((screen.getByLabelText("Instance type") as HTMLSelectElement).value).toBe("user");
+
+    // No search: the hint, the form back to its defaults.
+    rerender(
+      <MementoSearch search={null} onSearch={onSearch} instanceTypes={["ticket", "user"]} />,
+    );
+    await screen.findByText("Pick an instance and a date range, then search.");
+    expect((screen.getByLabelText("Instance ID") as HTMLInputElement).value).toBe("");
+  });
+
+  it("renders the instance cell with `renderInstance`", async () => {
+    const hit = makeEvent({ instance_type: "ticket", instance_id: "T-9" });
+    render(
+      <MementoSearch
+        search={{ instanceType: "ticket", instanceId: "T-9", from: "", to: "2026-10-31" }}
+        renderInstance={(event) => <a href={`/t/${event.instance_id}`}>{event.instance_id}</a>}
+      />,
+      { wrapper: wrapper(fakeFetch(() => [hit])) },
+    );
+    const link = await screen.findByRole("link", { name: "T-9" });
+    expect(link.getAttribute("href")).toBe("/t/T-9");
+  });
+
+  it("maps form values to the events query", () => {
+    expect(searchQuery({ instanceType: "", instanceId: "  ", from: "", to: "" })).toEqual({
+      instance_type: undefined,
+      instance_id: undefined,
+      after: undefined,
+      before: undefined,
+    });
+    expect(
+      searchQuery({
+        instanceType: "ticket",
+        instanceId: "T-1*",
+        from: "2026-10-01",
+        to: "2026-10-31",
+      }),
+    ).toEqual({
+      instance_type: "ticket",
+      instance_id: "T-1*",
+      after: dayStart("2026-10-01"),
+      before: dayStart("2026-11-01"),
     });
   });
 

@@ -45,6 +45,8 @@ export interface EventTableProps extends TimeFormat {
   /** Shown instead of rows when there are none. */
   empty?: ReactNode;
   caption?: string;
+  /** The Instance cell's content (e.g. a link to the instance). Default: type and id. */
+  renderInstance?: ((event: MementoEvent) => ReactNode) | undefined;
 }
 
 /** The events as a sortable table: when, event, instance, actor, what happened. */
@@ -54,6 +56,7 @@ export function EventTable({
   defaultSort = DEFAULT_SORT,
   empty = "No events yet.",
   caption,
+  renderInstance,
   locale,
   timeZone,
 }: EventTableProps) {
@@ -132,8 +135,14 @@ export function EventTable({
                   <span className="memento-type">{event.event_type}</span>
                 </td>
                 <td className="memento-cell-instance">
-                  <span className="memento-cell-instance__type">{event.instance_type}</span>
-                  {event.instance_id}
+                  {renderInstance ? (
+                    renderInstance(event)
+                  ) : (
+                    <>
+                      <span className="memento-cell-instance__type">{event.instance_type}</span>
+                      {event.instance_id}
+                    </>
+                  )}
                 </td>
                 <td>{event.actor_id ?? <span className="memento-muted">none</span>}</td>
                 <td className="memento-cell-story">{event.rendered ?? ""}</td>

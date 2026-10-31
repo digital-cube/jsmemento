@@ -9,7 +9,14 @@ import { chatInstanceId } from "./chat.js";
 import type { Describe } from "./describe.js";
 import type { PageMeta } from "./envelope.js";
 import type { EventInput, MementoEvent } from "./event.js";
+import type { Filter } from "./filter.js";
 import type { EventQueryInput } from "./query.js";
+
+/** Body of `POST /events/query`: a Filter DSL tree plus the paging / rendering parameters. */
+export type EventFilterQuery = Omit<
+  EventQueryInput,
+  "event_type" | "instance_type" | "instance_id" | "actor_id" | "after" | "before"
+> & { filter?: Filter | null };
 
 /** A failed API call: the server's error envelope, or `network_error` when there was none. */
 export class MementoApiError extends Error {
@@ -56,6 +63,11 @@ export class MementoClient {
   /** `GET /events`: filters accept a trailing `*`; newest first unless `order: "asc"`. */
   listEvents(query: EventQueryInput = {}): Promise<Page<MementoEvent[]>> {
     return this.request("GET", "/events", { query: query as Record<string, QueryValue> });
+  }
+
+  /** `POST /events/query`: the same list as `GET /events`, filtered by a Filter DSL tree. */
+  queryEvents(body: EventFilterQuery = {}): Promise<Page<MementoEvent[]>> {
+    return this.request("POST", "/events/query", { body });
   }
 
   /** `POST /events`: stores one event (scope `write`); `locale` picks the stored `rendered`. */

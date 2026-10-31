@@ -24,6 +24,7 @@ import { ChatPage } from "./examples/chat/Chat.js";
 import { CpuMonitorPage } from "./examples/cpu-monitor/CpuMonitor.js";
 import { EntityPickerPage, EntityTimelinePage } from "./examples/entity/Entity.js";
 import { PlannedExamplePage } from "./examples/planned/PlannedExample.js";
+import { SearchPage } from "./examples/search/Search.js";
 import { TailPage } from "./examples/tail/Tail.js";
 import { EXAMPLES_MESSAGES } from "./i18n/messages.js";
 import { defaultSettings, loadSettings, type Settings, saveSettings } from "./settings.js";
@@ -135,6 +136,7 @@ export function App() {
                         />
                         <Route path="examples/chat" element={<ChatPage />} />
                         <Route path="examples/tail" element={<TailPage />} />
+                        <Route path="examples/search" element={<SearchPage />} />
                         {/* Every example of menu.yaml not built yet: a "planned" page. */}
                         <Route path="examples/:slug" element={<PlannedExamplePage />} />
                         <Route path="udc/:collection" element={<CollectionPage />} />

@@ -47,5 +47,11 @@ export {
   MementoDataView,
   type MementoDataViewProps,
 } from "./MementoDataView.js";
-export { dayStart, MementoSearch, type MementoSearchProps } from "./MementoSearch.js";
+export {
+  dayStart,
+  MementoSearch,
+  type MementoSearchProps,
+  type MementoSearchValues,
+  searchQuery,
+} from "./MementoSearch.js";
 export { StatusIndicator, type StatusIndicatorProps } from "./StatusIndicator.js";

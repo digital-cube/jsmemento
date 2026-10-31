@@ -16,7 +16,8 @@ each example is a route, and every list on every page comes from UDC.
 | `/examples/entity/:instance_type/:instance_id` | the timeline of one instance (`ticket/T-17`, `user/ana`) |
 | `/examples/chat` | [Chat](#chat): the simulator's demo room in `MementoChat`, viewed as one participant (`?as=ana`) |
 | `/examples/tail` | [Live tail](#live-tail): every frame of `/memento/ws` as it arrives, with the stream's filters in the URL (`?event_type=TICKET_CREATED`) |
-| `/examples/search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
+| `/examples/search` | [Search](#search): `MementoSearch` next to the Filter DSL JSON it sends to `POST /events/query`, the search in the URL (`?type=ticket&id=T-1`) |
+| `/examples/rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -95,9 +96,50 @@ Activity feed. An unknown slug leads to `/`.
 
 | slug | will show |
 |---|---|
-| `search` | `MementoSearch` with the Filter DSL JSON it sends to `POST /events/query` |
 | `rendering` | one event, its EN and SR Handlebars templates and the result |
 | `chart` | events per minute by type as a UDC chart |
+
+## Search
+
+How a search is expressed: **`MementoSearch`** from `@memento/react` on the left, and on the
+right, under **What was sent**, the request it made — read off the wire, not rebuilt.
+
+```
+MementoSearch ──POST /memento/events/query {filter: <Filter DSL>, limit: 100, locale: en|sr}──▶ memento
+  (type, id, from, to)  ◀── {ok, data: [events, newest first], meta} ──────────────────────────
+        │ the same tree, UDC's op names
+        ▼
+/udc/events?f=<encodeFilterParam(tree)> ──POST /memento/udc/list {collection: events, filter}──▶ memento
+```
+
+- **The form is the component's.** Instance type, instance id (exact, or a prefix with `*`:
+  `T-1*`), from / to days (*to* inclusive). `MementoSearch` turns them into a Filter DSL tree
+  (`eventQueryToFilter` of `@memento/core`: `eq` / `prefix` per field, `occurred_at gte` the
+  first day and `lt` the day after the last) and sends it to `POST /memento/events/query`.
+  Results are its table; the Instance cell is a chip that links to the instance's
+  [timeline](#entity-timeline). While the range has no end the results stay live (the stream).
+- **What was sent.** The page gives `MementoProvider` a `fetch` that lets every request
+  through and reports each `POST …/events/query` (`tapFetch`, `src/examples/search/search.ts`).
+  Three read-only panes follow every search: the **Filter DSL** JSON of the body (pretty, with
+  **Copy**; `null` when the search filters on nothing), the **request** as a `curl` command
+  against the absolute URL with the key masked (`mk_…9f3a`), and the **response** — HTTP
+  status, `ok`, `meta` (memento's list envelope has `count` and `next_cursor`, no `total`) and
+  the first row, the rest counted (`… 29 more`).
+- **The same filter in UDC.** The `events` UDC collection takes the same tree in
+  `POST /memento/udc/list` — conditions `field` / `op` / `value` under `and` / `or` / `not` —
+  with three operators spelled UDC's way: `prefix` → `starts_with`, `ne` → `neq`, `nin` →
+  `not_in` (and `is_null: false` → `is_not_null`; `toUdcFilter`). **Open in the UDC events
+  table** goes to `/udc/events?f=…`, the tree encoded with `encodeFilterParam` of
+  `@jsudc/react/headless` (as `src/settings.ts` does for the CPU monitor), so the table opens
+  with the same condition as its filter chips. The translated tree is shown under *As a UDC
+  filter*.
+- **The search is in the URL**: `?type=ticket&id=T-1*&from=2026-10-01&to=2026-10-31`
+  (`searchFromParams` / `searchToParams`). `type` is always written by a search (`type=` for
+  any type), so a link runs the search on open; browser back restores the previous one, form
+  included (`MementoSearch`'s `search` / `onSearch` props keep it outside the component).
+- **The language is the header's.** `MementoProvider` gets the site's locale, so the body
+  carries `locale: "en" | "sr"` and memento renders `rendered` in it; switching EN / SR sends
+  the search again.
 
 ## Live tail
 
@@ -291,7 +333,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the search (the DSL pane is the sent body, curl and response panes, the UDC link's equivalent filter, URL state, locale), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

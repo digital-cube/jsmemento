@@ -14,13 +14,6 @@ export interface PlannedExample {
  * (`/examples/<slug>`). Each follow-up ticket replaces one row with a page of its own.
  */
 export const PLANNED_EXAMPLES: Readonly<Record<string, PlannedExample>> = {
-  search: {
-    title: { en: "Search", sr: "Pretraga" },
-    summary: {
-      en: "MementoSearch next to the Filter DSL JSON it sends to POST /events/query, so you can see what every control of the form becomes.",
-      sr: "MementoSearch pored Filter DSL JSON-a koji šalje na POST /events/query, da se vidi u šta se pretvara svaka kontrola forme.",
-    },
-  },
   rendering: {
     title: { en: "Rendering", sr: "Prikaz teksta" },
     summary: {

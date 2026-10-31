@@ -4,6 +4,7 @@ import {
   type ChatMessageResult,
   type ChatParticipant,
   chatInstanceId,
+  eventQueryToFilter,
   liveFilter,
   type MementoEvent,
   type StreamStatus,
@@ -35,6 +36,11 @@ export interface UseEventsOptions {
   enabled?: boolean;
   /** Most events kept while live updates pile up. Default 1000. */
   maxEvents?: number;
+  /**
+   * `list`: the query as `GET /events`'s query string. `query`: the same query as a Filter
+   * DSL tree in the body of `POST /events/query` (`eventQueryToFilter`). Default `list`.
+   */
+  endpoint?: "list" | "query";
 }
 
 export interface EventsState {
@@ -78,8 +84,8 @@ function inRange(event: MementoEvent, query: EventsQuery): boolean {
  * filter (exact values go to the server, `prefix*` ones are applied here).
  */
 export function useMementoEvents(query: EventsQuery, options: UseEventsOptions = {}): EventsState {
-  const { client, openStream } = useMemento();
-  const { limit = 50, live = true, enabled = true, maxEvents = 1000 } = options;
+  const { client, openStream, locale } = useMemento();
+  const { limit = 50, live = true, enabled = true, maxEvents = 1000, endpoint = "list" } = options;
   const [events, setEvents] = useState<MementoEvent[]>([]);
   const [liveIds, setLiveIds] = useState<ReadonlySet<string>>(() => new Set());
   const [status, setStatus] = useState<LiveStatus>("off");
@@ -122,8 +128,12 @@ export function useMementoEvents(query: EventsQuery, options: UseEventsOptions =
     }
     let active = true;
     setLoading(true);
-    client
-      .listEvents({ ...normalized, limit })
+    const rendering = locale ? { locale } : {};
+    const load =
+      endpoint === "query"
+        ? client.queryEvents({ filter: eventQueryToFilter(normalized), limit, ...rendering })
+        : client.listEvents({ ...normalized, limit, ...rendering });
+    load
       .then((page) => {
         if (active) setEvents((current) => mergeEvents(current, page.data, maxEvents));
       })
@@ -136,7 +146,7 @@ export function useMementoEvents(query: EventsQuery, options: UseEventsOptions =
     return () => {
       active = false;
     };
-  }, [client, normalized, limit, enabled, maxEvents, generation]);
+  }, [client, normalized, limit, enabled, maxEvents, endpoint, locale, generation]);
 
   useEffect(() => {
     if (!enabled || !live) {

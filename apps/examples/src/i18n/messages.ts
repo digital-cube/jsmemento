@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `ENTITY`, `CHAT`, `TAIL`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `CHAT`, `TAIL`, `SEARCH`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -168,6 +168,35 @@ export const EXAMPLES_MESSAGES: Messages = {
       en: "No frames yet. Events appear as memento stores them — memento simulate pushes a ticket desk story; start it with",
       sr: "Još nema okvira. Događaji se pojavljuju čim ih memento sačuva — memento simulate šalje priču o službi za tikete; pokrenite ga sa",
     },
+  },
+  SEARCH: {
+    TITLE: { en: "Search", sr: "Pretraga" },
+    SUBTITLE: {
+      en: "MementoSearch · the Filter DSL it sends to POST /memento/events/query",
+      sr: "MementoSearch · Filter DSL koji šalje na POST /memento/events/query",
+    },
+    SENT: { en: "What was sent", sr: "Šta je poslato" },
+    SENT_EMPTY: {
+      en: "Run a search: the request MementoSearch makes appears here, read off the wire.",
+      sr: "Pokrenite pretragu: ovde se pojavljuje zahtev koji MementoSearch šalje, pročitan sa žice.",
+    },
+    DSL: { en: "Filter DSL", sr: "Filter DSL" },
+    NO_FILTER: {
+      en: "Nothing to filter on: filter is null, every event of the tenant matches.",
+      sr: "Nema po čemu da se filtrira: filter je null, odgovara svaki događaj tenanta.",
+    },
+    REQUEST: { en: "Request", sr: "Zahtev" },
+    RESPONSE: { en: "Response (first row)", sr: "Odgovor (prvi red)" },
+    PENDING: { en: "waiting for the answer…", sr: "čeka se odgovor…" },
+    COPY: { en: "Copy", sr: "Kopiraj" },
+    COPIED: { en: "Copied", sr: "Kopirano" },
+    UDC_TITLE: { en: "The same filter in UDC", sr: "Isti filter u UDC-u" },
+    UDC_TEXT: {
+      en: "The UDC tables take the same tree: POST /memento/udc/list of the events collection accepts these field / op / value conditions under and / or / not — only three operators are spelled differently (prefix → starts_with, ne → neq, nin → not_in). The link opens the events table with this filter in its ?f= parameter, where it shows as editable chips.",
+      sr: "UDC tabele primaju isto stablo: POST /memento/udc/list kolekcije events prihvata ove field / op / value uslove pod and / or / not — samo se tri operatora drugačije pišu (prefix → starts_with, ne → neq, nin → not_in). Link otvara tabelu events sa ovim filterom u parametru ?f=, gde se vidi kao čipovi koji se mogu menjati.",
+    },
+    UDC_LINK: { en: "Open in the UDC events table →", sr: "Otvori u UDC tabeli events →" },
+    UDC_FILTER: { en: "As a UDC filter", sr: "Kao UDC filter" },
   },
   PLANNED: {
     BADGE: { en: "Planned", sr: "Planirano" },

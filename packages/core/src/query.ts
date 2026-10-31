@@ -35,8 +35,13 @@ export const EventQuerySchema = z.object({
 export type EventQueryInput = z.input<typeof EventQuerySchema>;
 export type EventQuery = z.output<typeof EventQuerySchema>;
 
+/** The fields of the flat query string that filter (the rest pages, orders and renders). */
+export type EventQueryFilterFields = Partial<
+  Pick<EventQuery, "event_type" | "instance_type" | "instance_id" | "actor_id" | "after" | "before">
+>;
+
 /** Translates the flat query string into the Filter DSL. */
-export function eventQueryToFilter(query: EventQuery): Filter | null {
+export function eventQueryToFilter(query: EventQueryFilterFields): Filter | null {
   return and(
     query.event_type ? matchCondition("event_type", query.event_type) : null,
     query.instance_type ? matchCondition("instance_type", query.instance_type) : null,

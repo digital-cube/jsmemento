@@ -27,6 +27,18 @@ describe("MementoClient", () => {
     });
   });
 
+  it("queries events with a Filter DSL tree in the body", async () => {
+    const meta = { limit: 20, count: 0, next_cursor: null };
+    const { fetch, client: c } = client(json(200, { ok: true, data: [], meta }));
+    const filter = { field: "instance_id", op: "prefix", value: "T-1" } as const;
+    expect(await c.queryEvents({ filter, limit: 20, locale: "sr" })).toEqual({ data: [], meta });
+    expect(fetch).toHaveBeenCalledWith("http://h/memento/events/query", {
+      method: "POST",
+      headers: { authorization: "Bearer mk_k", "content-type": "application/json" },
+      body: JSON.stringify({ filter, limit: 20, locale: "sr" }),
+    });
+  });
+
   it("reads and sends chat messages", async () => {
     const reading = client(
       json(200, { ok: true, data: [], meta: { limit: 100, count: 0, next_cursor: null } }),

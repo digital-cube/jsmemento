@@ -88,8 +88,20 @@ A form for an entity's history:
 - **Instance ID**: exact, or a prefix with `*`, e.g. `igor-*`.
 - **From** / **To** dates: local calendar days; *To* is inclusive.
 
-Results use the same table. While the range has no end date they stay live, so new matching
-events still appear.
+The search is sent as a Filter DSL tree to `POST /events/query` (`eventQueryToFilter`), with
+the provider's `locale`. Results use the same table. While the range has no end date they
+stay live, so new matching events still appear.
+
+| prop | |
+|---|---|
+| `instanceTypes?` | choices of the type selector (default: the vocabulary) |
+| `limit?` | most results (default 100) |
+| `search?` | the search shown, when you keep it (e.g. in the URL): `{ instanceType, instanceId, from, to }`, or `null` for none yet; the form follows it. Leave it out and the component keeps it |
+| `onSearch?` | called with those values on every valid submit |
+| `renderInstance?` | the Instance cell of a result, e.g. a link: `(event) => <a href=…>…</a>` |
+
+`searchQuery(values)` gives the `EventsQuery` a search is made of. The `/examples/search` page
+of `apps/examples` shows the tree next to the form.
 
 ## Hooks
 
@@ -98,6 +110,7 @@ The components are thin layers over two hooks; use them for your own UI.
 ```ts
 const { events, status, loading, error, liveIds, reload } =
   useMementoEvents({ event_type: "CHAT_*", instance_type: "chat" }, { limit: 100, live: true });
+// endpoint: "query" sends the same query as a Filter DSL tree to POST /events/query
 
 const { messages, status, send, sending, error } = useMementoChat("chat-123", "igor");
 // + participants (with `seen: true`) and notices (with `system: true`)
