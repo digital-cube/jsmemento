@@ -205,6 +205,16 @@ describe("UDC list", () => {
     expect((await list({ "x-memento-locale": "sr-Latn-RS" })).payload.rows[0].rendered).toBe(
       "Korisnik igor se prijavio.",
     );
+    // One event read by id: the same rendering as the list (the Rendering example's path).
+    const id = sr.payload.rows[0].__meta.id;
+    const read = async (locale: string) =>
+      (
+        await udc("read", { collection: "events", id }, fx.keys.read, {
+          "x-memento-locale": locale,
+        })
+      ).payload.row.rendered;
+    expect(await read("sr")).toBe("Korisnik igor se prijavio.");
+    expect(await read("en")).toBe("User igor logged in.");
     const bad = await list({ "x-memento-locale": "Serbian!" });
     expect(bad.kind).toBe("udc.list.err");
     expect(bad.payload).toEqual({

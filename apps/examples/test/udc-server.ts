@@ -119,6 +119,7 @@ export interface FeedEvent {
   actor_id: string | null;
   occurred_at: string;
   rendered: { en: string; sr: string };
+  payload?: Record<string, unknown>;
 }
 
 export interface ServerOptions {
@@ -139,12 +140,15 @@ export interface ServerOptions {
 
 /**
  * A `fetch` that plays memento: `/api/health`, `/api/demo`, and the UDC actions
- * (`collections`, `describe`, `list` — the menu rows, or one new CPU row per list).
+ * (`collections`, `describe`, `list` — the menu rows, or one new CPU row per list — and
+ * `read` of a feed event, rendered in its `X-Memento-Locale`).
  */
 export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: ServerOptions = {}) {
   const lists: Record<string, unknown>[] = [];
   /** The `X-Memento-Locale` of every list, in order. */
   const locales: (string | null)[] = [];
+  /** Every `read` of the feed: the event id and the `X-Memento-Locale` it was asked in. */
+  const reads: { id: string; locale: string | null }[] = [];
   const calls: string[] = [];
   let n = 0;
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -176,6 +180,29 @@ export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: Serv
       });
     }
     if (action === "describe") return ok({ ...describeCpu, collection: body.collection });
+    if (action === "read" && feed && body.collection === "events") {
+      const locale = new Headers(init?.headers).get("x-memento-locale");
+      reads.push({ id: body.id, locale });
+      const found = feed.find((e) => e.id === body.id);
+      if (!found) {
+        return new Response(
+          JSON.stringify({
+            kind: "udc.read.err",
+            id: "",
+            payload: { code: "not_found", message: `no event ${body.id}` },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      const { id, rendered, ...e } = found;
+      return ok({
+        row: {
+          __meta: { id, version: 1 },
+          ...e,
+          rendered: locale === "sr" ? rendered.sr : rendered.en,
+        },
+      });
+    }
     if (action === "list") {
       if (body.collection === "menu") {
         return ok({ rows: SERVED_MENU, next_cursor: null, total: SERVED_MENU.length });
@@ -226,5 +253,5 @@ export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: Serv
     }
     return ok({});
   });
-  return { fetch, lists, locales, calls };
+  return { fetch, lists, locales, reads, calls };
 }

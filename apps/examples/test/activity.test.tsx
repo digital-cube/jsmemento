@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, LOCALE_HEADER } from "../src/App.js";
+import { App } from "../src/App.js";
+import { LOCALE_HEADER } from "../src/connection.js";
 import { SIMULATOR_COMMAND } from "../src/examples/activity/Activity.js";
 import { FEED_FILTER, feedItems, feedTime } from "../src/examples/activity/feed.js";
 import { defaultSettings, STORAGE_KEY } from "../src/settings.js";

@@ -17,7 +17,8 @@ each example is a route, and every list on every page comes from UDC.
 | `/examples/chat` | [Chat](#chat): the simulator's demo room in `MementoChat`, viewed as one participant (`?as=ana`) |
 | `/examples/tail` | [Live tail](#live-tail): every frame of `/memento/ws` as it arrives, with the stream's filters in the URL (`?event_type=TICKET_CREATED`) |
 | `/examples/search` | [Search](#search): `MementoSearch` next to the Filter DSL JSON it sends to `POST /events/query`, the search in the URL (`?type=ticket&id=T-1`) |
-| `/examples/rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
+| `/examples/rendering` | [Rendering & translations](#rendering--translations): one event, its bundled EN and SR templates and the sentence memento renders from each (`?type=TICKET_CLOSED`) |
+| `/examples/chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -96,8 +97,50 @@ Activity feed. An unknown slug leads to `/`.
 
 | slug | will show |
 |---|---|
-| `rendering` | one event, its EN and SR Handlebars templates and the result |
 | `chart` | events per minute by type as a UDC chart |
+
+## Rendering & translations
+
+How memento turns an event into a sentence (docs/TEMPLATES.md): pick an event type, see the
+tenant's latest event of it, the bundled `.en.hbs` and `.sr.hbs` sources, and the sentence the
+**server** renders from each, side by side.
+
+```
+packages/server/templates/*.hbs ──import.meta.glob(?raw), at build time──▶ templates.ts (type → {en, sr})
+/examples/rendering?type=TICKET_CLOSED
+  latest event   ──POST /udc/list {collection: events, filter: event_type eq T, limit 1}──▶ memento
+  rendered (en)  ──POST /udc/read {collection: events, id}  X-Memento-Locale: en ─────────▶ memento
+  rendered (sr)  ──POST /udc/read {collection: events, id}  X-Memento-Locale: sr ─────────▶ memento
+```
+
+- **Template sources are the server's files.** `src/examples/rendering/templates.ts` imports
+  every `packages/server/templates/*.hbs` with Vite's `import.meta.glob(…, {query: "?raw"})`
+  and maps them `event_type → {en, sr}` (`_generic` apart). There is no endpoint for template
+  sources; a **tenant override** lives in the database (`memento_template`) and is not visible
+  here — the page says so and shows the command that would create one,
+  `pnpm memento create-template --tenant <tenant> --event-type T --locale sr --file T.sr.hbs`.
+- **Type selector**: exactly the types with a bundled template (alphabetical), each with how
+  many events of it the tenant has (the `total` of a 1-row `events` list); the empty ones are
+  greyed but still open their templates. The type is in the URL (`?type=`), default
+  `TICKET_CREATED`.
+- **Three columns**: the latest event of the type (fields, the instance linking to its
+  [timeline](#entity-timeline), the payload pretty-printed), then per locale the template
+  source and the rendered sentence. The sentences are **not** a Handlebars run in the browser:
+  the page reads the same event twice through UDC, with clients whose `X-Memento-Locale` is
+  `en` and `sr` (`mementoUdcClient`, `src/connection.tsx`). They do not follow the header's
+  language — both are always shown.
+- **Highlighted keys**: every `payload.<key>` inside a `{{…}}` of either template (output,
+  `#if`, a helper's argument — `payloadKeys`) is marked in the template source and in the
+  payload pane, so it is visible which members of the payload the sentence uses.
+- **Where the template comes from**: the lookup chain for both locales
+  (`T.sr → T.en → _generic.sr → _generic.en →` built-in line), the step the bundled files
+  answer marked; at every step a tenant's own template beats the bundled one.
+- **`_generic`**: its EN and SR source and when it is used — any event type without a template
+  of its own. Every type of `lookups.yaml` has a bundled template except `NOTE`, and `NOTE` does
+  not go through `_generic` either: its text is `payload.text`, stored verbatim, the same in
+  every locale.
+- **Live**: `useLive` follows the stream filtered by the picked `event_type`; a new event of the
+  type refetches the column and the counts (at most once per 250 ms).
 
 ## Search
 
@@ -333,7 +376,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the search (the DSL pane is the sent body, curl and response panes, the UDC link's equivalent filter, URL state, locale), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the search (the DSL pane is the sent body, curl and response panes, the UDC link's equivalent filter, URL state, locale), rendering (every bundled template globbed, the selector's types and counts, highlighted payload keys, one read per locale), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

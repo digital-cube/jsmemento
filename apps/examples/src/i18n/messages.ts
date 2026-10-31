@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `ENTITY`, `CHAT`, `TAIL`, `SEARCH`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `CHAT`, `TAIL`, `SEARCH`, `RENDERING`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -40,7 +40,7 @@ export const EXAMPLES_MESSAGES: Messages = {
     CHAT: { en: "Chat", sr: "Čet" },
     TAIL: { en: "Live tail", sr: "Uživo praćenje" },
     SEARCH: { en: "Search", sr: "Pretraga" },
-    RENDERING: { en: "Rendering", sr: "Prikaz teksta" },
+    RENDERING: { en: "Rendering & translations", sr: "Prikaz i prevodi" },
     CHART: { en: "Events per minute", sr: "Događaji po minutu" },
     COLLECTIONS: { en: "Collections", sr: "Kolekcije" },
   },
@@ -197,6 +197,47 @@ export const EXAMPLES_MESSAGES: Messages = {
     },
     UDC_LINK: { en: "Open in the UDC events table →", sr: "Otvori u UDC tabeli events →" },
     UDC_FILTER: { en: "As a UDC filter", sr: "Kao UDC filter" },
+  },
+  RENDERING: {
+    TITLE: { en: "Rendering & translations", sr: "Prikaz i prevodi" },
+    SUBTITLE: {
+      en: "One event · its bundled EN and SR Handlebars templates · the sentence memento renders from each",
+      sr: "Jedan događaj · njegovi ugrađeni EN i SR Handlebars šabloni · rečenica koju memento renderuje iz svakog",
+    },
+    TYPES: {
+      en: "Event types with a bundled template · events of the tenant",
+      sr: "Tipovi događaja sa ugrađenim šablonom · događaji tenanta",
+    },
+    EVENT: { en: "The latest event", sr: "Poslednji događaj" },
+    ENGLISH: { en: "English (en)", sr: "Engleski (en)" },
+    SERBIAN: { en: "Serbian (sr)", sr: "Srpski (sr)" },
+    BUNDLED: { en: "bundled", sr: "ugrađen" },
+    READ_KEYS: { en: "read by the templates", sr: "čitaju ih šabloni" },
+    NONE: {
+      en: "The tenant has no {type} event yet; the templates are below all the same. memento simulate pushes them:",
+      sr: "Tenant još nema nijedan {type} događaj; šabloni su ipak tu. Šalje ih memento simulate:",
+    },
+    NO_EVENT: { en: "no event to render", sr: "nema događaja za prikaz" },
+    LOOKUP: { en: "Where the template comes from", sr: "Odakle dolazi šablon" },
+    LOOKUP_TEXT: {
+      en: "memento renders on the server, per request: for an event of type T in locale L it tries T in L, its parent locales and the default en, then _generic in the same locales, then a built-in line. At every step the tenant's own template wins over the bundled one. A stored sentence already in the asked locale is returned as stored (a snapshot at push).",
+      sr: "memento renderuje na serveru, za svaki zahtev: za događaj tipa T na jeziku L pokušava T na L, roditeljskim lokalima i podrazumevanom en, zatim _generic na istim lokalima, pa ugrađeni red. Na svakom koraku tenantov šablon ima prednost nad ugrađenim. Sačuvana rečenica koja je već na traženom jeziku vraća se kakva je sačuvana (snimak pri slanju).",
+    },
+    STEP: { en: "tenant → bundled", sr: "tenant → ugrađen" },
+    USED: { en: "used here", sr: "koristi se ovde" },
+    OVERRIDE_TEXT: {
+      en: "A tenant override lives in the database (memento_template) and is not shown on this page, which knows only the bundled files. This command gives the tenant its own Serbian template for this type:",
+      sr: "Tenantov šablon je u bazi (memento_template) i ova stranica ga ne prikazuje, ona zna samo za ugrađene fajlove. Ova komanda daje tenantu sopstveni srpski šablon za ovaj tip:",
+    },
+    GENERIC: { en: "_generic: a type with no template", sr: "_generic: tip bez šablona" },
+    GENERIC_TEXT: {
+      en: "Every event type of the lookups has a bundled template except NOTE. _generic renders any other type — one a producer sends before it gets a template of its own — from the translated labels of lookups.yaml.",
+      sr: "Svaki tip događaja iz lookups-a ima ugrađen šablon osim NOTE. _generic renderuje svaki drugi tip — onaj koji proizvođač šalje pre nego što dobije sopstveni šablon — iz prevedenih naziva iz lookups.yaml.",
+    },
+    NOTE_TEXT: {
+      en: "NOTE is not rendered at all: its text is payload.text, stored as written and returned the same in every locale — neither its own template nor _generic is used.",
+      sr: "NOTE se uopšte ne renderuje: njegov tekst je payload.text, čuva se kako je napisan i vraća isti na svakom jeziku — ne koristi se ni sopstveni šablon ni _generic.",
+    },
   },
   PLANNED: {
     BADGE: { en: "Planned", sr: "Planirano" },

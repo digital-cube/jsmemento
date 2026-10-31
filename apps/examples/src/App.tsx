@@ -1,4 +1,3 @@
-import { UdcClient } from "@jsudc/core/client";
 import {
   createRendererRegistry,
   createUdcQueryClient,
@@ -18,12 +17,13 @@ import { Toaster, TooltipProvider } from "@jsudc/react/ui";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
-import { connectionOf, SettingsProvider, useDemoKey } from "./connection.js";
+import { connectionOf, mementoUdcClient, SettingsProvider, useDemoKey } from "./connection.js";
 import { ActivityPage } from "./examples/activity/Activity.js";
 import { ChatPage } from "./examples/chat/Chat.js";
 import { CpuMonitorPage } from "./examples/cpu-monitor/CpuMonitor.js";
 import { EntityPickerPage, EntityTimelinePage } from "./examples/entity/Entity.js";
 import { PlannedExamplePage } from "./examples/planned/PlannedExample.js";
+import { RenderingPage } from "./examples/rendering/Rendering.js";
 import { SearchPage } from "./examples/search/Search.js";
 import { TailPage } from "./examples/tail/Tail.js";
 import { EXAMPLES_MESSAGES } from "./i18n/messages.js";
@@ -43,12 +43,6 @@ export const FIRST_EXAMPLE = "/examples/cpu-monitor";
 export function routerBasename(pathname: string): string {
   return /^\/en(\/|$)/.test(pathname) ? "/en" : "/";
 }
-
-/**
- * The header the UDC client names the page's language in: memento renders the rows'
- * `rendered` text in it (`X-Memento-Locale`, docs/TEMPLATES.md).
- */
-export const LOCALE_HEADER = "x-memento-locale";
 
 /** The language the visitor picked last (the header's EN / SR), `en` the first time. */
 export function storedLocale(): Locale {
@@ -92,14 +86,7 @@ export function App() {
 
   const { baseUrl, apiKey } = connection;
   const client = useMemo(
-    () =>
-      new UdcClient({
-        httpUrl: baseUrl.replace(/\/+$/, ""),
-        headers: {
-          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-          [LOCALE_HEADER]: locale,
-        },
-      }),
+    () => mementoUdcClient(baseUrl, apiKey, locale),
     [baseUrl, apiKey, locale],
   );
   // One cache per server and key: another key must never see the rows of the last one.
@@ -137,6 +124,7 @@ export function App() {
                         <Route path="examples/chat" element={<ChatPage />} />
                         <Route path="examples/tail" element={<TailPage />} />
                         <Route path="examples/search" element={<SearchPage />} />
+                        <Route path="examples/rendering" element={<RenderingPage />} />
                         {/* Every example of menu.yaml not built yet: a "planned" page. */}
                         <Route path="examples/:slug" element={<PlannedExamplePage />} />
                         <Route path="udc/:collection" element={<CollectionPage />} />

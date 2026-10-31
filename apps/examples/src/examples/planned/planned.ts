@@ -14,13 +14,6 @@ export interface PlannedExample {
  * (`/examples/<slug>`). Each follow-up ticket replaces one row with a page of its own.
  */
 export const PLANNED_EXAMPLES: Readonly<Record<string, PlannedExample>> = {
-  rendering: {
-    title: { en: "Rendering", sr: "Prikaz teksta" },
-    summary: {
-      en: "One event, its English and Serbian Handlebars templates, and the sentence each of them renders.",
-      sr: "Jedan događaj, njegovi Handlebars šabloni na engleskom i srpskom, i rečenica koju svaki od njih daje.",
-    },
-  },
   chart: {
     title: { en: "Events per minute", sr: "Događaji po minutu" },
     summary: {

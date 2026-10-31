@@ -1,5 +1,23 @@
+import { UdcClient } from "@jsudc/core/client";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Settings } from "./settings.js";
+
+/**
+ * The header the UDC client names the page's language in: memento renders the rows'
+ * `rendered` text in it (`X-Memento-Locale`, docs/TEMPLATES.md).
+ */
+export const LOCALE_HEADER = "x-memento-locale";
+
+/** A UDC client of memento at `baseUrl`, with `apiKey`, whose rows are rendered in `locale`. */
+export function mementoUdcClient(baseUrl: string, apiKey: string, locale: string): UdcClient {
+  return new UdcClient({
+    httpUrl: baseUrl.replace(/\/+$/, ""),
+    headers: {
+      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      [LOCALE_HEADER]: locale,
+    },
+  });
+}
 
 /** What `GET <baseUrl>/api/demo` answers: the deployment's read-only demo key. */
 export interface DemoKey {

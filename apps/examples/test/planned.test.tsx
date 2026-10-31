@@ -11,7 +11,7 @@ import { FakeSocket } from "./fake-socket.js";
 import { udcServer } from "./udc-server.js";
 
 const settings = { ...defaultSettings({} as ImportMetaEnv), apiKey: "mk_k" };
-const SLUGS = ["rendering", "chart"];
+const SLUGS = ["chart"];
 /** The examples with a page of their own. */
 const BUILT = [
   "/examples/cpu-monitor",
@@ -20,6 +20,7 @@ const BUILT = [
   "/examples/chat",
   "/examples/tail",
   "/examples/search",
+  "/examples/rendering",
 ];
 
 /** The EXAMPLES entries of the repository's menu.yaml: [code, translation_key, url]. */
@@ -101,10 +102,9 @@ describe("a planned example", () => {
   );
 
   it("names every summary of the series", () => {
-    expect(localized(PLANNED_EXAMPLES.rendering?.summary ?? { en: "", sr: "" }, "sr")).toContain(
-      "Handlebars",
+    expect(localized(PLANNED_EXAMPLES.chart?.summary ?? { en: "", sr: "" }, "sr")).toContain(
+      "UDC grafikon",
     );
-    expect(PLANNED_EXAMPLES.rendering?.summary.en).toContain("Handlebars");
     expect(PLANNED_EXAMPLES.chart?.summary.en).toContain("UDC chart");
   });
 
