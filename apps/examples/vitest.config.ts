@@ -6,10 +6,11 @@ const src = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: {
-    alias: {
-      "@memento/core": src("../../packages/core/src/index.ts"),
-      "@memento/react": src("../../packages/react/src/index.ts"),
-    },
+    // Exact matches: `@memento/react/styles.css` resolves through the package's exports.
+    alias: [
+      { find: /^@memento\/core$/, replacement: src("../../packages/core/src/index.ts") },
+      { find: /^@memento\/react$/, replacement: src("../../packages/react/src/index.ts") },
+    ],
   },
   test: {
     name: "examples",

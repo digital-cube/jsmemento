@@ -14,7 +14,8 @@ each example is a route, and every list on every page comes from UDC.
 | `/examples/activity` | [Activity feed](#activity-feed) |
 | `/examples/entity` | [Entity timeline](#entity-timeline): the picker |
 | `/examples/entity/:instance_type/:instance_id` | the timeline of one instance (`ticket/T-17`, `user/ana`) |
-| `/examples/chat`, `tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
+| `/examples/chat` | [Chat](#chat): the simulator's demo room in `MementoChat`, viewed as one participant (`?as=ana`) |
+| `/examples/tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -39,7 +40,7 @@ pnpm memento create-key --tenant demo --scopes read --name examples-demo      # 
 # terminal 1: memento on http://localhost:8000/memento, handing the page its demo key
 MEMENTO_DEMO_API_KEY=mk_…read… pnpm dev
 
-# terminal 2: one CPU_LOAD event a second, and a ticket desk story for the Activity feed
+# terminal 2: one CPU_LOAD event a second, and a ticket desk story (+ the chat room) for the feed
 pnpm memento cpu-monitor --interval 1 --tenant demo --key mk_…write…
 pnpm memento simulate --interval 1 --tenant demo --key mk_…write…
 
@@ -93,11 +94,55 @@ Activity feed. An unknown slug leads to `/`.
 
 | slug | will show |
 |---|---|
-| `chat` | a simulated room shown with `MementoChat`, seen markers |
 | `tail` | the WebSocket stream raw, with filters, like `memento tail` in the browser |
 | `search` | `MementoSearch` with the Filter DSL JSON it sends to `POST /events/query` |
 | `rendering` | one event, its EN and SR Handlebars templates and the result |
 | `chart` | events per minute by type as a UDC chart |
+
+## Chat
+
+`memento simulate` also plays a chat: the team talks in one room, and the page shows that room
+with **`MementoChat`** from `@memento/react` — the component an app would embed — read-only,
+live.
+
+```
+memento simulate ──POST /chats (once), /chats/chat-demo-room/messages, /seen, /participants──▶ memento
+                                                                                                 │
+/examples/chat ◀── GET /chats/chat-demo-room?user_id=igor ── participants, read watermarks ──────┤
+  MementoChat  ◀── GET /chats/chat-demo-room/messages?user_id=<viewer>&locale=<en|sr> ───────────┤
+               ◀── ws /memento/ws?instance_type=chat&instance_id=chat-demo-room ─────────────────┘
+```
+
+- **The room.** On start the simulator makes sure `chat-demo-room` ("Demo room") exists,
+  creating it with igor, marko, ana and jelena when it is missing (an existing one is reused).
+  Its chat scene, weighted like the other scenes: an online member says a short line about the
+  tickets the desk is working ("I took T-17.", "Zatvaram T-12, duplicate."), lines alternating
+  English and Serbian as people write them (nothing is translated); another member marks the
+  newest message seen; rarely somebody of the team is added. `--no-chat` leaves the room alone.
+- **Viewed as a participant.** Chat reads are made on behalf of a user (`user_id`, see
+  docs/CHATS.md), so the page reads the room as one participant, chosen in the **Viewing as**
+  selector on top — the first participant by default, kept in the URL (`?as=ana`). Switching
+  the viewer reloads the room as that person: their messages are the "own" ones, the **Seen by**
+  markers show where the *other* participants' read watermarks are, and a **New messages**
+  divider shows where the viewer's unread messages start.
+- **Read-only.** The composer is disabled, its tooltip says *read-only demo key*: the demo key
+  has only the `read` scope (the server refuses to hand out anything else), so nothing can be
+  sent and nothing is tried. Writing stays with the simulator.
+- **Live, over the WebSocket — no polling.** `MementoChat` loads the newest 100 messages and
+  then follows the room's events on `/memento/ws`: new messages appear as they are sent, read
+  markers move on `CHAT_MESSAGE_SEEN`, "X was added" lines appear on `CHAT_PARTICIPANT_ADDED`.
+  The page itself follows the same stream to read the room again when a participant is added
+  (the selector grows) or, while the room is missing, when it first speaks.
+- **The language is the header's.** `MementoProvider` gets the site's locale: the system lines
+  ("mila was added to the chat" / "mila je dodat u čat") are memento's rendered text and switch
+  with EN / SR; people's messages stay as written. `MementoChat`'s own few labels are English.
+- **Not UDC, on purpose.** Chats are read through memento's chat API rather than a UDC
+  collection: every read is checked against the room's participants (`user_id`), which the
+  tenant-wide `events` collection does not do. The page reads them only through
+  `MementoChat` / `MementoClient`; there is no hand-written fetch.
+- **Empty** (the simulator never ran): one sentence and the compose command,
+  `docker compose -f docker-compose.yaml --profile demo up -d simulator`. The room appears
+  without a reload once the simulator speaks in it.
 
 ## Activity feed
 
@@ -201,7 +246,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

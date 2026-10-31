@@ -867,3 +867,66 @@ a.feed__chip--link:hover {
 .timeline__head a.feed__actor {
   color: var(--cm-accent);
 }
+
+/* --- chat: /examples/chat ----------------------------------------------------------- */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px 20px 24px;
+}
+
+.chat__viewer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+
+.chat__viewer label {
+  font-weight: 600;
+}
+
+.chat__viewer select {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--cm-line);
+  border-radius: 6px;
+  background: var(--cm-panel);
+  color: var(--cm-ink);
+}
+
+.chat__members {
+  color: var(--cm-muted);
+}
+
+.chat__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--cm-muted);
+}
+
+/* MementoChat in the site's colours. */
+.chat .memento {
+  --memento-ink: var(--cm-ink);
+  --memento-muted: var(--cm-muted);
+  --memento-rule: var(--cm-line);
+  --memento-surface: var(--cm-panel);
+  --memento-paper: var(--cm-bg);
+  --memento-live: var(--cm-live);
+  --memento-offline: var(--cm-down);
+  --memento-focus: var(--cm-accent);
+  flex: 1;
+  min-height: 0;
+}
+
+.chat .memento-chat__messages {
+  max-height: none;
+}

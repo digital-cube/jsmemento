@@ -9,6 +9,21 @@ share one version.
 
 ### Added
 
+- **Examples site: the Chat page** (`/examples/chat`, replaces its planned page): the
+  simulator's demo room in `MementoChat`, read as one participant picked in a selector
+  (`?as=`), with seen markers, "X was added" lines in the header's language, a disabled
+  composer ("read-only demo key"), live over the WebSocket; an empty state with the compose
+  command while the room does not exist.
+- **`memento simulate` chat scene** (`@memento/cli`): makes sure `chat-demo-room` exists
+  (created with four of the cast, an existing one reused) and plays messages about the
+  desk's tickets in English and Serbian, read markers and the odd new member; `--no-chat`
+  turns it off. `TicketDesk.nextStep()` returns events and chat calls; `next()` stays the
+  event-only story.
+- **`MementoChat` `readOnly`, `seenMarkers`, `systemEvents`** (`@memento/react`), with
+  `useMementoChat(…, { seen, system })` returning `participants` and `notices`, and the
+  helpers `seenMarkers()` / `applyChatEvent()`.
+- **`MementoClient.createChat()`, `.listChats()`, `.markSeen()`, `.addParticipant()`** and
+  `chatMessages({ event_type })` (`@memento/core`).
 - **UDC collections** (`@memento/server`): `POST <prefix>/udc/<action>` serves the tenant's
   events through `@jsudc/server` 0.2.1 — `events` (every event) and `cpu_load` (`CPU_LOAD`
   events with the load averages as columns, table + chart). Filter DSL, sort, offset paging

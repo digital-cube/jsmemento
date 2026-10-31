@@ -1,4 +1,10 @@
-import type { Chat, ChatMessageResult } from "./chat.js";
+import type {
+  Chat,
+  ChatCreateInput,
+  ChatMessageResult,
+  ChatParticipantResult,
+  ChatSeenResult,
+} from "./chat.js";
 import { chatInstanceId } from "./chat.js";
 import type { Describe } from "./describe.js";
 import type { PageMeta } from "./envelope.js";
@@ -75,6 +81,8 @@ export class MementoClient {
       offset?: number;
       order?: "asc" | "desc";
       locale?: string;
+      /** Default `CHAT_MESSAGE_SENT`; another `CHAT_*` type, the family `CHAT_*`, or `*`. */
+      event_type?: string;
     } = {},
   ): Promise<Page<MementoEvent[]>> {
     return this.request("GET", `/chats/${encodeURIComponent(chatInstanceId(chatId))}/messages`, {
@@ -87,6 +95,46 @@ export class MementoClient {
       "GET",
       `/chats/${encodeURIComponent(chatInstanceId(chatId))}`,
       { query },
+    );
+    return page.data;
+  }
+
+  /** `POST /chats` (scope `write`); `409 conflict` when `chat_id` already exists. */
+  async createChat(chat: ChatCreateInput): Promise<Chat> {
+    return (await this.request<Chat>("POST", "/chats", { body: chat })).data;
+  }
+
+  /** `GET /chats?user_id=`: the chats a user participates in, most recently active first. */
+  listChats(
+    query: { user_id?: string; limit?: number; offset?: number } = {},
+  ): Promise<Page<Chat[]>> {
+    return this.request("GET", "/chats", { query });
+  }
+
+  /** `POST /chats/:id/seen`: moves `user_id`'s read watermark (default: the newest message). */
+  async markSeen(
+    chatId: string,
+    seen: { user_id: string; up_to_event_id?: string },
+    options: { locale?: string } = {},
+  ): Promise<ChatSeenResult> {
+    const page = await this.request<ChatSeenResult>(
+      "POST",
+      `/chats/${encodeURIComponent(chatInstanceId(chatId))}/seen`,
+      { query: { locale: options.locale }, body: seen },
+    );
+    return page.data;
+  }
+
+  /** `POST /chats/:id/participants`: adds a member to a room (`409` when already one). */
+  async addParticipant(
+    chatId: string,
+    participant: { user_id: string; added_by?: string },
+    options: { locale?: string } = {},
+  ): Promise<ChatParticipantResult> {
+    const page = await this.request<ChatParticipantResult>(
+      "POST",
+      `/chats/${encodeURIComponent(chatInstanceId(chatId))}/participants`,
+      { query: { locale: options.locale }, body: participant },
     );
     return page.data;
   }

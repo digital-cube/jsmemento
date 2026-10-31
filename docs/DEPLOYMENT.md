@@ -87,8 +87,9 @@ docker compose -f docker-compose.yaml --profile demo logs -f cpu-monitor
 **The simulator.** The examples site's Activity feed (`/examples/activity`) shows the tenant's
 events as sentences; the `simulator` service (same profile, same image, `memento simulate`)
 gives it a story to show: a small team logging in, creating, modifying, noting and closing
-tickets, and a bot closing stale ones — one event every `SIMULATOR_INTERVAL` seconds. It needs a
-**write** key of the same tenant, which may be the same key as `CPU_MONITOR_API_KEY`:
+tickets, and a bot closing stale ones — one event every `SIMULATOR_INTERVAL` seconds. The same
+team talks in one chat room, `chat-demo-room`, which the simulator creates on its first start
+and the Chat example (`/examples/chat`) shows. It needs a **write** key of the same tenant, which may be the same key as `CPU_MONITOR_API_KEY`:
 
 ```bash
 # in .env (never in the repository)

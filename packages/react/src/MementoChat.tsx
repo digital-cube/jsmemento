@@ -1,7 +1,8 @@
-import { chatInstanceId, type MementoEvent } from "@memento/core";
+import { type ChatParticipant, chatInstanceId, type MementoEvent } from "@memento/core";
 import {
   type CSSProperties,
   type FormEvent,
+  Fragment,
   type ReactNode,
   useEffect,
   useId,
@@ -22,6 +23,42 @@ export function messageText(event: MementoEvent): string {
 export function messageSender(event: MementoEvent): string {
   const sender = event.payload.sender_user_id;
   return typeof sender === "string" ? sender : (event.actor_id ?? "unknown");
+}
+
+/**
+ * Who has read how far, as `viewer` sees it: for each message, the other participants whose
+ * read watermark is that message (its sender left out: they wrote it); and the first message
+ * the viewer has not read yet (`null` when they are up to date). A watermark older than the
+ * loaded messages counts as "before all of them".
+ */
+export function seenMarkers(
+  messages: readonly MementoEvent[],
+  participants: readonly ChatParticipant[],
+  viewer: string,
+): { seenBy: Map<string, string[]>; unreadFrom: string | null } {
+  const index = new Map(messages.map((m, i) => [m.id, i]));
+  const seenBy = new Map<string, string[]>();
+  for (const p of participants) {
+    if (p.user_id === viewer || !p.last_seen_event_id) continue;
+    const at = index.get(p.last_seen_event_id);
+    if (at === undefined) continue;
+    const message = messages[at] as MementoEvent;
+    if (messageSender(message) === p.user_id) continue;
+    seenBy.set(message.id, [...(seenBy.get(message.id) ?? []), p.user_id]);
+  }
+  let unreadFrom: string | null = null;
+  const me = participants.find((p) => p.user_id === viewer);
+  if (me) {
+    const read = me.last_seen_event_id ? (index.get(me.last_seen_event_id) ?? -1) : -1;
+    // A message of the viewer's own after the watermark means they were there up to it.
+    let from = read;
+    messages.forEach((m, i) => {
+      if (messageSender(m) === viewer && i > from) from = i;
+    });
+    const first = messages.findIndex((m, i) => i > from && messageSender(m) !== viewer);
+    unreadFrom = first === -1 ? null : (messages[first] as MementoEvent).id;
+  }
+  return { seenBy, unreadFrom };
 }
 
 export interface AvatarProps {
@@ -55,6 +92,15 @@ export interface MementoChatProps extends TimeFormat {
   displayName?: (userId: string) => string;
   /** Messages loaded at first. Default 100. */
   limit?: number;
+  /**
+   * No writing: the composer is disabled and nothing can be sent. A string says why; it is
+   * the composer's tooltip (e.g. "read-only demo key"). Default `false`.
+   */
+  readOnly?: boolean | string;
+  /** Show who has read how far ("Seen by …") and where the user's unread messages start. */
+  seenMarkers?: boolean;
+  /** Show the chat's system lines (somebody was added), in the provider's locale. */
+  systemEvents?: boolean;
 }
 
 /** A chat: the messages of `chatId` as `userId` sees them, live, and a box to write one. */
@@ -67,10 +113,24 @@ export function MementoChat({
   limit = 100,
   locale,
   timeZone,
+  readOnly = false,
+  seenMarkers: showSeen = false,
+  systemEvents = false,
 }: MementoChatProps) {
-  const { messages, status, loading, error, sending, send } = useMementoChat(chatId, userId, {
-    limit,
-  });
+  const { messages, status, loading, error, sending, send, participants, notices } = useMementoChat(
+    chatId,
+    userId,
+    { limit, seen: showSeen, system: systemEvents },
+  );
+  const locked = readOnly !== false;
+  const why = typeof readOnly === "string" ? readOnly : locked ? "read-only" : undefined;
+  const { seenBy, unreadFrom } = showSeen
+    ? seenMarkers(messages, participants, userId)
+    : { seenBy: new Map<string, string[]>(), unreadFrom: null };
+  // Messages and system lines in one timeline, oldest first.
+  const timeline = [...messages, ...notices].sort(
+    (a, b) => a.occurred_at.localeCompare(b.occurred_at) || a.id.localeCompare(b.id),
+  );
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLOListElement>(null);
   const id = useId();
@@ -85,7 +145,7 @@ export function MementoChat({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || sending) return;
+    if (!content || sending || locked) return;
     try {
       await send(content);
       setDraft("");
@@ -103,32 +163,58 @@ export function MementoChat({
         <StatusIndicator status={status} />
       </header>
       <ol className="memento-chat__messages" ref={listRef} aria-label="Messages">
-        {messages.length === 0 ? (
+        {timeline.length === 0 ? (
           <li className="memento-chat__empty">
-            {loading ? "Loading messages…" : "No messages yet. Write the first one."}
+            {loading
+              ? "Loading messages…"
+              : locked
+                ? "No messages yet."
+                : "No messages yet. Write the first one."}
           </li>
         ) : (
-          messages.map((message) => {
+          timeline.map((message) => {
+            if (message.event_type !== "CHAT_MESSAGE_SENT") {
+              return (
+                <li key={message.id} className="memento-chat__notice" data-event-id={message.id}>
+                  <span>{message.rendered ?? message.event_type}</span>
+                  <time dateTime={message.occurred_at}>
+                    {formatTime(message.occurred_at, { locale, timeZone })}
+                  </time>
+                </li>
+              );
+            }
             const sender = messageSender(message);
             const own = sender === userId;
+            const readers = seenBy.get(message.id);
             return (
-              <li
-                key={message.id}
-                className="memento-message"
-                data-own={own || undefined}
-                data-event-id={message.id}
-              >
-                <Avatar userId={sender} src={avatarUrl?.(sender)} />
-                <div className="memento-message__body">
-                  <div className="memento-message__meta">
-                    <span className="memento-message__sender">{displayName(sender)}</span>
-                    <time dateTime={message.occurred_at}>
-                      {formatTime(message.occurred_at, { locale, timeZone })}
-                    </time>
+              <Fragment key={message.id}>
+                {message.id === unreadFrom ? (
+                  <li className="memento-chat__unread" data-testid="unread">
+                    New messages
+                  </li>
+                ) : null}
+                <li
+                  className="memento-message"
+                  data-own={own || undefined}
+                  data-event-id={message.id}
+                >
+                  <Avatar userId={sender} src={avatarUrl?.(sender)} />
+                  <div className="memento-message__body">
+                    <div className="memento-message__meta">
+                      <span className="memento-message__sender">{displayName(sender)}</span>
+                      <time dateTime={message.occurred_at}>
+                        {formatTime(message.occurred_at, { locale, timeZone })}
+                      </time>
+                    </div>
+                    <p className="memento-message__text">{messageText(message)}</p>
+                    {readers ? (
+                      <p className="memento-message__seen" data-testid="seen-by">
+                        ✓ Seen by {readers.map(displayName).join(", ")}
+                      </p>
+                    ) : null}
                   </div>
-                  <p className="memento-message__text">{messageText(message)}</p>
-                </div>
-              </li>
+                </li>
+              </Fragment>
             );
           })
         )}
@@ -138,7 +224,12 @@ export function MementoChat({
           {error.message}
         </p>
       ) : null}
-      <form className="memento-chat__compose" onSubmit={submit}>
+      <form
+        className="memento-chat__compose"
+        onSubmit={submit}
+        title={why}
+        data-readonly={locked || undefined}
+      >
         <label className="memento-visually-hidden" htmlFor={`${id}-input`}>
           Message
         </label>
@@ -146,11 +237,15 @@ export function MementoChat({
           id={`${id}-input`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={`Message as ${displayName(userId)}`}
+          placeholder={
+            locked ? `Reading as ${displayName(userId)}` : `Message as ${displayName(userId)}`
+          }
           autoComplete="off"
           maxLength={10_000}
+          disabled={locked}
+          title={why}
         />
-        <button type="submit" disabled={sending || draft.trim() === ""}>
+        <button type="submit" disabled={locked || sending || draft.trim() === ""} title={why}>
           {sending ? "Sending…" : "Send"}
         </button>
       </form>

@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `ENTITY`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `CHAT`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -93,6 +93,26 @@ export const EXAMPLES_MESSAGES: Messages = {
     NONE: {
       en: "No instances yet: the tenant has no events. memento simulate pushes a ticket desk story — start it with",
       sr: "Još nema instanci: tenant nema događaja. memento simulate šalje priču o službi za tikete — pokrenite ga sa",
+    },
+  },
+  CHAT: {
+    TITLE: { en: "Chat", sr: "Čet" },
+    SUBTITLE: {
+      en: "MementoChat · the simulator's demo room · read-only · live",
+      sr: "MementoChat · demo soba simulatora · samo čitanje · uživo",
+    },
+    ROOM: { en: "Demo room", sr: "Demo soba" },
+    VIEW_AS: { en: "Viewing as", sr: "Gledate kao" },
+    VIEW_AS_HINT: {
+      en: "Chat reads are per participant (user_id): switch to see who has read what from their side.",
+      sr: "Čet se čita u ime učesnika (user_id): promenite učesnika da vidite ko je šta pročitao iz njegovog ugla.",
+    },
+    MEMBERS: { en: "{count} participants", sr: "učesnika: {count}" },
+    READ_ONLY_DEMO: { en: "read-only demo key", sr: "demo ključ samo za čitanje" },
+    READ_ONLY: { en: "read-only example", sr: "primer samo za čitanje" },
+    EMPTY: {
+      en: "The demo room does not exist yet: memento simulate creates it and talks in it — start it with",
+      sr: "Demo soba još ne postoji: pravi je memento simulate, koji u njoj i piše — pokrenite ga sa",
     },
   },
   PLANNED: {

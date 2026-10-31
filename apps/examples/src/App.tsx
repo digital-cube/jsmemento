@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
 import { connectionOf, SettingsProvider, useDemoKey } from "./connection.js";
 import { ActivityPage } from "./examples/activity/Activity.js";
+import { ChatPage } from "./examples/chat/Chat.js";
 import { CpuMonitorPage } from "./examples/cpu-monitor/CpuMonitor.js";
 import { EntityPickerPage, EntityTimelinePage } from "./examples/entity/Entity.js";
 import { PlannedExamplePage } from "./examples/planned/PlannedExample.js";
@@ -131,6 +132,7 @@ export function App() {
                           path="examples/entity/:instance_type/:instance_id"
                           element={<EntityTimelinePage />}
                         />
+                        <Route path="examples/chat" element={<ChatPage />} />
                         {/* Every example of menu.yaml not built yet: a "planned" page. */}
                         <Route path="examples/:slug" element={<PlannedExamplePage />} />
                         <Route path="udc/:collection" element={<CollectionPage />} />

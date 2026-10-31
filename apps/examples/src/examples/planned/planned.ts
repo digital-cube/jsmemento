@@ -14,13 +14,6 @@ export interface PlannedExample {
  * (`/examples/<slug>`). Each follow-up ticket replaces one row with a page of its own.
  */
 export const PLANNED_EXAMPLES: Readonly<Record<string, PlannedExample>> = {
-  chat: {
-    title: { en: "Chat", sr: "Čet" },
-    summary: {
-      en: "A simulated chat room shown with MementoChat: messages arriving live, and seen markers telling who has read how far.",
-      sr: "Simulirana čet soba prikazana komponentom MementoChat: poruke stižu uživo, a oznake viđenosti pokazuju ko je dokle pročitao.",
-    },
-  },
   tail: {
     title: { en: "Live tail", sr: "Uživo praćenje" },
     summary: {

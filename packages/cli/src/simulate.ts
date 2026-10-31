@@ -18,6 +18,12 @@ import type { Ui } from "./ui.js";
  *   NOTE             text (free text, stored verbatim)
  *
  * plus `actor_type` (`user` or `bot`), which the server checks against the lookups.
+ *
+ * With the chat scene on (the default of `memento simulate`, `--no-chat` turns it off) the
+ * same people also talk in one room, `chat-demo-room`, through the chat endpoints
+ * (docs/CHATS.md): a member says a line about the tickets of the story, another marks it
+ * seen, now and then somebody is added. Those steps are not events the pusher builds but
+ * calls the server turns into CHAT_MESSAGE_SENT / CHAT_MESSAGE_SEEN / CHAT_PARTICIPANT_ADDED.
  */
 
 /** The team the story starts with: `user/<name>` instances and `actor_id`s. */
@@ -69,6 +75,79 @@ const NOTES = [
 ] as const;
 const RESOLUTIONS = ["fixed", "duplicate", "won't fix", "works as designed", "cannot reproduce"];
 
+/** The one room of the chat scene: a fixed id, so every run talks in the same room. */
+export const ROOM_ID = "chat-demo-room";
+export const ROOM_NAME = "Demo room";
+/** Who the room is created with; the rest of the team is added now and then. */
+export const ROOM_FOUNDERS = ["igor", "marko", "ana", "jelena"] as const;
+
+/**
+ * What the team says in the room. `{t}` is a ticket of the story: an open one (`open`) or
+ * the one closed last (`closed`, `{r}` its resolution). People write in English or Serbian;
+ * the lines alternate, and nothing is translated.
+ */
+export interface ChatLine {
+  ticket: "open" | "closed" | null;
+  en: string;
+  sr: string;
+}
+export const CHAT_SCRIPT: readonly ChatLine[] = [
+  { ticket: "open", en: "I took {t}.", sr: "Uzimam {t}." },
+  {
+    ticket: "open",
+    en: "Can someone look at {t}? The customer is waiting.",
+    sr: "Može li neko da pogleda {t}? Klijent čeka.",
+  },
+  {
+    ticket: "open",
+    en: "{t} is in review, have a look when you can.",
+    sr: "{t} je na review-u, pogledajte kad stignete.",
+  },
+  {
+    ticket: "open",
+    en: "Cannot reproduce {t} locally, trying staging.",
+    sr: "Ne mogu da reprodukujem {t} lokalno, probam na stagingu.",
+  },
+  {
+    ticket: "open",
+    en: "Who is on {t}? Nobody picked it up.",
+    sr: "Ko radi na {t}? Niko ga nije uzeo.",
+  },
+  { ticket: "closed", en: "Closing {t}, {r}.", sr: "Zatvaram {t}, {r}." },
+  { ticket: "closed", en: "{t} is finally gone 🎉", sr: "{t} je konačno rešen 🎉" },
+  {
+    ticket: null,
+    en: "Coffee break, back in ten.",
+    sr: "Pauza za kafu, vraćam se za deset minuta.",
+  },
+  { ticket: null, en: "Standup in five minutes.", sr: "Standup za pet minuta." },
+  {
+    ticket: null,
+    en: "Staging is slow again, is it just me?",
+    sr: "Staging je opet spor, da li je samo kod mene?",
+  },
+  { ticket: null, en: "Thanks!", sr: "Hvala!" },
+];
+
+/** A step of the chat scene: a call to the chat endpoints, not an event of its own. */
+export type ChatStep =
+  /** `POST /chats/:id/messages` as `user_id`. */
+  | { kind: "message"; user_id: string; content: string }
+  /** `POST /chats/:id/seen`: `user_id` read up to the newest message. */
+  | { kind: "seen"; user_id: string }
+  /** `POST /chats/:id/participants`: `added_by` adds `user_id` to the room. */
+  | { kind: "join"; user_id: string; added_by: string };
+
+/** One step of the story: an event to push, or a chat call. */
+export type DeskStep = { kind: "event"; event: EventInput } | ChatStep;
+
+export interface TicketDeskOptions {
+  /** Play the chat scene too. Default `false`: `next()` then only ever returns events. */
+  chat?: boolean;
+  /** Who is in the room already (an existing room); default the founders. */
+  roomMembers?: Iterable<string>;
+}
+
 /** Deterministic 32-bit PRNG (mulberry32): the same seed, the same story. */
 export function prng(seed: number): () => number {
   let a = seed >>> 0;
@@ -97,7 +176,19 @@ interface Ticket {
 }
 
 /** The scenes, with how often each is picked when it can happen. */
-type Scene = "login" | "create" | "modify" | "note" | "close" | "logout" | "newcomer" | "stale";
+type Scene =
+  | "login"
+  | "create"
+  | "modify"
+  | "note"
+  | "close"
+  | "logout"
+  | "newcomer"
+  | "stale"
+  | "say"
+  | "seen"
+  | "join";
+const CHAT_SCENES: ReadonlySet<Scene> = new Set(["say", "seen", "join"]);
 const WEIGHTS: Record<Scene, number> = {
   login: 3,
   create: 3,
@@ -107,11 +198,16 @@ const WEIGHTS: Record<Scene, number> = {
   logout: 1,
   newcomer: 0.4,
   stale: 2,
+  say: 3,
+  seen: 2,
+  join: 0.3,
 };
 
 /**
- * The ticket desk: who is logged in, which tickets are open. `next(at)` plays one scene and
- * returns the one event it produced. Deterministic for a seed.
+ * The ticket desk: who is logged in, which tickets are open, and (with `chat`) who is in the
+ * room. `nextStep(at)` plays one scene; `next(at)` is the same for a desk without the chat
+ * scene, as the one event it produced. Deterministic for a seed; without the chat scene the
+ * story is exactly the one the desk played before the room existed.
  */
 export class TicketDesk {
   /** Steps played so far. */
@@ -119,19 +215,92 @@ export class TicketDesk {
   readonly users: string[] = [...CAST];
   readonly online = new Set<string>();
   readonly open = new Map<string, Ticket>();
+  /** Members of the room. */
+  readonly room: Set<string>;
+  /** Messages said in the room in this run. */
+  said = 0;
+  readonly chat: boolean;
+  private lastSender: string | null = null;
+  private lastLine: ChatLine | null = null;
+  /** How many of this run's messages each member has marked seen. */
+  private readonly seenUpTo = new Map<string, number>();
+  private lastClosed: { id: string; resolution: string } | null = null;
   private nextTicket = 1;
   private newcomers = 0;
   private readonly random: () => number;
 
-  constructor(readonly seed: number) {
+  constructor(
+    readonly seed: number,
+    options: TicketDeskOptions = {},
+  ) {
     this.random = prng(seed);
+    this.chat = options.chat ?? false;
+    this.room = new Set(options.roomMembers ?? ROOM_FOUNDERS);
   }
 
-  /** One scene, as the event it produced, `occurred_at` = `at`. */
+  /** One scene, as the event it produced, `occurred_at` = `at` (a desk without `chat`). */
   next(at: Date = new Date()): EventInput {
+    const step = this.nextStep(at);
+    if (step.kind !== "event") throw new Error("a desk with the chat scene plays nextStep()");
+    return step.event;
+  }
+
+  /** One scene: the event it produced (`occurred_at` = `at`), or the chat call it makes. */
+  nextStep(at: Date = new Date()): DeskStep {
     const scene = this.pick(this.possible());
     this.step += 1;
-    return { ...this.play(scene), occurred_at: at.toISOString() };
+    if (CHAT_SCENES.has(scene)) return this.talk(scene);
+    return { kind: "event", event: { ...this.play(scene), occurred_at: at.toISOString() } };
+  }
+
+  /** Online members of the room. */
+  private present(): string[] {
+    return [...this.online].filter((u) => this.room.has(u));
+  }
+
+  /** Who can mark the newest message seen: present, not its sender, not up to date yet. */
+  private readers(): string[] {
+    return this.present().filter(
+      (u) => u !== this.lastSender && (this.seenUpTo.get(u) ?? 0) < this.said,
+    );
+  }
+
+  private talk(scene: Scene): ChatStep {
+    if (scene === "seen") {
+      const who = this.any(this.readers());
+      this.seenUpTo.set(who, this.said);
+      return { kind: "seen", user_id: who };
+    }
+    if (scene === "join") {
+      const by = this.any(this.present());
+      const who = this.any(this.users.filter((u) => !this.room.has(u)));
+      this.room.add(who);
+      return { kind: "join", user_id: who, added_by: by };
+    }
+    const who = this.any(this.present());
+    const line = this.any(
+      CHAT_SCRIPT.filter(
+        (l) =>
+          l !== this.lastLine &&
+          (l.ticket === null ||
+            (l.ticket === "open" && this.open.size > 0) ||
+            (l.ticket === "closed" && this.lastClosed !== null)),
+      ),
+    );
+    // Nobody says the same thing twice in a row (in the other language either).
+    this.lastLine = line;
+    let content = this.said % 2 === 0 ? line.en : line.sr;
+    if (line.ticket === "open") {
+      content = content.replace("{t}", this.any([...this.open.keys()]));
+    } else if (line.ticket === "closed") {
+      const closed = this.lastClosed as { id: string; resolution: string };
+      content = content.replace("{t}", closed.id).replace("{r}", closed.resolution);
+    }
+    this.said += 1;
+    this.lastSender = who;
+    // Whoever writes has read what came before.
+    this.seenUpTo.set(who, this.said);
+    return { kind: "message", user_id: who, content };
   }
 
   /** Every scene that can happen now, with its weight. */
@@ -148,6 +317,9 @@ export class TicketDesk {
       logout: this.online.size > 1,
       newcomer: someone && this.newcomers < NEWCOMERS.length,
       stale: this.stale() !== undefined,
+      say: this.chat && this.present().length > 0,
+      seen: this.chat && this.said > 0 && this.readers().length > 0,
+      join: this.chat && this.present().length > 0 && this.users.some((u) => !this.room.has(u)),
     };
     return (Object.keys(WEIGHTS) as Scene[])
       .filter((s) => can[s])
@@ -172,6 +344,11 @@ export class TicketDesk {
   }
 
   private play(scene: Scene): Omit<EventInput, "occurred_at"> {
+    const closed = (t: Ticket, resolution: string) => {
+      this.open.delete(t.id);
+      this.lastClosed = { id: t.id, resolution };
+      return resolution;
+    };
     const user = (actor: string, event_type: string, instance: string, payload = {}) => ({
       event_type,
       instance_type: "user",
@@ -232,14 +409,14 @@ export class TicketDesk {
       case "close": {
         const who = this.any([...this.online]);
         const t = this.any([...this.open.values()]);
-        this.open.delete(t.id);
-        return ticket(who, "TICKET_CLOSED", t, { resolution: this.any(RESOLUTIONS) });
+        return ticket(who, "TICKET_CLOSED", t, { resolution: closed(t, this.any(RESOLUTIONS)) });
       }
       case "stale": {
         const t = this.stale() as Ticket;
-        this.open.delete(t.id);
-        return ticket(BOT, "TICKET_CLOSED", t, { resolution: "stale" });
+        return ticket(BOT, "TICKET_CLOSED", t, { resolution: closed(t, "stale") });
       }
+      default:
+        throw new Error(`not an event scene: ${scene}`);
     }
   }
 
@@ -286,6 +463,8 @@ export interface SimulateOptions {
   locale?: string;
   /** Stop after this many steps (pushed or failed); `--once` is 1. Default: run until stopped. */
   count?: number;
+  /** Play the chat scene in `chat-demo-room` too. Default `true`; `--no-chat` turns it off. */
+  chat?: boolean;
 }
 
 export interface SimulateDeps {
@@ -307,6 +486,78 @@ export interface SimulateSummary {
 /** A usage problem of `simulate` (reported like a domain error, exit 1). */
 export class SimulateError extends Error {
   override readonly name = "SimulateError";
+}
+
+const isConflict = (error: unknown) => error instanceof MementoApiError && error.status === 409;
+
+/**
+ * Makes sure the demo room exists and returns who is in it. Creates it with the founders;
+ * when it exists already (`409`), reads its members through `GET /chats?user_id=` — which
+ * needs the `read` scope, so a write-only key keeps the founders and learns about anybody
+ * else when adding them answers `409` (taken quietly, see `perform`).
+ */
+export async function ensureRoom(
+  client: MementoClient,
+): Promise<{ created: boolean; members: string[] }> {
+  try {
+    const chat = await client.createChat({
+      chat_id: ROOM_ID,
+      name: ROOM_NAME,
+      kind: "room",
+      participants: [...ROOM_FOUNDERS],
+    });
+    return { created: true, members: chat.participants.map((p) => p.user_id) };
+  } catch (error) {
+    if (!isConflict(error)) throw error;
+  }
+  for (const founder of ROOM_FOUNDERS) {
+    try {
+      const page = await client.listChats({ user_id: founder, limit: 500 });
+      const room = page.data.find((chat) => chat.chat_id === ROOM_ID);
+      if (room) return { created: false, members: room.participants.map((p) => p.user_id) };
+    } catch (error) {
+      // No read scope: nobody can be asked, the founders will do.
+      if (error instanceof MementoApiError && error.status === 403) break;
+      throw error;
+    }
+  }
+  return { created: false, members: [...ROOM_FOUNDERS] };
+}
+
+/**
+ * Plays one step against the server: pushes the event, or makes the chat call. Returns the
+ * event the server stored, or `null` when the step stored none (a member who was already in
+ * the room, a message already seen).
+ */
+async function perform(
+  client: MementoClient,
+  step: DeskStep,
+  locale: string | undefined,
+): Promise<MementoEvent | null> {
+  const options = locale ? { locale } : {};
+  switch (step.kind) {
+    case "event":
+      return client.pushEvent(step.event, options);
+    case "message":
+      return (
+        await client.sendMessage(ROOM_ID, { user_id: step.user_id, content: step.content }, options)
+      ).message;
+    case "seen":
+      return (await client.markSeen(ROOM_ID, { user_id: step.user_id }, options)).event;
+    case "join":
+      try {
+        return (
+          await client.addParticipant(
+            ROOM_ID,
+            { user_id: step.user_id, added_by: step.added_by },
+            options,
+          )
+        ).event;
+      } catch (error) {
+        if (isConflict(error)) return null;
+        throw error;
+      }
+  }
 }
 
 /**
@@ -332,7 +583,7 @@ export async function runSimulate(
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
   });
   const seed = options.seed ?? randomSeed();
-  const desk = new TicketDesk(seed);
+  const chat = options.chat ?? true;
   const sleep = deps.sleep ?? abortableSleep;
   const intervalMs = options.interval * 1000;
 
@@ -340,37 +591,68 @@ export async function runSimulate(
 
   io.err(
     c.green(
-      `● simulate: a ticket desk (seed ${seed}), one event every ${options.interval}s to ${options.url}` +
+      `● simulate: a ticket desk${chat ? ` and ${ROOM_ID}` : ""} (seed ${seed}), one event every ${options.interval}s to ${options.url}` +
         (options.count ? ` (${options.count} events)` : " (Ctrl+C to stop)"),
     ),
   );
+  /** The room's members, once the room is known to exist; retried before the first chat step. */
+  let members: string[] | null = null;
+  const room = async () => {
+    if (members) return members;
+    const { created, members: found } = await ensureRoom(client);
+    members = found;
+    io.err(
+      c.green(
+        `● ${created ? "created" : "talking in"} ${ROOM_ID} "${ROOM_NAME}": ${found.join(", ")}`,
+      ),
+    );
+    return found;
+  };
+  let roomMembers: string[] | undefined;
+  if (chat) {
+    try {
+      roomMembers = await room();
+    } catch (error) {
+      if (isFatal(error)) {
+        const e = error as MementoApiError;
+        throw new MementoApiError(e.status, e.code, `room refused: ${e.message}`, e.details);
+      }
+      io.err(c.red(`✗ cannot reach the room yet: ${(error as Error).message} — retrying later`));
+    }
+  }
+  const desk = new TicketDesk(seed, {
+    chat,
+    ...(roomMembers ? { roomMembers } : {}),
+  });
+
   const summary: SimulateSummary = { seed, pushed: 0, failed: 0 };
   let failing = 0;
   /** The scene that could not be pushed yet: retried before the story moves on. */
-  let pending: EventInput | null = null;
+  let pending: DeskStep | null = null;
   while (!signal?.aborted) {
     const started = Date.now();
-    const event: EventInput = pending
-      ? { ...pending, occurred_at: new Date(started).toISOString() }
-      : desk.next(new Date(started));
+    const step: DeskStep = pending
+      ? retimed(pending, new Date(started))
+      : desk.nextStep(new Date(started));
     try {
-      const stored = await client.pushEvent(
-        event,
-        options.locale ? { locale: options.locale } : {},
-      );
+      if (step.kind !== "event") await room();
+      const stored = await perform(client, step, options.locale);
       pending = null;
       summary.pushed += 1;
       if (failing > 0) {
         io.err(c.green(`● reconnected after ${failing} failed push(es)`));
         failing = 0;
       }
-      io.out(json ? JSON.stringify(stored) : storyLine(stored, ui, deps.timeZone));
+      if (stored) io.out(json ? JSON.stringify(stored) : storyLine(stored, ui, deps.timeZone));
+      else if (!json && step.kind !== "event") {
+        io.out(c.dim(`(${step.kind} ${describeStep(step)}: nothing new to store)`));
+      }
     } catch (error) {
       if (isFatal(error)) {
         const e = error as MementoApiError;
         throw new MementoApiError(e.status, e.code, `push refused: ${e.message}`, e.details);
       }
-      pending = event;
+      pending = step;
       summary.failed += 1;
       failing += 1;
       io.err(c.red(`✗ push failed: ${(error as Error).message} — retrying`));
@@ -380,6 +662,16 @@ export async function runSimulate(
   }
   io.err(c.dim(`simulate stopped: ${summary.pushed} pushed, ${summary.failed} failed`));
   return summary;
+}
+
+/** A step retried later: an event gets the time of the new attempt. */
+function retimed(step: DeskStep, at: Date): DeskStep {
+  if (step.kind !== "event") return step;
+  return { kind: "event", event: { ...step.event, occurred_at: at.toISOString() } };
+}
+
+function describeStep(step: ChatStep): string {
+  return step.kind === "join" ? `${step.added_by} → ${step.user_id}` : step.user_id;
 }
 
 /** `[10:00:00] TICKET_CREATED   ticket/T-3  igor created ticket T-3: "…".  → 1f0c…` */

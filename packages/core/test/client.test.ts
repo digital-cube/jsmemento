@@ -57,6 +57,37 @@ describe("MementoClient", () => {
     expect(chat.fetch.mock.calls[0]?.[0]).toBe("http://h/memento/chats/chat-1?user_id=igor");
   });
 
+  it("creates and lists chats, marks seen, adds participants", async () => {
+    const ok = () => json(200, { ok: true, data: { chat_id: "chat-r" } });
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => ok());
+    const c = new MementoClient({ baseUrl: "http://h/memento", apiKey: "mk_k", fetch });
+    await c.createChat({ chat_id: "r", participants: ["a", "b", "c"], kind: "room" });
+    await c.listChats({ user_id: "a", limit: 500 });
+    await c.markSeen("r", { user_id: "b" }, { locale: "sr" });
+    await c.addParticipant("chat-r", { user_id: "d", added_by: "a" });
+    await c.chatMessages("r", { user_id: "a", event_type: "CHAT_PARTICIPANT_ADDED" });
+    const calls = fetch.mock.calls.map(([url, init]) => [init?.method, url, init?.body]);
+    expect(calls).toEqual([
+      [
+        "POST",
+        "http://h/memento/chats",
+        JSON.stringify({ chat_id: "r", participants: ["a", "b", "c"], kind: "room" }),
+      ],
+      ["GET", "http://h/memento/chats?user_id=a&limit=500", undefined],
+      ["POST", "http://h/memento/chats/chat-r/seen?locale=sr", JSON.stringify({ user_id: "b" })],
+      [
+        "POST",
+        "http://h/memento/chats/chat-r/participants",
+        JSON.stringify({ user_id: "d", added_by: "a" }),
+      ],
+      [
+        "GET",
+        "http://h/memento/chats/chat-r/messages?order=asc&user_id=a&event_type=CHAT_PARTICIPANT_ADDED",
+        undefined,
+      ],
+    ]);
+  });
+
   it("pushes an event and reads the describe document", async () => {
     const event = { event_type: "CPU_LOAD", instance_type: "server", instance_id: "b1" };
     const pushing = client(json(201, { ok: true, data: { id: "e1", ...event } }));

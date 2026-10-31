@@ -22,11 +22,13 @@ export {
 } from "./EventTable.js";
 export { formatDate, formatTime, hue, initials, type TimeFormat } from "./format.js";
 export {
+  applyChatEvent,
   type ChatState,
   type EventsQuery,
   type EventsState,
   type LiveStatus,
   mergeEvents,
+  type UseChatOptions,
   type UseEventsOptions,
   useMementoChat,
   useMementoEvents,
@@ -38,6 +40,7 @@ export {
   type MementoChatProps,
   messageSender,
   messageText,
+  seenMarkers,
 } from "./MementoChat.js";
 export {
   eventTypeFamilies,

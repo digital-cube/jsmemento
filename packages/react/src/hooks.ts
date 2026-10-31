@@ -2,6 +2,7 @@ import {
   CHAT_EVENT_TYPES,
   CHAT_INSTANCE_TYPE,
   type ChatMessageResult,
+  type ChatParticipant,
   chatInstanceId,
   liveFilter,
   type MementoEvent,
@@ -169,6 +170,53 @@ export interface ChatState {
   sending: boolean;
   /** Sends `content` as the hook's user; resolves once stored. */
   send: (content: string) => Promise<ChatMessageResult>;
+  /**
+   * With `seen`: the chat's participants with their read watermarks, kept current from the
+   * stream (CHAT_MESSAGE_SEEN, CHAT_PARTICIPANT_ADDED). Empty otherwise.
+   */
+  participants: ChatParticipant[];
+  /** With `system`: the chat's CHAT_PARTICIPANT_ADDED events, oldest first. Empty otherwise. */
+  notices: MementoEvent[];
+}
+
+export interface UseChatOptions {
+  /** Messages loaded at first. Default 100. */
+  limit?: number;
+  /** Load the participants and follow their read watermarks. Default `false`. */
+  seen?: boolean;
+  /** Load and follow the chat's system events (somebody was added). Default `false`. */
+  system?: boolean;
+}
+
+/** `participants` after one CHAT_MESSAGE_SEEN / CHAT_PARTICIPANT_ADDED event of the chat. */
+export function applyChatEvent(
+  participants: ChatParticipant[],
+  event: MementoEvent,
+): ChatParticipant[] {
+  const userId = event.payload.user_id;
+  if (typeof userId !== "string") return participants;
+  if (event.event_type === CHAT_EVENT_TYPES.messageSeen) {
+    const upTo = event.payload.messages_read_up_to;
+    if (typeof upTo !== "string") return participants;
+    return participants.map((p) =>
+      p.user_id === userId
+        ? { ...p, last_seen_event_id: upTo, last_seen_at: event.occurred_at }
+        : p,
+    );
+  }
+  if (event.event_type === CHAT_EVENT_TYPES.participantAdded) {
+    if (participants.some((p) => p.user_id === userId)) return participants;
+    return [
+      ...participants,
+      {
+        user_id: userId,
+        added_at: event.occurred_at,
+        last_seen_event_id: null,
+        last_seen_at: null,
+      },
+    ];
+  }
+  return participants;
 }
 
 const oldestFirst = (a: MementoEvent, b: MementoEvent) => newestFirst(b, a);
@@ -177,58 +225,86 @@ const oldestFirst = (a: MementoEvent, b: MementoEvent) => newestFirst(b, a);
 export function useMementoChat(
   chatId: string,
   userId: string,
-  options: { limit?: number } = {},
+  options: UseChatOptions = {},
 ): ChatState {
   const { client, openStream, locale } = useMemento();
-  const { limit = 100 } = options;
+  const { limit = 100, seen = false, system = false } = options;
   const instanceId = chatInstanceId(chatId);
   const [messages, setMessages] = useState<MementoEvent[]>([]);
   const [status, setStatus] = useState<LiveStatus>("connecting");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [sending, setSending] = useState(false);
+  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
+  const [notices, setNotices] = useState<MementoEvent[]>([]);
 
   const add = useCallback((incoming: MementoEvent[]) => {
     setMessages((current) => mergeEvents(current, incoming).sort(oldestFirst));
+  }, []);
+  const notice = useCallback((incoming: MementoEvent[]) => {
+    setNotices((current) => mergeEvents(current, incoming).sort(oldestFirst));
   }, []);
 
   useEffect(() => {
     let active = true;
     setMessages([]);
+    setNotices([]);
+    setParticipants([]);
     setError(null);
     setLoading(true);
+    const failed = (cause: unknown) => {
+      if (active) setError(cause instanceof Error ? cause : new Error(String(cause)));
+    };
+    const read = { user_id: userId, limit, order: "desc" as const, ...(locale ? { locale } : {}) };
     // Newest page, shown oldest first.
-    client
-      .chatMessages(instanceId, {
-        user_id: userId,
-        limit,
-        order: "desc",
-        ...(locale ? { locale } : {}),
-      })
-      .then((page) => {
+    const loads: Promise<unknown>[] = [
+      client.chatMessages(instanceId, read).then((page) => {
         if (active) add(page.data);
-      })
-      .catch((cause: unknown) => {
-        if (active) setError(cause instanceof Error ? cause : new Error(String(cause)));
-      })
+      }),
+    ];
+    if (system) {
+      loads.push(
+        client
+          .chatMessages(instanceId, { ...read, event_type: CHAT_EVENT_TYPES.participantAdded })
+          .then((page) => {
+            if (active) notice(page.data);
+          }),
+      );
+    }
+    if (seen) {
+      loads.push(
+        client.getChat(instanceId, { user_id: userId }).then((chat) => {
+          // Events the stream delivered while the chat loaded are applied on top.
+          if (active) setParticipants(chat.participants);
+        }),
+      );
+    }
+    Promise.all(loads)
+      .catch(failed)
       .finally(() => {
         if (active) setLoading(false);
       });
+    // Seen markers and system lines need the chat's other events: subscribe to all of them.
+    const everything = seen || system;
     const stream = openStream({
       filter: {
         instance_type: CHAT_INSTANCE_TYPE,
         instance_id: instanceId,
-        event_type: CHAT_EVENT_TYPES.messageSent,
+        ...(everything ? {} : { event_type: CHAT_EVENT_TYPES.messageSent }),
       },
       onStatus: setStatus,
-      onEvent: (event) => add([event]),
+      onEvent: (event) => {
+        if (event.event_type === CHAT_EVENT_TYPES.messageSent) add([event]);
+        else if (event.event_type === CHAT_EVENT_TYPES.participantAdded && system) notice([event]);
+        if (seen) setParticipants((current) => applyChatEvent(current, event));
+      },
     });
     setStatus(stream.status);
     return () => {
       active = false;
       stream.close();
     };
-  }, [client, openStream, instanceId, userId, limit, locale, add]);
+  }, [client, openStream, instanceId, userId, limit, locale, add, notice, seen, system]);
 
   const send = useCallback(
     async (content: string) => {
@@ -254,5 +330,5 @@ export function useMementoChat(
     [client, instanceId, userId, locale, add],
   );
 
-  return { messages, status, loading, error, sending, send };
+  return { messages, status, loading, error, sending, send, participants, notices };
 }

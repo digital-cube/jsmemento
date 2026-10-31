@@ -17,9 +17,17 @@ export { buildProgram, type CliIO, type CliOptions, runCli } from "./program.js"
 export {
   BOT,
   CAST,
+  CHAT_SCRIPT,
+  type ChatLine,
+  type ChatStep,
+  type DeskStep,
+  ensureRoom,
   MAX_OPEN,
   NEWCOMERS,
   prng,
+  ROOM_FOUNDERS,
+  ROOM_ID,
+  ROOM_NAME,
   randomSeed,
   runSimulate,
   type SimulateDeps,
@@ -29,6 +37,7 @@ export {
   STALE_STEPS,
   storyLine,
   TicketDesk,
+  type TicketDeskOptions,
 } from "./simulate.js";
 export {
   clock,

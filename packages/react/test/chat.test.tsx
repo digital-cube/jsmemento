@@ -1,6 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { Avatar, hue, initials, MementoChat, messageSender, messageText } from "../src/index.js";
+import {
+  Avatar,
+  applyChatEvent,
+  hue,
+  initials,
+  MementoChat,
+  messageSender,
+  messageText,
+  seenMarkers,
+} from "../src/index.js";
 import { FakeSocket, fakeFetch, makeEvent, wrapper } from "./fixtures.js";
 
 afterEach(() => {
@@ -127,6 +136,135 @@ describe("MementoChat", () => {
     await waitFor(() => expect(texts()).toHaveLength(2));
     expect(document.querySelector("img.memento-avatar")?.getAttribute("src")).toBe("/igor.png");
     expect(document.querySelectorAll("span.memento-avatar")).toHaveLength(1);
+  });
+});
+
+const participant = (user_id: string, last_seen_event_id: string | null = null) => ({
+  user_id,
+  added_at: "2026-10-30T09:00:00.000Z",
+  last_seen_event_id,
+  last_seen_at: last_seen_event_id ? "2026-10-30T10:00:00.000Z" : null,
+});
+
+const chatEvent = (event_type: string, actor: string, payload: Record<string, unknown>) =>
+  makeEvent({
+    event_type,
+    instance_type: "chat",
+    instance_id: "chat-123",
+    actor_id: actor,
+    payload,
+  });
+
+describe("MementoChat, read-only with seen markers and system lines", () => {
+  it("cannot send: the composer is disabled with the reason as its tooltip", async () => {
+    const fetch = fakeFetch(() => []);
+    render(<MementoChat chatId="123" userId="igor" readOnly="read-only demo key" />, {
+      wrapper: wrapper(fetch),
+    });
+    expect(await screen.findByText("No messages yet.")).toBeTruthy();
+    const input = screen.getByLabelText("Message") as HTMLInputElement;
+    const button = screen.getByRole("button", { name: "Send" }) as HTMLButtonElement;
+    expect(input.disabled).toBe(true);
+    expect(button.disabled).toBe(true);
+    expect(input.placeholder).toBe("Reading as igor");
+    expect(input.title).toBe("read-only demo key");
+    expect((input.closest("form") as HTMLFormElement).title).toBe("read-only demo key");
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows who read how far as the viewer sees it, and follows the stream", async () => {
+    const first = message("marko", "I took T-3.");
+    const second = message("ana", "Uzimam T-4.");
+    const third = message("marko", "Thanks!");
+    const added = chatEvent("CHAT_PARTICIPANT_ADDED", "igor", {
+      user_id: "mila",
+      added_by: "igor",
+    });
+    const fetch = fakeFetch((url) => {
+      if (url.pathname === "/memento/chats/chat-123") {
+        return {
+          chat_id: "chat-123",
+          participants: [
+            participant("igor", first.id),
+            participant("marko", third.id),
+            participant("ana", first.id),
+          ],
+        };
+      }
+      if (url.searchParams.get("event_type") === "CHAT_PARTICIPANT_ADDED") return [added];
+      return [third, second, first];
+    });
+    render(<MementoChat chatId="123" userId="igor" seenMarkers systemEvents />, {
+      wrapper: wrapper(fetch, { locale: "sr" }),
+    });
+    await waitFor(() => expect(screen.getAllByTestId("seen-by")).toHaveLength(1));
+    // ana read the first message (igor's own watermark is not shown to igor); marko wrote the
+    // third one, so his watermark there says nothing.
+    const seen = screen.getByTestId("seen-by");
+    expect(seen.textContent).toBe("✓ Seen by ana");
+    expect(seen.closest("li")?.dataset.eventId).toBe(first.id);
+    // igor read up to the first: the unread messages start with the second.
+    const divider = screen.getByTestId("unread");
+    expect(divider.textContent).toBe("New messages");
+    expect((divider.nextElementSibling as HTMLElement).dataset.eventId).toBe(second.id);
+    // The system line, as memento rendered it.
+    expect(document.querySelector(".memento-chat__notice")?.textContent).toContain(added.rendered);
+
+    const socket = FakeSocket.last();
+    expect(socket.query).toEqual({ instance_type: "chat", instance_id: "chat-123", locale: "sr" });
+    act(() =>
+      socket.push(
+        chatEvent("CHAT_MESSAGE_SEEN", "ana", { user_id: "ana", messages_read_up_to: third.id }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("seen-by").closest("li")?.dataset.eventId).toBe(third.id),
+    );
+    const joined = chatEvent("CHAT_PARTICIPANT_ADDED", "ana", { user_id: "luka", added_by: "ana" });
+    act(() => socket.push(joined));
+    expect(document.querySelectorAll(".memento-chat__notice")).toHaveLength(2);
+  });
+
+  it("computes the markers per viewer", () => {
+    const a = message("marko", "a");
+    const b = message("ana", "b");
+    const c = message("igor", "c");
+    const d = message("marko", "d");
+    const people = [
+      participant("igor", a.id),
+      participant("marko", c.id),
+      participant("ana", null),
+    ];
+    const asIgor = seenMarkers([a, b, c, d], people, "igor");
+    expect([...asIgor.seenBy]).toEqual([[c.id, ["marko"]]]);
+    // igor wrote c: everything before it counts as read.
+    expect(asIgor.unreadFrom).toBe(d.id);
+    const asAna = seenMarkers([a, b, c, d], people, "ana");
+    expect([...asAna.seenBy]).toEqual([
+      [a.id, ["igor"]],
+      [c.id, ["marko"]],
+    ]);
+    // ana never marked anything, but she wrote b: unread starts after it.
+    expect(asAna.unreadFrom).toBe(c.id);
+    expect(seenMarkers([a], [participant("igor", a.id)], "igor").unreadFrom).toBeNull();
+    expect(seenMarkers([a], [], "igor")).toEqual({ seenBy: new Map(), unreadFrom: null });
+  });
+
+  it("applies seen and added events to the participants", () => {
+    const start = [participant("igor")];
+    const seen = chatEvent("CHAT_MESSAGE_SEEN", "igor", {
+      user_id: "igor",
+      messages_read_up_to: "e1",
+    });
+    expect(applyChatEvent(start, seen)[0]?.last_seen_event_id).toBe("e1");
+    const added = chatEvent("CHAT_PARTICIPANT_ADDED", "igor", { user_id: "ana" });
+    expect(applyChatEvent(start, added).map((p) => p.user_id)).toEqual(["igor", "ana"]);
+    expect(applyChatEvent(applyChatEvent(start, added), added)).toHaveLength(2);
+    expect(applyChatEvent(start, chatEvent("CHAT_MESSAGE_SEEN", "x", {}))).toBe(start);
+    expect(applyChatEvent(start, message("igor", "hi"))).toBe(start);
   });
 });
 

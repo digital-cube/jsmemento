@@ -407,6 +407,55 @@
   white-space: pre-wrap;
 }
 
+.memento-message__seen {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--memento-live);
+}
+
+.memento-chat__notice {
+  align-self: center;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  color: var(--memento-muted);
+}
+
+.memento-chat__notice time {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.memento-chat__unread {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--memento-offline);
+}
+
+.memento-chat__unread::before,
+.memento-chat__unread::after {
+  content: "";
+  flex: 1 1 auto;
+  border-top: 1px solid currentColor;
+  opacity: 0.4;
+}
+
+.memento-chat__compose[data-readonly] {
+  cursor: not-allowed;
+}
+
+.memento-chat__compose input:disabled {
+  color: var(--memento-muted);
+  background: var(--memento-surface);
+  cursor: not-allowed;
+}
+
 .memento-chat__compose {
   display: flex;
   gap: 0.5rem;

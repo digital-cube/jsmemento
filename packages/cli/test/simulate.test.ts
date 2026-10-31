@@ -5,6 +5,7 @@ import {
   EventInputSchema,
   FREE_TEXT_EVENT_TYPES,
   INSTANCE_TYPES,
+  MementoClient,
 } from "@memento/core";
 import { LookupRegistry } from "@memento/lookups";
 import {
@@ -21,9 +22,16 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   BOT,
   CAST,
+  CHAT_SCRIPT,
+  type ChatStep,
+  type DeskStep,
+  ensureRoom,
   MAX_OPEN,
   makeUi,
+  NEWCOMERS,
   prng,
+  ROOM_FOUNDERS,
+  ROOM_ID,
   runCli,
   runSimulate,
   storyLine,
@@ -153,6 +161,128 @@ describe("the ticket desk story", () => {
   });
 });
 
+const chatStory = (seed: number, steps: number, roomMembers?: string[]) => {
+  const desk = new TicketDesk(seed, { chat: true, ...(roomMembers ? { roomMembers } : {}) });
+  const played: { step: DeskStep; online: Set<string>; open: string[] }[] = [];
+  for (let i = 0; i < steps; i++) {
+    // What the desk knew before the step: who was online, which tickets were open.
+    const online = new Set(desk.online);
+    const open = [...desk.open.keys()];
+    played.push({ step: desk.nextStep(new Date(at.getTime() + i * 1000)), online, open });
+  }
+  return { desk, played };
+};
+
+describe("the chat scene", () => {
+  it("is off by default: a desk without it plays exactly the old story", () => {
+    const plain = new TicketDesk(42);
+    expect(plain.chat).toBe(false);
+    for (let i = 0; i < 300; i++) expect(plain.nextStep(at).kind).toBe("event");
+    expect(() => new TicketDesk(1, { chat: true }).next(at)).not.toThrow();
+  });
+
+  it("is deterministic for a seed and plays every chat step", () => {
+    const a = chatStory(7, 400).played.map((p) => p.step);
+    expect(a).toEqual(chatStory(7, 400).played.map((p) => p.step));
+    for (const seed of [1, 2, 3, 42, 2026]) {
+      const kinds = new Set(chatStory(seed, 500).played.map((p) => p.step.kind));
+      expect([...kinds].sort()).toEqual(["event", "join", "message", "seen"]);
+    }
+  });
+
+  it("lets only present members talk and read, and adds only people who are not in yet", () => {
+    for (const seed of [1, 5, 9, 2026]) {
+      const room = new Set<string>(ROOM_FOUNDERS);
+      const known = new Set<string>(CAST);
+      let lastSender: string | null = null;
+      let said = 0;
+      for (const { step, online } of chatStory(seed, 600).played) {
+        if (step.kind === "event") {
+          if (step.event.event_type === "USER_CREATED") known.add(String(step.event.instance_id));
+          continue;
+        }
+        if (step.kind === "join") {
+          expect(room.has(step.added_by)).toBe(true);
+          expect(online.has(step.added_by)).toBe(true);
+          expect(room.has(step.user_id)).toBe(false);
+          expect(known.has(step.user_id)).toBe(true);
+          room.add(step.user_id);
+          continue;
+        }
+        expect(room.has(step.user_id), `${step.kind} by ${step.user_id}`).toBe(true);
+        expect(online.has(step.user_id)).toBe(true);
+        if (step.kind === "seen") {
+          expect(said).toBeGreaterThan(0);
+          expect(step.user_id).not.toBe(lastSender);
+        } else {
+          said += 1;
+          lastSender = step.user_id;
+        }
+      }
+    }
+  });
+
+  it("talks about tickets of the story, alternating English and Serbian lines", () => {
+    const { played } = chatStory(11, 800);
+    const messages = played.filter(
+      (p): p is typeof p & { step: Extract<ChatStep, { kind: "message" }> } =>
+        p.step.kind === "message",
+    );
+    expect(messages.length).toBeGreaterThan(50);
+    const closed = new Set<string>();
+    let mentions = 0;
+    for (const [i, { step, open }] of messages.entries()) {
+      const language = i % 2 === 0 ? "en" : "sr";
+      const line = CHAT_SCRIPT.find((l) => {
+        const pattern = l[language]
+          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace("\\{t\\}", "T-\\d+")
+          .replace("\\{r\\}", ".+");
+        return new RegExp(`^${pattern}$`).test(step.content);
+      });
+      expect(line, `${language}: ${step.content}`).toBeDefined();
+      const ticket = step.content.match(/T-\d+/)?.[0];
+      if (ticket) {
+        mentions += 1;
+        if (line?.ticket === "open") expect(open).toContain(ticket);
+      }
+    }
+    for (const { step } of played) {
+      if (step.kind === "event" && step.event.event_type === "TICKET_CLOSED") {
+        closed.add(String(step.event.instance_id));
+      }
+    }
+    expect(mentions).toBeGreaterThan(10);
+    // The same line is never said twice in a row, in either language.
+    for (let i = 1; i < messages.length; i++) {
+      const strip = (m: string) => m.replace(/T-\d+/g, "T");
+      const same = CHAT_SCRIPT.some(
+        (l) =>
+          [l.en, l.sr]
+            .map((x) => strip(x.replace("{t}", "T")))
+            .includes(strip(messages[i - 1]?.step.content ?? "")) &&
+          [l.en, l.sr]
+            .map((x) => strip(x.replace("{t}", "T")))
+            .includes(strip(messages[i]?.step.content ?? "")),
+      );
+      expect(same, messages[i]?.step.content).toBe(false);
+    }
+    for (const { step } of messages) {
+      const ticket = step.content.match(/^(?:Closing|Zatvaram) (T-\d+)/)?.[1];
+      if (ticket) expect(closed).toContain(ticket);
+    }
+  });
+
+  it("starts from the members an existing room has", () => {
+    const everybody = [...CAST, ...NEWCOMERS.map((n) => n.username)];
+    const steps = chatStory(3, 500, everybody).played.map((p) => p.step);
+    expect(steps.some((s) => s.kind === "join")).toBe(false);
+    expect(
+      steps.some((s) => s.kind === "message" && !ROOM_FOUNDERS.includes(s.user_id as never)),
+    ).toBe(true);
+  });
+});
+
 const handle = connect(loadConfig().testDatabaseUrl, { max: 2 });
 type FastifyInstance = Awaited<ReturnType<typeof buildApp>>;
 let app: FastifyInstance | null = null;
@@ -191,7 +321,9 @@ describe("memento simulate", () => {
     runCli(["simulate", "--url", url, ...argv], { db: () => handle.db, io, timeZone: "UTC" });
 
   it("pushes one scene with --once and logs it as a rendered line", async () => {
-    expect(await cli(["--key", keys.write, "--tenant", "demo", "--seed", "1", "--once"])).toBe(0);
+    expect(
+      await cli(["--key", keys.write, "--tenant", "demo", "--seed", "1", "--once", "--no-chat"]),
+    ).toBe(0);
     expect(out).toHaveLength(1);
     // Seed 1 starts, like every story, with somebody logging in.
     expect(out[0]).toMatch(
@@ -219,6 +351,7 @@ describe("memento simulate", () => {
           "25",
           "--locale",
           "sr",
+          "--no-chat",
         ],
         { db: () => handle.db, io },
       ),
@@ -248,7 +381,7 @@ describe("memento simulate", () => {
       return fetch(input, init);
     };
     const summary = await runSimulate(
-      { url, apiKey: keys.write, interval: 1, seed: 3, count: 3 },
+      { url, apiKey: keys.write, interval: 1, seed: 3, count: 3, chat: false },
       { io, ui, json: true, fetch: flaky, sleep: async () => {} },
     );
     expect(summary).toEqual({ seed: 3, pushed: 2, failed: 1 });
@@ -256,8 +389,10 @@ describe("memento simulate", () => {
     const pushed = out.map((line) => JSON.parse(line).instance_id);
     expect(pushed).toEqual(story(3, 2).map((e) => e.instance_id));
 
-    expect(await cli(["--key", keys.read, "--once"])).toBe(1);
+    expect(await cli(["--key", keys.read, "--once", "--no-chat"])).toBe(1);
     expect(err.at(-1)).toBe('error: push refused: this API key lacks the "write" scope');
+    expect(await cli(["--key", keys.read, "--once"])).toBe(1);
+    expect(err.at(-1)).toBe('error: room refused: this API key lacks the "write" scope');
     expect(await cli(["--once"])).toBe(1);
     expect(err.at(-1)).toContain("no API key");
     expect(await cli(["--key", keys.write, "--interval", "0"])).toBe(1);
@@ -272,6 +407,101 @@ describe("memento simulate", () => {
     expect(summary.pushed).toBe(1);
     expect(err[0]).toContain(`(seed ${summary.seed})`);
     expect(err[0]).toContain("(Ctrl+C to stop)");
+  });
+
+  const inject = (path: string, key = keys.read) =>
+    (app as FastifyInstance).inject({
+      method: "GET",
+      url: `/memento${path}`,
+      headers: { authorization: `Bearer ${key}` },
+    });
+
+  it("creates the demo room once: a second run talks in the same room", async () => {
+    expect(await cli(["--key", keys.write, "--seed", "1", "--once"])).toBe(0);
+    expect(err[0]).toContain("● simulate: a ticket desk and chat-demo-room (seed 1)");
+    expect(err[1]).toBe('● created chat-demo-room "Demo room": igor, marko, ana, jelena');
+    err = [];
+    expect(await cli(["--key", keys.write, "--seed", "2", "--once"])).toBe(0);
+    // A write-only key cannot read the room's members: it keeps the founders.
+    expect(err[1]).toBe('● talking in chat-demo-room "Demo room": igor, marko, ana, jelena');
+
+    const chats = (await inject("/chats?user_id=igor")).json().data;
+    expect(chats).toHaveLength(1);
+    expect(chats[0]).toMatchObject({ chat_id: ROOM_ID, kind: "room", name: "Demo room" });
+
+    // A key that may read finds the room's members through GET /chats?user_id=.
+    const both = (
+      await createApiKey(handle.db, { tenant: "demo", name: "rw", scopes: "read,write" })
+    ).key;
+    await (app as FastifyInstance).inject({
+      method: "POST",
+      url: `/memento/chats/${ROOM_ID}/participants`,
+      headers: { authorization: `Bearer ${both}` },
+      payload: { user_id: "mila", added_by: "igor" },
+    });
+    const client = new MementoClient({ baseUrl: url, apiKey: both });
+    const found = await ensureRoom(client);
+    expect(found.created).toBe(false);
+    expect(found.members.sort()).toEqual(["ana", "igor", "jelena", "marko", "mila"]);
+  });
+
+  it("talks in the room as its members: every message from a participant, seen markers, joins", async () => {
+    expect(
+      await runCli(
+        ["--json", "simulate", "--url", url, "--key", keys.write, "--seed", "4"].concat([
+          "--interval",
+          "0.001",
+          "--count",
+          "150",
+        ]),
+        { db: () => handle.db, io },
+      ),
+    ).toBe(0);
+    expect(err.some((line) => line.startsWith("✗"))).toBe(false);
+    const stored = out.map((line) => JSON.parse(line));
+    const chat = stored.filter((e) => e.instance_type === "chat");
+    expect(new Set(chat.map((e) => e.event_type))).toEqual(
+      new Set(["CHAT_MESSAGE_SENT", "CHAT_MESSAGE_SEEN", "CHAT_PARTICIPANT_ADDED"]),
+    );
+    expect(chat.every((e) => e.instance_id === ROOM_ID)).toBe(true);
+
+    const room = (await inject(`/chats/${ROOM_ID}?user_id=igor`)).json().data;
+    const members = new Set(room.participants.map((p: { user_id: string }) => p.user_id));
+    const all = (
+      await inject(`/chats/${ROOM_ID}/messages?user_id=igor&event_type=CHAT_*&limit=500`)
+    ).json().data;
+    expect(all).toHaveLength(chat.length);
+    for (const e of all) {
+      if (e.event_type === "CHAT_MESSAGE_SENT") expect(members).toContain(e.payload.sender_user_id);
+      if (e.event_type === "CHAT_MESSAGE_SEEN") expect(members).toContain(e.payload.user_id);
+      if (e.event_type === "CHAT_PARTICIPANT_ADDED") expect(members).toContain(e.payload.added_by);
+    }
+    // Somebody other than the founders was added, and read markers moved.
+    expect(members.size).toBeGreaterThan(ROOM_FOUNDERS.length);
+    expect(
+      room.participants.some((p: { last_seen_event_id: string | null }) => p.last_seen_event_id),
+    ).toBe(true);
+  });
+
+  it("takes a member who is in the room already quietly (write-only key, existing room)", async () => {
+    const admin = (await createApiKey(handle.db, { tenant: "demo", name: "a", scopes: "admin" }))
+      .key;
+    const client = new MementoClient({ baseUrl: url, apiKey: admin });
+    await client.createChat({
+      chat_id: ROOM_ID,
+      name: "Demo room",
+      kind: "room",
+      participants: [...CAST, ...NEWCOMERS.map((n) => n.username)],
+    });
+    const summary = await runSimulate(
+      { url, apiKey: keys.write, interval: 1, seed: 4, count: 150 },
+      { io, ui, json: false, sleep: async () => {}, timeZone: "UTC" },
+    );
+    expect(summary.failed).toBe(0);
+    expect(summary.pushed).toBe(150);
+    expect(out.some((line) => line.includes("join") && line.includes("nothing new to store"))).toBe(
+      true,
+    );
   });
 
   it("formats a story line", () => {

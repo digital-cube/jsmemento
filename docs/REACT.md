@@ -69,6 +69,18 @@ Columns: **When** (`occurred_at`), **Event** (`event_type`), **Instance**
   never shown twice.
 - Avatars default to initials on a colour derived from the user id.
 
+| prop | default | |
+|---|---|---|
+| `limit` | 100 | messages loaded first |
+| `readOnly` | `false` | `true` or a reason (`"read-only demo key"`): the composer is disabled, the reason is its tooltip, nothing is ever sent |
+| `seenMarkers` | `false` | loads the participants (`GET /chats/:id`) and follows `CHAT_MESSAGE_SEEN`: "Seen by …" under the message each *other* participant has read up to (a sender's own watermark on their own message is left out), and a "New messages" divider where `userId`'s unread messages start |
+| `systemEvents` | `false` | shows `CHAT_PARTICIPANT_ADDED` as centred lines with memento's `rendered` text (the provider's `locale`) |
+| `displayName`, `avatarUrl`, `title`, `locale`, `timeZone` | | as above |
+
+With `seenMarkers` or `systemEvents` the stream subscribes to every event of the chat instead
+of `CHAT_MESSAGE_SENT` alone. The examples site's Chat page (`apps/examples`, `/examples/chat`)
+uses all three, read-only.
+
 ## `MementoSearch`
 
 A form for an entity's history:
@@ -88,6 +100,8 @@ const { events, status, loading, error, liveIds, reload } =
   useMementoEvents({ event_type: "CHAT_*", instance_type: "chat" }, { limit: 100, live: true });
 
 const { messages, status, send, sending, error } = useMementoChat("chat-123", "igor");
+// + participants (with `seen: true`) and notices (with `system: true`)
+const { participants, notices } = useMementoChat("chat-123", "igor", { seen: true, system: true });
 ```
 
 `status` is `connecting`, `live`, `offline` (dropped, reconnecting), `closed` or `off` (not

@@ -727,6 +727,7 @@ server errors are logged and retried on the next tick; a refused key stops the m
     .option("--locale <locale>", "locale the stored `rendered` text is in")
     .option("--count <n>", "stop after N events (default: run until Ctrl+C)", positiveInt)
     .option("--once", "push one scene and exit (same as --count 1)")
+    .option("--no-chat", "leave out the chat scene (the team talking in chat-demo-room)")
     .addOption(
       new Option("--url <url>", "server API base URL")
         .env("MEMENTO_URL")
@@ -740,13 +741,18 @@ server errors are logged and retried on the next tick; a refused key stops the m
         ["memento simulate --interval 1 --tenant demo --key mk_...", "one event a second"],
         ["memento simulate --seed 42 --count 20", "the same twenty events every time"],
         ["memento simulate --once --json", "push one scene, print the stored event"],
+        ["memento simulate --no-chat", "only the ticket desk, no chat room"],
       )}
 
 The cast (igor, marko, ana, jelena, nikola, mila, and a desk-bot) logs in and out, creates,
 modifies, notes and closes tickets (instance ticket/T-<n>); newcomers appear now and then
 (USER_CREATED) and the bot closes tickets nobody touched. Payloads carry the fields the
 bundled templates read, so every event renders as a sentence. Network and server errors are
-logged and the same scene retried; a refused key stops the simulator.`,
+logged and the same scene retried; a refused key stops the simulator.
+
+The team also talks in one room, chat-demo-room ("Demo room", created with igor, marko, ana
+and jelena when it is missing): short lines about the tickets in English or Serbian, read
+markers (CHAT_MESSAGE_SEEN), and now and then a new member. --no-chat leaves the room alone.`,
     )
     .action(
       async (flags: {
@@ -756,6 +762,7 @@ logged and the same scene retried; a refused key stops the simulator.`,
         locale?: string;
         count?: number;
         once?: boolean;
+        chat: boolean;
         url: string;
         key?: string;
         apiKey?: string;

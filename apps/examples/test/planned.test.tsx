@@ -11,9 +11,9 @@ import { FakeSocket } from "./fake-socket.js";
 import { udcServer } from "./udc-server.js";
 
 const settings = { ...defaultSettings({} as ImportMetaEnv), apiKey: "mk_k" };
-const SLUGS = ["chat", "tail", "search", "rendering", "chart"];
+const SLUGS = ["tail", "search", "rendering", "chart"];
 /** The examples with a page of their own. */
-const BUILT = ["/examples/cpu-monitor", "/examples/activity", "/examples/entity"];
+const BUILT = ["/examples/cpu-monitor", "/examples/activity", "/examples/entity", "/examples/chat"];
 
 /** The EXAMPLES entries of the repository's menu.yaml: [code, translation_key, url]. */
 function menuYamlExamples(): [string, string, string][] {
@@ -94,8 +94,8 @@ describe("a planned example", () => {
   );
 
   it("names every summary of the series", () => {
-    expect(localized(PLANNED_EXAMPLES.chat?.summary ?? { en: "", sr: "" }, "en")).toContain(
-      "MementoChat",
+    expect(localized(PLANNED_EXAMPLES.tail?.summary ?? { en: "", sr: "" }, "sr")).toContain(
+      "memento tail",
     );
     expect(PLANNED_EXAMPLES.tail?.summary.en).toContain("memento tail");
     expect(PLANNED_EXAMPLES.search?.summary.en).toContain("POST /events/query");
