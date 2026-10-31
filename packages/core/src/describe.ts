@@ -15,6 +15,7 @@ export const CapabilitiesSchema = z.object({
   templates: z.boolean(),
   seen: z.boolean(),
   star: z.boolean(),
+  chats: z.boolean(),
 });
 export type Capabilities = z.infer<typeof CapabilitiesSchema>;
 
@@ -49,6 +50,7 @@ export function buildDescribe(
       templates: true,
       seen: false,
       star: false,
+      chats: true,
       ...capabilities,
     },
     scopes: SCOPES,

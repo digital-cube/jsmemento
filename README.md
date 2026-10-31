@@ -9,7 +9,7 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 | [`@memento/core`](packages/core) | Zod schemas + inferred types, API key / scope helpers, Filter DSL, envelope |
 | [`@memento/lookups`](packages/lookups) | `lookups.yaml` vocabulary, CSV translations, candidate recorder, TS/Zod codegen |
 | [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering |
-| [`@memento/cli`](packages/cli) | `memento` CLI: tenants, API keys, templates, lookups |
+| [`@memento/cli`](packages/cli) | `memento` CLI: tenants, API keys, templates, lookups, chats |
 
 ## Quick start
 
@@ -54,4 +54,5 @@ on the defaults, which match `compose.yaml`.
 - [docs/API.md](docs/API.md) — endpoints with examples
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — packages, database schema, request lifecycle
 - [docs/TEMPLATES.md](docs/TEMPLATES.md) — rendering, locale fallback, tenant templates, lookups
+- [docs/CHATS.md](docs/CHATS.md) — chats: messages, seen tracking, participants, permissions, CLI
 - [docs/ANALYSIS.md](docs/ANALYSIS.md), [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) — background

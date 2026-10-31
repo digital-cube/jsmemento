@@ -25,6 +25,8 @@ export const EventQuerySchema = z.object({
   before: TimestampSchema.optional(),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
   cursor: z.string().min(1).optional(),
+  /** Skip this many events instead of a `cursor` (the two cannot be combined). */
+  offset: z.coerce.number().int().min(0).max(100_000).optional(),
   order: z.enum(["asc", "desc"]).default("desc"),
   include_archived: booleanish.default(false),
   /** Render `rendered` in this locale (fallback chain: sr-Latn → sr → default locale). */

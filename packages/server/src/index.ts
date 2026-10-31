@@ -46,6 +46,18 @@ export {
   serializeApiKey,
 } from "./services/apikeys.js";
 export {
+  addParticipant,
+  type ChatPage,
+  createChat,
+  getChat,
+  listChatMessages,
+  listChats,
+  markSeen,
+  sendMessage,
+  serializeChat,
+  serializeParticipant,
+} from "./services/chats.js";
+export {
   type EventPage,
   entityHistory,
   type ListOptions,

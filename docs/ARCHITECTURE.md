@@ -1,7 +1,8 @@
-# JSMemento — Architecture (Phases 1–2)
+# JSMemento — Architecture (Phases 1–3)
 
-> Status: Phase 1 (core API & multitenancy) and Phase 2 (Handlebars templates, i18n fallback,
-> YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) implemented. WebSocket streaming,
+> Status: Phase 1 (core API & multitenancy), Phase 2 (Handlebars templates, i18n fallback,
+> YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) and Phase 3 (chats as first-class
+> instances — see [CHATS.md](CHATS.md)) implemented. WebSocket streaming, per-event
 > seen/star endpoints and UDC integration come later; their tables already exist.
 
 Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
@@ -142,10 +143,15 @@ every `DELETE`, and every `UPDATE` except setting `archived_at` once from `NULL`
 `(tenant_id, event_type, locale)`. A tenant's Handlebars template for an event type (or
 `_generic`); beats the bundled template at the same locale step. See [TEMPLATES.md](TEMPLATES.md).
 
-### `memento_chat`
-`tenant_id, instance_id, title, participants text[], created_at, archived_at`, unique
-`(tenant_id, instance_id)`. A chat is an instance with `instance_type = "chat"`; its
-messages are ordinary events (`CHAT_MESSAGE_SENT`, …).
+### `memento_chat`, `memento_chat_participant`
+`memento_chat`: `tenant_id, instance_id ("chat-<id>"), kind ('direct' | 'room'), name,
+created_at, last_message_at, archived_at`, unique `(tenant_id, instance_id)`.
+`memento_chat_participant`: `tenant_id, chat_id, user_id, added_at, last_seen_event_id,
+last_seen_at`, primary key `(chat_id, user_id)`, index `(tenant_id, user_id)`. A chat is an
+instance with `instance_type = "chat"`; its messages, read markers and joins are ordinary
+events (`CHAT_MESSAGE_SENT`, `CHAT_MESSAGE_SEEN`, `CHAT_PARTICIPANT_ADDED`). Migration 0003
+moved the old `participants text[]` into the participant table and renamed `title` → `name`.
+See [CHATS.md](CHATS.md).
 
 ## 4. `@memento/server`
 
@@ -245,6 +251,8 @@ tenant's templates for the page's event types.
 | `lookups validate [--path] [--translations]` | check `lookups.yaml` + translations CSV (`file:line` errors/warnings) |
 | `lookups codegen [--path] [--out] [--check]` | regenerate `@memento/core`'s typed lookups; `--check` fails when stale |
 | `lookups candidates [--path] [--dir]` | list recorded unknown values |
+| `create-chat --tenant --participants a,b [--name] [--kind] [--chat-id]` | create a chat (`--tenant` defaults to `$MEMENTO_TENANT`) |
+| `send-message --tenant --chat-id --user --content [--locale]` | send a chat message as a participant (rendered, published to Redis when `REDIS_URL` is set) |
 
 Exit codes: `0` ok, `1` domain/validation error (`error: …` on stderr), commander's code for
 usage errors.

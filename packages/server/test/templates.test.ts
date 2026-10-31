@@ -248,13 +248,33 @@ describe("bundled templates", () => {
       });
     expect(
       t("CHAT_MESSAGE_SENT.sr", chat("CHAT_MESSAGE_SENT", "igor", { content: "Pozdrav!" })),
-    ).toBe('Korisnik igor je poslao poruku: "Pozdrav!"');
-    expect(t("CHAT_MESSAGE_SENT.en", chat("CHAT_MESSAGE_SENT", null))).toBe("A message was sent");
+    ).toBe('igor je poslao poruku: "Pozdrav!"');
     expect(
-      t("CHAT_MESSAGE_SEEN.en", chat("CHAT_MESSAGE_SEEN", "marko", { message_id: "m1" })),
-    ).toBe("marko saw message m1 in chat igor-marko.");
-    expect(t("CHAT_MESSAGE_SEEN.sr", chat("CHAT_MESSAGE_SEEN", null))).toBe(
-      "Viđene su poruke u četu igor-marko.",
+      t(
+        "CHAT_MESSAGE_SENT.en",
+        chat("CHAT_MESSAGE_SENT", null, { sender_user_id: "marko", content: "Hi" }),
+      ),
+    ).toBe('marko sent a message: "Hi"');
+    expect(t("CHAT_MESSAGE_SENT.en", chat("CHAT_MESSAGE_SENT", null))).toBe("A message was sent");
+    expect(t("CHAT_MESSAGE_SENT.sr", chat("CHAT_MESSAGE_SENT", null))).toBe("Poslata je poruka");
+    expect(t("CHAT_MESSAGE_SEEN.en", chat("CHAT_MESSAGE_SEEN", null, { user_id: "marko" }))).toBe(
+      "marko read the messages",
+    );
+    expect(t("CHAT_MESSAGE_SEEN.sr", chat("CHAT_MESSAGE_SEEN", "marko"))).toBe(
+      "marko je pročitao poruke",
+    );
+    expect(t("CHAT_MESSAGE_SEEN.en", chat("CHAT_MESSAGE_SEEN", null))).toBe(
+      "The messages were read",
+    );
+    expect(t("CHAT_MESSAGE_SEEN.sr", chat("CHAT_MESSAGE_SEEN", null))).toBe("Poruke su pročitane");
+    expect(
+      t("CHAT_PARTICIPANT_ADDED.sr", chat("CHAT_PARTICIPANT_ADDED", "igor", { user_id: "ana" })),
+    ).toBe("ana je dodat u čat");
+    expect(t("CHAT_PARTICIPANT_ADDED.en", chat("CHAT_PARTICIPANT_ADDED", null))).toBe(
+      "A participant was added to the chat",
+    );
+    expect(t("CHAT_PARTICIPANT_ADDED.sr", chat("CHAT_PARTICIPANT_ADDED", null))).toBe(
+      "Dodat je učesnik u čat",
     );
     expect(t("_generic.en", context())).toBe("User login: user 42 (by igor).");
     expect(

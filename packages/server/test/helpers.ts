@@ -14,7 +14,7 @@ export function testDatabase(): DatabaseHandle {
 /** Empties every memento table (TRUNCATE bypasses the event immutability trigger). */
 export async function reset(handle: DatabaseHandle): Promise<void> {
   await handle.db.execute(
-    sql`truncate memento_seen, memento_star, memento_template, memento_chat, memento_event, memento_apikey, memento_tenant cascade`,
+    sql`truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade`,
   );
 }
 

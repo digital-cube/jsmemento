@@ -12,6 +12,7 @@ import type { Database } from "./db/client.js";
 import { MementoError } from "./errors.js";
 import { emptyLookups, type Lookups } from "./lookups.js";
 import { type EventPublisher, NoopPublisher } from "./publisher.js";
+import { chatRoutes } from "./routes/chats.js";
 import { describeRoutes } from "./routes/describe.js";
 import { entityRoutes } from "./routes/entities.js";
 import { eventRoutes } from "./routes/events.js";
@@ -112,6 +113,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(healthRoutes, deps);
   await app.register(eventRoutes, deps);
   await app.register(entityRoutes, deps);
+  await app.register(chatRoutes, deps);
   await app.register(describeRoutes, deps);
 };
 

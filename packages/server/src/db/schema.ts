@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   jsonb,
   pgTable,
@@ -139,7 +140,10 @@ export const templates = pgTable(
   (t) => [uniqueIndex("memento_template_key").on(t.tenantId, t.eventType, t.locale)],
 );
 
-/** Chat instances (`instance_type = "chat"`); their messages are ordinary events. */
+/**
+ * Chat instances (`instance_type = "chat"`, `instance_id = "chat-<id>"`). The chat row is
+ * metadata only: messages, read markers and joins are ordinary events of that instance.
+ */
 export const chats = pgTable(
   "memento_chat",
   {
@@ -148,12 +152,41 @@ export const chats = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     instanceId: varchar("instance_id", { length: 200 }).notNull(),
-    title: varchar("title", { length: 200 }),
-    participants: text("participants").array().notNull().default(sql`'{}'::text[]`),
+    /** `direct`: exactly two participants, fixed. `room`: members can be added. */
+    kind: varchar("kind", { length: 16 }).$type<"direct" | "room">().notNull().default("room"),
+    name: varchar("name", { length: 200 }),
     createdAt: createdAt(),
+    /** `occurred_at` of the newest message (denormalized, for listing chats by activity). */
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true, precision: 3 }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("memento_chat_instance_key").on(t.tenantId, t.instanceId)],
+  (t) => [
+    uniqueIndex("memento_chat_instance_key").on(t.tenantId, t.instanceId),
+    check("memento_chat_kind_check", sql`${t.kind} in ('direct', 'room')`),
+  ],
+);
+
+/** Who is in a chat, and how far each participant has read (the seen watermark). */
+export const chatParticipants = pgTable(
+  "memento_chat_participant",
+  {
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    chatId: uuid("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 200 }).notNull(),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Last CHAT_MESSAGE_SENT event the participant has read up to (inclusive). */
+    lastSeenEventId: uuid("last_seen_event_id"),
+    /** `occurred_at` of that message: watermarks only move forward in (occurred_at, id). */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.chatId, t.userId] }),
+    index("memento_chat_participant_user_idx").on(t.tenantId, t.userId),
+  ],
 );
 
 export type TenantRow = typeof tenants.$inferSelect;

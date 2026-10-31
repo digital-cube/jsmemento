@@ -17,6 +17,9 @@ export const PageMetaSchema = z.object({
   limit: z.number().int(),
   count: z.number().int(),
   next_cursor: z.string().nullable(),
+  /** Offset pagination only: where this page starts and where the next one does. */
+  offset: z.number().int().optional(),
+  next_offset: z.number().int().nullable().optional(),
 });
 export type PageMeta = z.infer<typeof PageMetaSchema>;
 

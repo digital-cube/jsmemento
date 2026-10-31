@@ -1,7 +1,8 @@
-# JSMemento HTTP API (Phase 1)
+# JSMemento HTTP API (Phases 1–3)
 
 Base path: `/memento` (configurable with `MEMENTO_API_PREFIX`). All bodies are JSON.
-Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md).
+Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
+(`/memento/chats…`): [CHATS.md](CHATS.md).
 
 ## Authentication
 
@@ -22,9 +23,9 @@ pnpm memento create-key --tenant acme --scopes read,write --name backend-prod
 
 | scope | allows |
 |---|---|
-| `read` | `GET /events`, `POST /events/query`, `GET /entities/…/events`, `GET /describe` |
-| `write` | `POST /events` |
-| `admin` | everything |
+| `read` | `GET /events`, `POST /events/query`, `GET /entities/…/events`, `GET /describe`, `GET /chats…` |
+| `write` | `POST /events`, `POST /chats…` |
+| `admin` | everything; may read chats without naming a participant `user_id` |
 
 ## Envelope
 
@@ -139,6 +140,7 @@ Scope: `read`. Newest first by default; archived events are hidden.
 | `before` | `occurred_at < before` |
 | `limit` | 1–500, default 50 |
 | `cursor` | `meta.next_cursor` of the previous page |
+| `offset` | skip N events instead (0–100000); the response adds `meta.offset` and `meta.next_offset`; cannot be combined with `cursor` (`400`) |
 | `order` | `desc` (default) or `asc` |
 | `include_archived` | `true`/`1` to include soft-deleted events |
 | `locale` | render `rendered` in this locale (`sr`, `sr-Latn`, …); stored text in another locale is re-rendered in the response, verbatim text (`rendered_locale: null`) is returned as is |
@@ -203,7 +205,8 @@ Scope: `read`. What this server can do for the key's tenant.
     "collection": "events",
     "tenant": { "slug": "acme", "name": "Acme Inc" },
     "capabilities": { "push": true, "query": true, "entity_history": true,
-                      "realtime": false, "templates": true, "seen": false, "star": false },
+                      "realtime": false, "templates": true, "seen": false, "star": false,
+                      "chats": true },
     "scopes": ["read", "write", "admin"],
     "schema": { "event_input": { "type": "object", … JSON Schema … }, "event": { … } },
     "filter": { "fields": ["event_type", "instance_type", "instance_id", "actor_id", "occurred_at", "received_at"],

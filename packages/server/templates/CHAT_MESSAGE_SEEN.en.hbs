@@ -1,1 +1,1 @@
-{{default actor_id "Someone"}} saw {{#if payload.message_id}}message {{payload.message_id}}{{else}}the messages{{/if}} in chat {{instance_id}}.
+{{#if (default payload.user_id actor_id)}}{{default payload.user_id actor_id}} read the messages{{else}}The messages were read{{/if}}

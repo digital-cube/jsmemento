@@ -200,6 +200,9 @@ export async function listEvents(
   const queryFilter = eventQueryToFilter(query);
   if (queryFilter) where.push(compileFilter(queryFilter));
   if (filter) where.push(compileFilter(filter));
+  if (query.cursor && query.offset !== undefined) {
+    throw new MementoError("bad_request", "use either cursor or offset, not both");
+  }
   if (query.cursor) {
     const cursor = decodeCursor(query.cursor);
     if (!cursor) throw new MementoError("bad_request", "invalid cursor");
@@ -211,19 +214,28 @@ export async function listEvents(
     .from(events)
     .where(and(...where))
     .orderBy(direction(events.occurredAt), direction(events.id))
-    .limit(query.limit + 1);
+    .limit(query.limit + 1)
+    .offset(query.offset ?? 0);
   const page = rows.slice(0, query.limit);
   const last = page.at(-1);
+  const more = rows.length > query.limit;
   const next =
-    rows.length > query.limit && last
-      ? encodeCursor({ occurred_at: last.occurredAt.toISOString(), id: last.id })
-      : null;
+    more && last ? encodeCursor({ occurred_at: last.occurredAt.toISOString(), id: last.id }) : null;
   const serialized = page.map(serializeEvent);
   return {
     events: options.renderer
       ? await localizeEvents(options.renderer, tenant.tenantId, serialized, query.locale)
       : serialized,
-    meta: { limit: query.limit, count: page.length, next_cursor: next },
+    meta:
+      query.offset === undefined
+        ? { limit: query.limit, count: page.length, next_cursor: next }
+        : {
+            limit: query.limit,
+            count: page.length,
+            next_cursor: next,
+            offset: query.offset,
+            next_offset: more ? query.offset + page.length : null,
+          },
   };
 }
 

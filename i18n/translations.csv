@@ -7,6 +7,7 @@ EventTypes,TICKET_MODIFIED,Ticket modified,Izmenjen tiket
 EventTypes,TICKET_CLOSED,Ticket closed,Zatvoren tiket
 EventTypes,CHAT_MESSAGE_SENT,Message sent,Poslata poruka
 EventTypes,CHAT_MESSAGE_SEEN,Message seen,Viđena poruka
+EventTypes,CHAT_PARTICIPANT_ADDED,Participant added,Dodat učesnik
 EventTypes,NOTE,Note,Beleška
 InstanceTypes,USER,User,Korisnik
 InstanceTypes,TICKET,Ticket,Tiket

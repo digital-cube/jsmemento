@@ -1,1 +1,1 @@
-{{#if actor_id}}Korisnik {{actor_id}} je poslao poruku{{else}}Poslata je poruka{{/if}}{{#if payload.content}}: "{{truncate payload.content 200}}"{{/if}}
+{{#if (default payload.sender_user_id actor_id)}}{{default payload.sender_user_id actor_id}} je poslao poruku{{else}}Poslata je poruka{{/if}}{{#if payload.content}}: "{{truncate payload.content 200}}"{{/if}}

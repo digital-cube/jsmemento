@@ -1,5 +1,7 @@
+import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { ChatKindSchema, chatInstanceId } from "@memento/core";
 import {
   generateLookupsModule,
   LookupCompileError,
@@ -7,21 +9,29 @@ import {
 } from "@memento/lookups";
 import {
   createApiKey,
+  createChat,
   createTenant,
   type Database,
   DEFAULT_LOOKUPS_PATH,
   deleteTemplate,
+  type EventPublisher,
+  EventRenderer,
+  emptyLookups,
   GENERATED_LOOKUPS_PATH,
+  getTenantBySlug,
   initLookups,
   LOOKUPS_CODEGEN,
   listTemplates,
   listTenants,
   MementoError,
+  NoopPublisher,
   revokeApiKey,
   runMigrations,
+  runWithTenant,
   saveTemplate,
+  sendMessage,
 } from "@memento/server";
-import { Command, CommanderError, InvalidArgumentError } from "commander";
+import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 
 export interface CliIO {
   out: (line: string) => void;
@@ -32,6 +42,10 @@ export interface CliOptions {
   /** Lazily opens the database: `--help` and validation errors never connect. */
   db: () => Database;
   io?: CliIO;
+  /** Where `send-message` announces its event (default: nowhere). Opened lazily. */
+  publisher?: () => EventPublisher;
+  /** Locale `send-message` renders in when `--locale` is not given. Default `en`. */
+  defaultLocale?: string;
 }
 
 const defaultIO: CliIO = {
@@ -47,8 +61,26 @@ function positiveInt(value: string): number {
   return parsed;
 }
 
+/** `--tenant <slug>`, falling back to `$MEMENTO_TENANT`. */
+const tenantOption = () =>
+  new Option("--tenant <slug>", "tenant (default: $MEMENTO_TENANT)")
+    .env("MEMENTO_TENANT")
+    .makeOptionMandatory();
+
+function list(value: string): string[] {
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 /** Builds the `memento` command tree. Exported so tests can drive it in-process. */
-export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
+export function buildProgram({
+  db,
+  io = defaultIO,
+  publisher = () => new NoopPublisher(),
+  defaultLocale = "en",
+}: CliOptions): Command {
   const program = new Command("memento")
     .description("JSMemento administration: tenants, API keys, templates, lookups")
     .option("--json", "print machine-readable JSON")
@@ -203,6 +235,103 @@ export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
       );
     });
 
+  /** Runs `fn` as the tenant `slug` with admin rights, the way an API request would. */
+  const asTenant = async <T>(slug: string, fn: () => Promise<T>): Promise<T> => {
+    const tenant = await getTenantBySlug(db(), slug);
+    return runWithTenant(
+      {
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        tenantName: tenant.name,
+        apiKeyId: "cli",
+        scopes: ["admin"],
+      },
+      fn,
+    );
+  };
+
+  program
+    .command("create-chat")
+    .description("create a chat (instance_type chat, instance_id chat-<id>)")
+    .addOption(tenantOption())
+    .requiredOption("--participants <users>", "comma separated user ids, e.g. igor,marko", list)
+    .option("--name <name>", 'e.g. "Igor-Marko chat"')
+    .addOption(
+      new Option("--kind <kind>", "default: direct for two participants, room otherwise").choices(
+        ChatKindSchema.options,
+      ),
+    )
+    .option("--chat-id <id>", "your own id (123 or chat-123); default: a generated UUID")
+    .action(
+      async (options: {
+        tenant: string;
+        participants: string[];
+        name?: string;
+        kind?: "direct" | "room";
+        chatId?: string;
+      }) => {
+        const chat = await asTenant(options.tenant, () =>
+          createChat(db(), {
+            participants: options.participants,
+            ...(options.name !== undefined ? { name: options.name } : {}),
+            ...(options.kind ? { kind: options.kind } : {}),
+            ...(options.chatId !== undefined ? { chat_id: options.chatId } : {}),
+          }),
+        );
+        print(
+          chat,
+          `created ${chat.kind} chat ${chat.chat_id}${chat.name ? ` "${chat.name}"` : ""}: ${chat.participants.map((p) => p.user_id).join(", ")}`,
+        );
+      },
+    );
+
+  program
+    .command("send-message")
+    .description("send a chat message as a participant (pushes CHAT_MESSAGE_SENT)")
+    .addOption(tenantOption())
+    .requiredOption("--chat-id <id>", "chat-<id> (or just <id>)")
+    .requiredOption("--user <user>", "sender; must be a participant")
+    .requiredOption("--content <text>", "message text")
+    .option("--locale <locale>", "locale the message is rendered in")
+    .action(
+      async (options: {
+        tenant: string;
+        chatId: string;
+        user: string;
+        content: string;
+        locale?: string;
+      }) => {
+        const database = db();
+        const vocabulary = existsSync(DEFAULT_LOOKUPS_PATH)
+          ? await initLookups({ path: DEFAULT_LOOKUPS_PATH, candidatesDir: null })
+          : emptyLookups();
+        const renderer = new EventRenderer({
+          db: database,
+          registry: vocabulary.registry,
+          defaultLocale,
+        });
+        const result = await asTenant(options.tenant, () =>
+          sendMessage(
+            database,
+            chatInstanceId(options.chatId),
+            { user_id: options.user, content: options.content },
+            {
+              publisher: publisher(),
+              renderer,
+              lookups: vocabulary,
+              ...(options.locale ? { locale: options.locale } : {}),
+              onPublishError: (error) =>
+                io.err(`warning: message stored but not published: ${(error as Error).message}`),
+            },
+          ),
+        );
+        print(
+          result,
+          `sent ${result.event_id} to ${result.message.instance_id}: ${result.rendered}`,
+        );
+      },
+    );
+
   const lookups = program
     .command("lookups")
     .description("controlled vocabulary: lookups.yaml + i18n/translations.csv");
@@ -292,6 +421,17 @@ export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
   return program;
 }
 
+/** `: path: message; …` for a list of Zod issues, empty for any other details. */
+function issueText(details: unknown): string {
+  if (!Array.isArray(details)) return "";
+  const issues = details.filter(
+    (i): i is { path?: PropertyKey[]; message: string } =>
+      typeof i === "object" && i !== null && typeof i.message === "string",
+  );
+  if (issues.length === 0) return "";
+  return `: ${issues.map((i) => (i.path?.length ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; ")}`;
+}
+
 /**
  * Runs the CLI and returns the process exit code: 0 on success, 1 on a domain error
  * (printed as `error: ...`), commander's own code for usage errors.
@@ -310,7 +450,9 @@ export async function runCli(argv: string[], options: CliOptions): Promise<numbe
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode;
     if (error instanceof MementoError || error instanceof LookupCompileError) {
-      io.err(`error: ${error.message}`);
+      io.err(
+        `error: ${error.message}${error instanceof MementoError ? issueText(error.details) : ""}`,
+      );
       return 1;
     }
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {

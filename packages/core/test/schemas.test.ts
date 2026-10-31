@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   ApiKeyCreateSchema,
   buildDescribe,
+  CHAT_EVENT_TYPES,
+  ChatCreateSchema,
+  ChatMessageInputSchema,
+  ChatMessageSeenPayloadSchema,
+  ChatMessageSentPayloadSchema,
+  ChatMessagesQuerySchema,
   ChatSchema,
+  ChatSeenInputSchema,
+  chatInstanceId,
   DEFAULT_EVENT_VIEW,
   ERROR_CODES,
   EventInputSchema,
@@ -109,14 +117,69 @@ describe("entity schemas", () => {
     ).toBe("sr-Latn");
     expect(
       ChatSchema.parse({
-        id: uuid,
-        instance_id: "igor-marko",
-        title: null,
-        participants: ["igor", 7],
+        chat_id: "chat-igor-marko",
+        instance_type: "chat",
+        instance_id: "chat-igor-marko",
+        kind: "direct",
+        name: null,
+        participants: [
+          { user_id: "igor", added_at: now, last_seen_event_id: uuid, last_seen_at: now },
+          { user_id: "marko", added_at: now, last_seen_event_id: null, last_seen_at: null },
+        ],
         created_at: now,
+        last_message_at: null,
         archived_at: null,
       }).participants,
-    ).toEqual(["igor", "7"]);
+    ).toHaveLength(2);
+  });
+});
+
+describe("chat schemas", () => {
+  it("normalise chat ids", () => {
+    expect(chatInstanceId("123")).toBe("chat-123");
+    expect(chatInstanceId("chat-123")).toBe("chat-123");
+    expect(ChatCreateSchema.parse({ participants: ["a", "b"], chat_id: 7 }).chat_id).toBe("chat-7");
+    expect(ChatCreateSchema.safeParse({ participants: ["a", "b"], chat_id: "a b" }).success).toBe(
+      false,
+    );
+  });
+
+  it("derive the kind from the de-duplicated participants", () => {
+    expect(ChatCreateSchema.parse({ participants: ["a", 2, "a"] })).toEqual({
+      participants: ["a", "2"],
+      kind: "direct",
+    });
+    expect(ChatCreateSchema.parse({ participants: ["a"], name: " Tim " })).toEqual({
+      participants: ["a"],
+      name: "Tim",
+      kind: "room",
+    });
+    const direct = ChatCreateSchema.safeParse({ participants: ["a", "b", "c"], kind: "direct" });
+    expect(direct.error?.issues).toMatchObject([
+      { path: ["participants"], message: "a direct chat has exactly two distinct participants" },
+    ]);
+  });
+
+  it("validate messages, seen markers and query strings", () => {
+    expect(ChatMessageInputSchema.parse({ content: " hi ", user_id: 5 })).toEqual({
+      content: "hi",
+      user_id: "5",
+    });
+    expect(ChatSeenInputSchema.safeParse({ user_id: "a", up_to_event_id: "x" }).success).toBe(
+      false,
+    );
+    expect(ChatMessagesQuerySchema.parse({ limit: "10" })).toEqual({
+      limit: 10,
+      offset: 0,
+      order: "desc",
+      event_type: CHAT_EVENT_TYPES.messageSent,
+    });
+    expect(
+      ChatMessageSentPayloadSchema.parse({ content: "x", sender_user_id: "a", timestamp: now }),
+    ).toBeTruthy();
+    expect(
+      ChatMessageSeenPayloadSchema.safeParse({ user_id: "a", messages_read_up_to: uuid }).success,
+    ).toBe(true);
   });
 });
 

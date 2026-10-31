@@ -55,8 +55,9 @@ the built-in format is used: rendering never fails a push or a query.
 | `TICKET_CREATED` | `title` | `igor created ticket T-7: "Login broken".` |
 | `TICKET_MODIFIED` | `changes` (list of fields, or object keyed by field) | `igor modified ticket T-7 (changed: title, status).` |
 | `TICKET_CLOSED` | `resolution` | `Ticket T-7 was closed (resolution: fixed).` |
-| `CHAT_MESSAGE_SENT` | `content` (cut at 200 chars) | `igor sent a message: "Pozdrav!"` |
-| `CHAT_MESSAGE_SEEN` | `message_id` | `marko saw message m1 in chat igor-marko.` |
+| `CHAT_MESSAGE_SENT` | `sender_user_id` (else `actor_id`), `content` (cut at 200 chars) | `igor sent a message: "Pozdrav!"` |
+| `CHAT_MESSAGE_SEEN` | `user_id` (else `actor_id`) | `marko read the messages` |
+| `CHAT_PARTICIPANT_ADDED` | `user_id` | `ana was added to the chat` |
 | `_generic` | — (uses the lookup labels) | `Ticket closed: ticket T-7 (by igor).` |
 | `NOTE` | `text` (required) | verbatim |
 

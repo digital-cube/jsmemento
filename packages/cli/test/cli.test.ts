@@ -5,6 +5,7 @@ import {
   connect,
   GENERATED_LOOKUPS_PATH,
   loadConfig,
+  MemoryPublisher,
   MIGRATIONS_FOLDER,
   schema,
 } from "@memento/server";
@@ -21,7 +22,7 @@ beforeEach(async () => {
   out = [];
   err = [];
   await handle.pool.query(
-    "truncate memento_seen, memento_star, memento_template, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
+    "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
   );
 });
 afterAll(() => handle.close());
@@ -189,6 +190,102 @@ describe("other commands", () => {
   });
 });
 
+describe("memento create-chat / send-message", () => {
+  beforeEach(async () => {
+    await run("create-tenant", "acme", "--name", "Acme");
+    out = [];
+  });
+  afterEach(() => {
+    delete process.env.MEMENTO_TENANT;
+  });
+
+  it("creates a chat and sends a rendered, published message", async () => {
+    const created = await run(
+      "create-chat",
+      "--tenant",
+      "acme",
+      "--participants",
+      "igor, marko",
+      "--name",
+      "Igor-Marko chat",
+    );
+    expect(created).toBe(0);
+    const match = /^created direct chat (chat-[0-9a-f-]{36}) "Igor-Marko chat": igor, marko$/.exec(
+      out[0] as string,
+    );
+    expect(match).not.toBeNull();
+    const chatId = match?.[1] as string;
+    const publisher = new MemoryPublisher();
+    out = [];
+    const code = await runCli(
+      [
+        "--json",
+        "send-message",
+        "--tenant",
+        "acme",
+        "--chat-id",
+        chatId,
+        "--user",
+        "igor",
+        "--content",
+        "Zdravo!",
+        "--locale",
+        "sr",
+      ],
+      { db: () => handle.db, io, publisher: () => publisher },
+    );
+    expect(code).toBe(0);
+    const result = JSON.parse(out[0] as string);
+    expect(result).toMatchObject({
+      rendered: 'igor je poslao poruku: "Zdravo!"',
+      message: {
+        event_type: "CHAT_MESSAGE_SENT",
+        instance_type: "chat",
+        instance_id: chatId,
+        payload: { content: "Zdravo!", sender_user_id: "igor" },
+      },
+    });
+    expect(publisher.messages.map((m) => m.event.id)).toEqual([result.event_id]);
+    const [row] = await handle.db.select().from(schema.chats);
+    expect(row?.lastMessageAt).not.toBeNull();
+  });
+
+  it("takes the tenant from $MEMENTO_TENANT, a room kind and the producer's id", async () => {
+    process.env.MEMENTO_TENANT = "acme";
+    expect(
+      await run("create-chat", "--participants", "a,b", "--kind", "room", "--chat-id", "42"),
+    ).toBe(0);
+    expect(out).toEqual(["created room chat chat-42: a, b"]);
+    out = [];
+    expect(await run("send-message", "--chat-id", "42", "--user", "b", "--content", "hi")).toBe(0);
+    expect(out[0]).toMatch(/^sent [0-9a-f-]{36} to chat-42: b sent a message: "hi"$/);
+  });
+
+  it("reports domain and usage errors", async () => {
+    expect(await run("create-chat", "--participants", "a,b")).toBe(1);
+    expect(err.join("\n")).toContain("required option '--tenant <slug>' not specified");
+    err = [];
+    expect(
+      await run("create-chat", "--tenant", "acme", "--participants", "a,b,c", "--kind", "direct"),
+    ).toBe(1);
+    expect(err).toEqual([
+      "error: invalid chat: participants: a direct chat has exactly two distinct participants",
+    ]);
+    err = [];
+    expect(await run("create-chat", "--tenant", "nope", "--participants", "a,b")).toBe(1);
+    expect(err).toEqual(['error: tenant "nope" not found']);
+    await run("create-chat", "--tenant", "acme", "--participants", "a,b", "--chat-id", "1");
+    err = [];
+    const send = (user: string, chat = "chat-1") =>
+      run("send-message", "--tenant", "acme", "--chat-id", chat, "--user", user, "--content", "x");
+    expect(await send("eve")).toBe(1);
+    expect(err).toEqual(['error: user "eve" is not a participant of chat-1']);
+    err = [];
+    expect(await send("a", "missing")).toBe(1);
+    expect(err).toEqual(['error: chat "chat-missing" not found']);
+  });
+});
+
 describe("memento create-template", () => {
   let dir: string;
   beforeEach(async () => {
@@ -229,7 +326,10 @@ describe("memento create-template", () => {
     [["en", "--body", "x", "--file", "y"], "error: pass exactly one of --body or --file"],
     [["en", "--body", "{{> partial}}"], "error: invalid template: templates may not use partials"],
     [["en", "--file", "/nonexistent/t.hbs"], /^error: ENOENT/],
-    [["EN", "--body", "x"], "error: invalid template"],
+    [
+      ["EN", "--body", "x"],
+      "error: invalid template: locale: locale must look like en, sr or sr-Latn",
+    ],
   ])("rejects %j", async (args, message) => {
     expect(await run(...base, ...args)).toBe(1);
     if (typeof message === "string") expect(err).toEqual([message]);

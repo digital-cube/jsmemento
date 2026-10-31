@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 /** `EventTypes` from the vocabulary, as sent on the wire. */
-export const EVENT_TYPES = ["USER_LOGIN", "USER_LOGOUT", "USER_CREATED", "TICKET_CREATED", "TICKET_MODIFIED", "TICKET_CLOSED", "CHAT_MESSAGE_SENT", "CHAT_MESSAGE_SEEN", "NOTE"] as const;
+export const EVENT_TYPES = ["USER_LOGIN", "USER_LOGOUT", "USER_CREATED", "TICKET_CREATED", "TICKET_MODIFIED", "TICKET_CLOSED", "CHAT_MESSAGE_SENT", "CHAT_MESSAGE_SEEN", "CHAT_PARTICIPANT_ADDED", "NOTE"] as const;
 export enum EventType {
   USER_LOGIN = "USER_LOGIN",
   USER_LOGOUT = "USER_LOGOUT",
@@ -13,6 +13,7 @@ export enum EventType {
   TICKET_CLOSED = "TICKET_CLOSED",
   CHAT_MESSAGE_SENT = "CHAT_MESSAGE_SENT",
   CHAT_MESSAGE_SEEN = "CHAT_MESSAGE_SEEN",
+  CHAT_PARTICIPANT_ADDED = "CHAT_PARTICIPANT_ADDED",
   NOTE = "NOTE",
 }
 export const KnownEventTypeSchema = z.enum(EVENT_TYPES);
