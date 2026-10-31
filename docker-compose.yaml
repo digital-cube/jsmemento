@@ -35,6 +35,33 @@ services:
       start_period: 20s
       retries: 5
 
+  # Demo data: pushes the host's load averages as CPU_LOAD events every second, so the
+  # CPU monitor UI at /en/ always shows a live table. Off unless the `demo` profile is on
+  # (`--profile demo` or COMPOSE_PROFILES=demo); see docs/DEPLOYMENT.md "Demo pusher".
+  # Same image as `memento`, no `build:` — the image is built once, by `memento`.
+  cpu-monitor:
+    image: ${MEMENTO_IMAGE:-ghcr.io/digital-cube/jsmemento:latest}
+    profiles: ["demo"]
+    restart: unless-stopped
+    depends_on:
+      memento:
+        condition: service_healthy
+    command:
+      - memento
+      - cpu-monitor
+      - --interval
+      - "${CPU_MONITOR_INTERVAL:-1}"
+      - --tenant
+      - "${CPU_MONITOR_TENANT:-demo}"
+      - --instance-id
+      - "${CPU_MONITOR_INSTANCE_ID:-stage}"
+    environment:
+      MEMENTO_URL: http://memento:3000/memento
+      # A key with the write scope, from .env. Not `:?` — compose interpolates every service,
+      # profile or not, so that would break the stack without `demo`. Without a key the CLI
+      # exits with "no API key" and `docker compose logs cpu-monitor` says so.
+      MEMENTO_API_KEY: ${CPU_MONITOR_API_KEY:-}
+
   postgres:
     image: docker.io/library/postgres:18
     restart: unless-stopped

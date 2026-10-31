@@ -16,6 +16,11 @@ share one version.
   `forbidden`). `mementoPlugin({ udc })` takes another `CollectionRegistry`, or `false`.
 - **`memento cpu-monitor`** (`@memento/cli`): pushes `os.loadavg()` as `CPU_LOAD` events every
   `--interval` seconds; logs and retries network/server failures, stops on a refused key.
+- **`cpu-monitor` service** in `docker-compose.yaml` (compose profile `demo`, off by
+  default): runs `memento cpu-monitor` from the same image against `memento:3000`, with
+  `restart: unless-stopped`, so the CPU monitor demo stays live across server and host
+  restarts. Configured by `CPU_MONITOR_API_KEY` (write scope), `CPU_MONITOR_TENANT`,
+  `CPU_MONITOR_INTERVAL` and `CPU_MONITOR_INSTANCE_ID`; see docs/DEPLOYMENT.md "Demo pusher".
 - **`MementoClient.pushEvent()` and `.describe()`** (`@memento/core`).
 - **`apps/cpu-monitor`**: Vite + React demo — `UdcDataView` over the `cpu_load` collection,
   refreshed by the WebSocket stream, with a live/offline health indicator.

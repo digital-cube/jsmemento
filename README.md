@@ -83,6 +83,10 @@ pnpm memento cpu-monitor --interval 1 --tenant demo --key mk_…                
 cd apps/cpu-monitor && pnpm dev                                                # terminal 3, :5173
 ```
 
+In the Docker stack the pusher is the optional `cpu-monitor` service (`docker compose -f
+docker-compose.yaml --profile demo up -d`), which keeps the table live across restarts — see
+[Demo pusher](docs/DEPLOYMENT.md#demo-pusher-profile-demo).
+
 ![Live CPU load table](apps/cpu-monitor/screenshot.png)
 
 ## Commands

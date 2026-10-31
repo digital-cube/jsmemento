@@ -41,6 +41,7 @@ full stack.
 | `memento` | `${MEMENTO_PORT:-3000}` → 3000 | `memento-data:/data` | `memento-healthcheck` (`GET /memento/api/health`) |
 | `postgres` | `127.0.0.1:${POSTGRES_PORT:-5432}` | `postgres-data:/var/lib/postgresql` | `pg_isready` |
 | `redis` | `127.0.0.1:${REDIS_PORT:-6379}` | `redis-data:/data` (AOF on) | `redis-cli ping` |
+| `cpu-monitor` | — (profile `demo`, off by default) | — | — (pushes `CPU_LOAD` every second; see [Demo pusher](#demo-pusher-profile-demo)) |
 
 PostgreSQL and Redis are published on `127.0.0.1` only; set `POSTGRES_BIND` / `REDIS_BIND`
 to change that, or remove their `ports:` when nothing outside the stack needs them.
@@ -49,6 +50,43 @@ to change that, or remove their `ports:` when nothing outside the stack needs th
 Upgrade: `docker compose -f docker-compose.yaml pull memento && docker compose -f docker-compose.yaml up -d`.
 The server applies pending migrations when it starts, so roll out one process first when you
 run several.
+
+## Demo pusher (profile `demo`)
+
+The CPU monitor UI at `/en/` only moves while something pushes `CPU_LOAD` events. The
+`cpu-monitor` service does that from the same image (`memento cpu-monitor`, every
+`CPU_MONITOR_INTERVAL` seconds, `server/<CPU_MONITOR_INSTANCE_ID>`), restarts with the stack and
+retries on its own while the server is down. It belongs to the compose profile `demo`, so a
+plain `up` neither starts it nor needs its key.
+
+```bash
+# 1. a tenant and a key with the write scope (the secret mk_… is printed once)
+docker compose -f docker-compose.yaml exec memento memento create-tenant demo --name Demo
+docker compose -f docker-compose.yaml exec memento \
+  memento create-key --tenant demo --scopes write --name cpu-monitor-push
+
+# 2. into .env next to docker-compose.yaml (never into the repository)
+CPU_MONITOR_API_KEY=mk_…
+COMPOSE_PROFILES=demo        # optional: turns the profile on for every compose command
+
+# 3. start it (with COMPOSE_PROFILES=demo in .env a plain `up -d` does the same)
+docker compose -f docker-compose.yaml --profile demo up -d
+docker compose -f docker-compose.yaml --profile demo logs -f cpu-monitor
+#   [10:00:00]  server/stage  load 0.52 0.41 0.30  → 0193…
+```
+
+| variable | default | |
+|---|---|---|
+| `CPU_MONITOR_API_KEY` | *(empty)* | Key with the `write` scope. Empty: the service exits with `no API key` and keeps being restarted — the log says so. |
+| `CPU_MONITOR_TENANT` | `demo` | Checked once at start: the key must belong to this tenant (skipped for a write-only key, which cannot read `/describe`). |
+| `CPU_MONITOR_INTERVAL` | `1` | Seconds between samples. |
+| `CPU_MONITOR_INSTANCE_ID` | `stage` | `instance_id` of the events (the UI shows `server/<id>`). |
+
+While the server restarts the log shows `✗ push failed … — retrying` once per sample and
+`● reconnected after N failed push(es)` when it is back; the container itself keeps running. A
+refused key (revoked, wrong scope) stops the process, and `restart: unless-stopped` starts it
+again. To see the data, open `/en/` and connect with a key that has the `read` scope for the
+same tenant. Stop it with `docker compose -f docker-compose.yaml --profile demo stop cpu-monitor`.
 
 ## The image
 
@@ -96,7 +134,8 @@ docker run -d -p 3000:3000 \
 
 `docker-compose.yaml` additionally reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`,
 `MEMENTO_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_BIND`, `REDIS_BIND` and
-`MEMENTO_IMAGE`.
+`MEMENTO_IMAGE`; the `demo` profile adds the `CPU_MONITOR_*` variables
+([Demo pusher](#demo-pusher-profile-demo)).
 
 ## Behind a reverse proxy
 
