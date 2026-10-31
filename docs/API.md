@@ -235,6 +235,39 @@ Scope `read`. Key as subprotocol `bearer.<key>` (offer `memento.v1` too), or
 Heartbeat ping every 30 s; slow consumers (1000 unwritten messages) are closed with `4008`;
 shutdown closes with `1001`. Full protocol: [STREAMING.md](STREAMING.md).
 
+## `POST /memento/udc/<action>` — UDC collections
+
+The list side of memento in the [UDC protocol](https://github.com/digital-cube/jsudc-core),
+served by `@jsudc/server`: what `@jsudc/react`'s `UdcDataView` reads. Every action is a
+`POST` with the payload as JSON body, answered with **HTTP 200** and an envelope whose `kind`
+says ok or err (`udc.list.ok` / `udc.list.err`). Key as `Authorization: Bearer` /
+`X-Api-Key`; `read` scope for reads, `write` for mutations. A missing or invalid key, or one
+without the scope, is answered in-protocol: `{"kind":"udc.list.err","payload":{"code":"forbidden",…}}`.
+
+| collection | rows |
+|---|---|
+| `events` | every live (not archived) event of the key's tenant: `occurred_at`, `event_type`, `instance_type`, `instance_id`, `actor_id`, `rendered`, `payload` (json), `received_at` |
+| `cpu_load` | `CPU_LOAD` events only, `payload.load_1min/5min/15min` as decimal columns; table + chart |
+
+Actions: `collections`, `describe`, `list` (filter DSL, sort, offset paging, exact `total`),
+`read`. Both collections are read-only — events are immutable, push them with
+`POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`.
+
+```bash
+curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
+  -H 'content-type: application/json' \
+  -d '{"collection":"cpu_load","filter":{"field":"load_1min","op":"gt","value":2},
+       "sort":[{"field":"occurred_at","dir":"desc"}],"page":{"limit":2}}'
+# {"kind":"udc.list.ok","id":"","payload":{"rows":[{"__meta":{"id":"2cb9…","version":1},
+#   "occurred_at":"2026-10-31T11:23:22.328Z","instance_type":"server","instance_id":"backend-01",
+#   "load_1min":2.79,"load_5min":3.1,"load_15min":2.86,
+#   "rendered":"Server backend-01 — CPU: 2.79, 3.1, 2.86"}, …],"next_cursor":null,"total":8}}
+```
+
+`GET /memento/healthz` (the UDC plugin's own liveness, no key) answers `{"ok":true}`.
+Embedding the plugin: `mementoPlugin`'s `udc` option takes your own `CollectionRegistry`, or
+`false` to serve none.
+
 ## `GET /memento/api/health`
 
 No key. `200 {"ok":true,"data":{"status":"ok"}}` when the server can reach PostgreSQL.

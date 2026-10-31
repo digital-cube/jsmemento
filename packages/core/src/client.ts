@@ -1,7 +1,8 @@
 import type { Chat, ChatMessageResult } from "./chat.js";
 import { chatInstanceId } from "./chat.js";
+import type { Describe } from "./describe.js";
 import type { PageMeta } from "./envelope.js";
-import type { MementoEvent } from "./event.js";
+import type { EventInput, MementoEvent } from "./event.js";
 import type { EventQueryInput } from "./query.js";
 
 /** A failed API call: the server's error envelope, or `network_error` when there was none. */
@@ -49,6 +50,20 @@ export class MementoClient {
   /** `GET /events`: filters accept a trailing `*`; newest first unless `order: "asc"`. */
   listEvents(query: EventQueryInput = {}): Promise<Page<MementoEvent[]>> {
     return this.request("GET", "/events", { query: query as Record<string, QueryValue> });
+  }
+
+  /** `POST /events`: stores one event (scope `write`); `locale` picks the stored `rendered`. */
+  async pushEvent(event: EventInput, options: { locale?: string } = {}): Promise<MementoEvent> {
+    const page = await this.request<MementoEvent>("POST", "/events", {
+      query: { locale: options.locale },
+      body: event,
+    });
+    return page.data;
+  }
+
+  /** `GET /describe`: the key's tenant, the server's capabilities and schemas (scope `read`). */
+  async describe(): Promise<Describe> {
+    return (await this.request<Describe>("GET", "/describe")).data;
   }
 
   /** `GET /chats/:id/messages` (oldest first by default here, the way a chat reads). */

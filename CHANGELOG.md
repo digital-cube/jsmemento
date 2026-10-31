@@ -7,6 +7,21 @@ share one version.
 
 ## [Unreleased]
 
+### Added
+
+- **UDC collections** (`@memento/server`): `POST <prefix>/udc/<action>` serves the tenant's
+  events through `@jsudc/server` 0.2.1 — `events` (every event) and `cpu_load` (`CPU_LOAD`
+  events with the load averages as columns, table + chart). Filter DSL, sort, offset paging
+  and exact totals over SQL, tenant-scoped by the API key (`read`; refused in-protocol with
+  `forbidden`). `mementoPlugin({ udc })` takes another `CollectionRegistry`, or `false`.
+- **`memento cpu-monitor`** (`@memento/cli`): pushes `os.loadavg()` as `CPU_LOAD` events every
+  `--interval` seconds; logs and retries network/server failures, stops on a refused key.
+- **`MementoClient.pushEvent()` and `.describe()`** (`@memento/core`).
+- **`apps/cpu-monitor`**: Vite + React demo — `UdcDataView` over the `cpu_load` collection,
+  refreshed by the WebSocket stream, with a live/offline health indicator.
+- Vocabulary: event type `CPU_LOAD`, instance type `SERVER`, and the `CPU_LOAD` templates
+  (`Server {{instance_id}} — CPU: …`).
+
 ### Changed
 
 - **Breaking:** the health check moved from `GET <prefix>/health` to `GET <prefix>/api/health`

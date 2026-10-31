@@ -276,6 +276,15 @@ describe("bundled templates", () => {
     expect(t("CHAT_PARTICIPANT_ADDED.sr", chat("CHAT_PARTICIPANT_ADDED", null))).toBe(
       "Dodat je učesnik u čat",
     );
+    const cpu = context({
+      event_type: "CPU_LOAD",
+      instance_type: "server",
+      instance_id: "backend-01",
+      actor_id: "monitor",
+      payload: { load_1min: 0.52, load_5min: 0.41, load_15min: 0.3 },
+    });
+    expect(t("CPU_LOAD.en", cpu)).toBe("Server backend-01 — CPU: 0.52, 0.41, 0.3");
+    expect(t("CPU_LOAD.sr", cpu)).toBe("Server backend-01 — opterećenje CPU: 0.52, 0.41, 0.3");
     expect(t("_generic.en", context())).toBe("User login: user 42 (by igor).");
     expect(
       t(

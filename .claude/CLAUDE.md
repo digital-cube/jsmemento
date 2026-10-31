@@ -19,11 +19,14 @@ install; this monorepo stays thin because the generic table/query machinery does
 
 The code does not match the target yet. Do not assume otherwise:
 
-- No package in this monorepo depends on `@jsudc/*` today.
+- `packages/server` serves UDC under `/memento/udc/<action>` (`@jsudc/server`, protocol:
+  `POST /udc/list {collection: …}`): the collections `events` and `cpu_load`
+  (`src/udc/`, a SQL-backed `EventCollectionSource` over `memento_event`). The REST list
+  endpoints `/events`, `/events/query`, `/chats` still exist next to it.
+- `apps/cpu-monitor` reads the `cpu_load` collection through `@jsudc/react` — the reference
+  for new UIs.
 - `packages/react/src/MementoDataView.tsx` is built on `MementoClient` from `@memento/core`
   and the local `EventTable`, not on `@jsudc/react`.
-- `packages/server` exposes `/events`, `/events/query`, `/chats`, `/describe`, `/api/health`
-  and the WebSocket stream. There is no `/memento/udc/*` route yet.
 - `apps/example/src/App.tsx` has one raw `fetch` (POST of a test event).
 
 Migrating these to UDC is the intended direction. When you touch one of these areas, move it

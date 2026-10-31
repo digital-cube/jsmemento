@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import fastifyWebsocket from "@fastify/websocket";
+import type { CollectionRegistry } from "@jsudc/server";
 import {
   type Capabilities,
   ERROR_CODES,
@@ -28,6 +29,8 @@ import { streamRoutes } from "./routes/stream.js";
 import type { EventFeed } from "./stream/feed.js";
 import { StreamHub } from "./stream/hub.js";
 import { EventRenderer } from "./templates/renderer.js";
+import { eventCollections } from "./udc/collections.js";
+import { udcRoutes } from "./udc/plugin.js";
 
 export interface StreamOptions {
   /** Where stored events come from: a `RedisFeed`, or the `LocalBus` that is also the publisher. */
@@ -51,6 +54,12 @@ export interface MementoPluginOptions {
   renderer?: EventRenderer;
   /** Enables the WebSocket stream `GET /ws` (and `realtime: true` in `/describe`). */
   stream?: StreamOptions;
+  /**
+   * The UDC collections served under `/udc/<action>` (`@jsudc/server`). Default: memento's
+   * own (`events`, `cpu_load`, see `eventCollections`); pass a registry to serve others,
+   * `false` to serve none.
+   */
+  udc?: CollectionRegistry | false;
 }
 
 /** Selects `memento.v1` when offered, else the `bearer.<key>` protocol the client sent. */
@@ -170,6 +179,10 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(entityRoutes, deps);
   await app.register(chatRoutes, deps);
   await app.register(describeRoutes, deps);
+  if (options.udc !== false) {
+    const registry = options.udc ?? eventCollections({ db: deps.db, renderer: deps.renderer });
+    await app.register(udcRoutes, { db: deps.db, registry });
+  }
 };
 
 export interface BuildAppOptions extends MementoPluginOptions {

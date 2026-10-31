@@ -5,3 +5,8 @@ packages:
 # Dependencies whose install scripts may run (pnpm refuses the rest).
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - "@jsudc/core@0.2.0"
+  - "@jsudc/server@0.2.1"
+  - "@jsudc/react@0.2.1"
