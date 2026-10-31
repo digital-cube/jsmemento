@@ -11,6 +11,8 @@ export class FakeSocket implements WebSocketLike {
   onclose: WebSocketLike["onclose"] = null;
   onerror: WebSocketLike["onerror"] = null;
   closed = false;
+  /** What the app sent on this socket. */
+  sent: string[] = [];
 
   constructor(
     readonly url: string,
@@ -29,12 +31,14 @@ export class FakeSocket implements WebSocketLike {
     return Object.fromEntries(new URL(this.url).searchParams);
   }
 
-  send(): void {}
+  send(data: string): void {
+    this.sent.push(data);
+  }
   close(): void {
     this.closed = true;
   }
 
-  welcome(): void {
+  welcome(heartbeatMs = 30000): void {
     this.onopen?.({});
     this.onmessage?.({
       data: JSON.stringify({
@@ -43,7 +47,7 @@ export class FakeSocket implements WebSocketLike {
           protocol_version: "1",
           tenant: "demo",
           filter: {},
-          heartbeat_interval_ms: 30000,
+          heartbeat_interval_ms: heartbeatMs,
           max_buffered_messages: 1000,
         },
       }),
@@ -74,7 +78,12 @@ export class FakeSocket implements WebSocketLike {
     });
   }
 
-  drop(): void {
-    this.onclose?.({ code: 1006, reason: "" });
+  /** Any text frame, as the server would send it. */
+  raw(data: string | Record<string, unknown>): void {
+    this.onmessage?.({ data: typeof data === "string" ? data : JSON.stringify(data) });
+  }
+
+  drop(code = 1006, reason = ""): void {
+    this.onclose?.({ code, reason });
   }
 }

@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `ENTITY`, `CHAT`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `CHAT`, `TAIL`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -113,6 +113,60 @@ export const EXAMPLES_MESSAGES: Messages = {
     EMPTY: {
       en: "The demo room does not exist yet: memento simulate creates it and talks in it — start it with",
       sr: "Demo soba još ne postoji: pravi je memento simulate, koji u njoj i piše — pokrenite ga sa",
+    },
+  },
+  TAIL: {
+    TITLE: { en: "Live tail", sr: "Uživo praćenje" },
+    SUBTITLE: {
+      en: "GET /memento/ws raw · every frame as it arrives · memento tail in the browser",
+      sr: "GET /memento/ws u sirovom obliku · svaki okvir čim stigne · memento tail u pregledaču",
+    },
+    EVENT_TYPES: { en: "Event types", sr: "Tipovi događaja" },
+    ALL_TYPES: { en: "none picked: every type", sr: "nijedan izabran: svi tipovi" },
+    INSTANCE_TYPE: { en: "Instance type", sr: "Tip instance" },
+    INSTANCE_ID: { en: "Instance id", sr: "ID instance" },
+    ACTOR_ID: { en: "Actor", sr: "Akter" },
+    APPLY: { en: "Apply", sr: "Primeni" },
+    RESET: { en: "No filters", sr: "Bez filtera" },
+    URL: { en: "The page is connected to", sr: "Stranica je povezana na" },
+    KEY_NOTE: {
+      en: "The API key is not in the URL: it travels as the WebSocket subprotocol bearer.<key>, offered next to memento.v1.",
+      sr: "API ključ nije u URL-u: putuje kao WebSocket subprotokol bearer.<key>, ponuđen pored memento.v1.",
+    },
+    LOCALE_NOTE: {
+      en: "locale={locale} follows the header's EN / SR: the stream re-renders every event's rendered text in it. It is not a filter.",
+      sr: "locale={locale} prati EN / SR iz zaglavlja: tok ponovo renderuje rendered tekst svakog događaja na tom jeziku. Nije filter.",
+    },
+    CLIENT_SIDE: {
+      en: "The stream filters on one event_type. With {count} picked the URL has none: every type arrives and this page keeps only the picked ones.",
+      sr: "Tok filtrira po jednom event_type. Sa {count} izabrana URL nema nijedan: stižu svi tipovi, a stranica zadržava samo izabrane.",
+    },
+    INVALID: {
+      en: "Not connected: the stream would refuse this filter (422) — {message}",
+      sr: "Nije povezano: tok bi odbio ovaj filter (422) — {message}",
+    },
+    LIVE: { en: "Live", sr: "Uživo" },
+    CONNECTING: { en: "Connecting…", sr: "Povezivanje…" },
+    CLOSED: { en: "Closed", sr: "Zatvoreno" },
+    CLOSED_CODE: { en: "Closed {close}", sr: "Zatvoreno {close}" },
+    OFF: { en: "Not connected", sr: "Nije povezano" },
+    RECEIVED: { en: "frames received", sr: "primljenih okvira" },
+    RATE: { en: "events/s (10 s)", sr: "događaja/s (10 s)" },
+    SINCE: { en: "connected since", sr: "povezano od" },
+    RECONNECTS: { en: "reconnects", sr: "ponovnih povezivanja" },
+    FILTERED: { en: "left out by the page", sr: "izostavila stranica" },
+    PAUSE: { en: "Pause", sr: "Pauza" },
+    RESUME: { en: "Resume", sr: "Nastavi" },
+    CLEAR: { en: "Clear", sr: "Obriši" },
+    CONTROL: { en: "Show control frames", sr: "Prikaži kontrolne okvire" },
+    PAUSED: { en: "{count} new while paused", sr: "novih tokom pauze: {count}" },
+    CAP: {
+      en: "Newest on top, the last {max} kept. Click a line for the frame's JSON.",
+      sr: "Najnoviji na vrhu, čuva se poslednjih {max}. Kliknite red za JSON okvira.",
+    },
+    EMPTY: {
+      en: "No frames yet. Events appear as memento stores them — memento simulate pushes a ticket desk story; start it with",
+      sr: "Još nema okvira. Događaji se pojavljuju čim ih memento sačuva — memento simulate šalje priču o službi za tikete; pokrenite ga sa",
     },
   },
   PLANNED: {

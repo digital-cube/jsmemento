@@ -15,7 +15,8 @@ each example is a route, and every list on every page comes from UDC.
 | `/examples/entity` | [Entity timeline](#entity-timeline): the picker |
 | `/examples/entity/:instance_type/:instance_id` | the timeline of one instance (`ticket/T-17`, `user/ana`) |
 | `/examples/chat` | [Chat](#chat): the simulator's demo room in `MementoChat`, viewed as one participant (`?as=ana`) |
-| `/examples/tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
+| `/examples/tail` | [Live tail](#live-tail): every frame of `/memento/ws` as it arrives, with the stream's filters in the URL (`?event_type=TICKET_CREATED`) |
+| `/examples/search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -94,10 +95,54 @@ Activity feed. An unknown slug leads to `/`.
 
 | slug | will show |
 |---|---|
-| `tail` | the WebSocket stream raw, with filters, like `memento tail` in the browser |
 | `search` | `MementoSearch` with the Filter DSL JSON it sends to `POST /events/query` |
 | `rendering` | one event, its EN and SR Handlebars templates and the result |
 | `chart` | events per minute by type as a UDC chart |
+
+## Live tail
+
+`memento tail` in the browser: the page opens `GET /memento/ws` (docs/STREAMING.md) and lists
+every frame the socket delivers, as it arrives — not a UDC list, the stream itself, to see how
+it works.
+
+```
+memento simulate / cpu-monitor ──POST /events──▶ memento ──ws /memento/ws?event_type=…&locale=en──▶ /examples/tail
+                                                          ◀── memento.ping (every heartbeat) ───────  MementoStream
+                                                          ──── memento.welcome · memento.event.new · memento.pong ──▶
+```
+
+- **The stream's own client.** `MementoStream` from `@memento/core` connects (the key as the
+  subprotocol `bearer.<key>` next to `memento.v1`, never in the URL), waits for the welcome and
+  reconnects with backoff. The page listens in on the socket it opens (`tapWebSocket`,
+  `src/examples/tail/tail.ts`), so it sees the raw text of every frame, not only the events
+  `MementoStream` hands on.
+- **Filter bar**: the stream's filters — event types as a multi-select of memento's vocabulary
+  (`EVENT_TYPES`, lookups.yaml), instance type, instance id and actor as text (Enter /
+  **Apply**). They live in the page's URL (`?event_type=TICKET_CREATED&instance_id=T-3`), so a
+  link reproduces them; every change is a new connection and a fresh list (the stream's filters
+  are fixed for the life of a connection). The `ws://…/memento/ws?…` URL the socket opened is
+  shown verbatim, to copy. The stream takes **one** `event_type`: with several picked the URL
+  has none, every type arrives and the page keeps the picked ones itself (counted as *left out
+  by the page*; the page says so). A filter the server would refuse (422, e.g.
+  `instance_type=Ticket`) is not connected; the page says why.
+- **The language is the header's.** The stream has a `locale` parameter (not a filter): the
+  page connects with `?locale=<en|sr>`, so `rendered` comes re-rendered in the header's
+  language; switching EN / SR reconnects.
+- **Frames**, newest on top, the last 500 kept (`MAX_FRAMES`, oldest dropped). Each row is the
+  one-line summary of `memento tail` — `[hh:mm:ss] EVENT_TYPE instance/id — rendered` — and
+  opens to the frame's pretty-printed JSON. Everything that is not an event is dimmed and can
+  be hidden (**Show control frames**): `memento.welcome` (tenant, filter, heartbeat),
+  `memento.pong`, `memento.error`, and the socket closing (not a frame on the wire, noted in
+  the list with its code and reason). Heartbeats: the server's WebSocket pings are answered by
+  the browser without the page seeing them, so the page sends the stream's `memento.ping` at
+  the welcome's `heartbeat_interval_ms` and the `memento.pong` is a row.
+- **Controls**: **Pause** keeps receiving in the background and shows *N new while paused*
+  (the paused buffer is capped at 500 too); **Resume** puts them on top; **Clear** empties the
+  list. Counters: frames received, events/s over the last 10 s, connected since, reconnects.
+  The status dot is the CPU monitor's: connecting (amber), live (green), closed (red) with the
+  close code and reason, e.g. *Closed 4008 slow consumer*.
+- **Not UDC, on purpose**: there is no collection here, only the stream; the frames are not
+  persisted.
 
 ## Chat
 
@@ -246,7 +291,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

@@ -14,13 +14,6 @@ export interface PlannedExample {
  * (`/examples/<slug>`). Each follow-up ticket replaces one row with a page of its own.
  */
 export const PLANNED_EXAMPLES: Readonly<Record<string, PlannedExample>> = {
-  tail: {
-    title: { en: "Live tail", sr: "Uživo praćenje" },
-    summary: {
-      en: "The WebSocket stream raw, with filters by event type, instance and actor — memento tail in the browser.",
-      sr: "WebSocket tok u sirovom obliku, sa filterima po tipu događaja, instanci i akteru — memento tail u pregledaču.",
-    },
-  },
   search: {
     title: { en: "Search", sr: "Pretraga" },
     summary: {
