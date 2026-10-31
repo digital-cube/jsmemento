@@ -113,6 +113,7 @@ describe("publishers", () => {
     actor_id: null,
     payload: {},
     rendered: null,
+    rendered_locale: null,
     archived_at: null,
   };
 

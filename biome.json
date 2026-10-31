@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/coverage", "!**/drizzle/meta", "!docs", "!**/*.md"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!**/drizzle/meta",
+      "!docs",
+      "!**/*.md",
+      "!**/*.generated.ts"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -20,6 +20,18 @@ export { compileFilter, escapeLike } from "./db/filter.js";
 export * as schema from "./db/schema.js";
 export { MementoError } from "./errors.js";
 export {
+  DEFAULT_LOOKUPS_PATH,
+  emptyLookups,
+  GENERATED_LOOKUPS_PATH,
+  type InitLookupsOptions,
+  initLookups,
+  LOOKUP_SECTIONS,
+  LOOKUPS_CODEGEN,
+  type Lookups,
+  recordCandidates,
+  unknownLookups,
+} from "./lookups.js";
+export {
   type EventPublisher,
   MemoryPublisher,
   NoopPublisher,
@@ -36,9 +48,36 @@ export {
 export {
   type EventPage,
   entityHistory,
+  type ListOptions,
   listEvents,
+  localizeEvents,
   type PushOptions,
   pushEvent,
   serializeEvent,
 } from "./services/events.js";
+export {
+  checkTemplateBody,
+  deleteTemplate,
+  listTemplates,
+  type SaveTemplateOptions,
+  saveTemplate,
+  serializeTemplate,
+} from "./services/templates.js";
 export { createTenant, getTenantBySlug, listTenants, serializeTenant } from "./services/tenants.js";
+export {
+  RENDERED_MAX,
+  type RenderContext,
+  TemplateEngine,
+  type TemplateEngineOptions,
+  TemplateSyntaxError,
+} from "./templates/engine.js";
+export {
+  BUNDLED_TEMPLATES_DIR,
+  EventRenderer,
+  type EventRendererOptions,
+  loadTemplateDir,
+  localeChain,
+  type RenderableEvent,
+  type RenderResult,
+  ULTIMATE_FALLBACK,
+} from "./templates/renderer.js";

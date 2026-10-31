@@ -1,0 +1,26 @@
+{
+  "name": "@memento/lookups",
+  "version": "0.1.0",
+  "description": "JSMemento lookups: controlled vocabularies from YAML, CSV translations, candidate recording and TypeScript/Zod codegen.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@memento/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  }
+}

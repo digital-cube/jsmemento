@@ -1,0 +1,16 @@
+section,term,en,sr
+EventTypes,USER_LOGIN,User login,Prijava korisnika
+EventTypes,USER_LOGOUT,User logout,Odjava korisnika
+EventTypes,USER_CREATED,User created,Kreiran korisnik
+EventTypes,TICKET_CREATED,Ticket created,Kreiran tiket
+EventTypes,TICKET_MODIFIED,Ticket modified,Izmenjen tiket
+EventTypes,TICKET_CLOSED,Ticket closed,Zatvoren tiket
+EventTypes,CHAT_MESSAGE_SENT,Message sent,Poslata poruka
+EventTypes,CHAT_MESSAGE_SEEN,Message seen,Viđena poruka
+EventTypes,NOTE,Note,Beleška
+InstanceTypes,USER,User,Korisnik
+InstanceTypes,TICKET,Ticket,Tiket
+InstanceTypes,CHAT,Chat,Čet
+ActorTypes,USER,User,Korisnik
+ActorTypes,BOT,Bot,Bot
+ActorTypes,SYSTEM,System,Sistem

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
-import { buildApp } from "../src/app.js";
+import { type BuildAppOptions, buildApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
 import { connect, type DatabaseHandle } from "../src/db/client.js";
 import { MemoryPublisher } from "../src/publisher.js";
@@ -25,7 +25,10 @@ export interface Fixture {
 }
 
 /** Two tenants (`acme`, `globex`) with keys, and an app wired to a MemoryPublisher. */
-export async function setupApp(handle: DatabaseHandle): Promise<Fixture> {
+export async function setupApp(
+  handle: DatabaseHandle,
+  options: Partial<BuildAppOptions> = {},
+): Promise<Fixture> {
   await reset(handle);
   await createTenant(handle.db, { slug: "acme", name: "Acme" });
   await createTenant(handle.db, { slug: "globex", name: "Globex" });
@@ -39,7 +42,7 @@ export async function setupApp(handle: DatabaseHandle): Promise<Fixture> {
     otherWrite: await key("globex", "write"),
   };
   const publisher = new MemoryPublisher();
-  const app = await buildApp({ db: handle.db, publisher, logger: false });
+  const app = await buildApp({ db: handle.db, publisher, logger: false, ...options });
   return { app, publisher, keys };
 }
 

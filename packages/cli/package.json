@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@memento/core": "workspace:*",
+    "@memento/lookups": "workspace:*",
     "@memento/server": "workspace:*",
     "commander": "^15.0.0"
   }

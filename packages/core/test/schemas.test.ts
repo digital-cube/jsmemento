@@ -87,6 +87,7 @@ describe("entity schemas", () => {
         actor_id: null,
         payload: {},
         rendered: null,
+        rendered_locale: null,
         archived_at: null,
       }).id,
     ).toBe(uuid);
@@ -150,7 +151,7 @@ describe("view & describe", () => {
 
   it("describes capabilities and JSON schemas", () => {
     const describe = buildDescribe({ slug: "acme", name: "Acme" }, { realtime: true });
-    expect(describe.capabilities).toMatchObject({ push: true, realtime: true, templates: false });
+    expect(describe.capabilities).toMatchObject({ push: true, realtime: true, templates: true });
     expect(describe.schema.event_input).toMatchObject({
       type: "object",
       required: expect.arrayContaining(["event_type", "instance_type", "instance_id"]),

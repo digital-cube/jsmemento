@@ -18,7 +18,10 @@ export const EventInputSchema = z.strictObject({
   payload: PayloadSchema.default({}),
   /** When it happened at the producer; defaults to the time memento received it. */
   occurred_at: TimestampSchema.optional(),
-  /** Pre-rendered text; Phase 2 renders it from the tenant's templates when absent. */
+  /**
+   * Pre-rendered text, stored verbatim and never translated. When absent memento renders
+   * it from the tenant's templates (`NOTE` uses `payload.text`).
+   */
   rendered: z.string().max(10_000).nullish(),
 });
 export type EventInput = z.input<typeof EventInputSchema>;
@@ -34,7 +37,10 @@ export const EventSchema = z.object({
   instance_id: z.string(),
   actor_id: z.string().nullable(),
   payload: PayloadSchema,
+  /** Human-readable text of the event (see `rendered_locale`). */
   rendered: z.string().nullable(),
+  /** Locale `rendered` is in; `null` when it is verbatim text (pre-rendered or a `NOTE`). */
+  rendered_locale: z.string().nullable(),
   archived_at: TimestampSchema.nullable(),
 });
 export type MementoEvent = z.infer<typeof EventSchema>;

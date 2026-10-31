@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@memento/core": src("../core/src/index.ts"),
+      "@memento/lookups": src("../lookups/src/index.ts"),
       "@memento/server": src("../server/src/index.ts"),
     },
   },

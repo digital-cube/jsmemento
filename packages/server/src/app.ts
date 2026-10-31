@@ -10,23 +10,33 @@ import Fastify, {
 import { installAuth } from "./auth.js";
 import type { Database } from "./db/client.js";
 import { MementoError } from "./errors.js";
+import { emptyLookups, type Lookups } from "./lookups.js";
 import { type EventPublisher, NoopPublisher } from "./publisher.js";
 import { describeRoutes } from "./routes/describe.js";
 import { entityRoutes } from "./routes/entities.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
+import { EventRenderer } from "./templates/renderer.js";
 
 export interface MementoPluginOptions {
   db: Database;
   publisher?: EventPublisher;
   /** Overrides what `/describe` advertises (e.g. `realtime: true` once a hub runs). */
   capabilities?: Partial<Capabilities>;
+  /** Vocabulary (see `initLookups`). Default: none — nothing checked or recorded. */
+  lookups?: Lookups;
+  /** Locale events render in when a request names none. Default `en`. */
+  defaultLocale?: string;
+  /** Default: an `EventRenderer` over the bundled templates and the tenant overrides. */
+  renderer?: EventRenderer;
 }
 
 export interface RouteDeps {
   db: Database;
   publisher: EventPublisher;
   capabilities: Partial<Capabilities>;
+  lookups: Lookups;
+  renderer: EventRenderer;
 }
 
 /** The error code of a framework error (bad JSON, wrong content type, …) by HTTP status. */
@@ -48,10 +58,21 @@ export function requestId(header: string | string[] | undefined): string {
  * (e.g. `/memento`) in your own app for the embedded deployment mode.
  */
 export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (app, options) => {
+  const lookups = options.lookups ?? emptyLookups();
   const deps: RouteDeps = {
     db: options.db,
     publisher: options.publisher ?? new NoopPublisher(),
     capabilities: options.capabilities ?? {},
+    lookups,
+    renderer:
+      options.renderer ??
+      new EventRenderer({
+        db: options.db,
+        registry: lookups.registry,
+        defaultLocale: options.defaultLocale ?? "en",
+        onError: (error, template) =>
+          app.log.warn({ err: error, template }, "template failed to render; using fallback"),
+      }),
   };
 
   app.addHook("onSend", async (request, reply) => {
@@ -108,11 +129,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     genReqId: (request) => requestId(request.headers["x-request-id"]),
     logController: new LogController({ requestIdLogLabel: "request_id" }),
   });
-  await app.register(mementoPlugin, {
-    prefix: options.prefix ?? "/memento",
-    db: options.db,
-    ...(options.publisher ? { publisher: options.publisher } : {}),
-    ...(options.capabilities ? { capabilities: options.capabilities } : {}),
-  });
+  const { prefix, logger: _logger, ...plugin } = options;
+  await app.register(mementoPlugin, { ...plugin, prefix: prefix ?? "/memento" });
   return app;
 }

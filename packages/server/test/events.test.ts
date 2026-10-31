@@ -47,7 +47,8 @@ describe("POST /memento/events", () => {
       actor_id: "igor",
       payload: { ip: "10.0.0.1" },
       occurred_at: "2026-10-30T08:00:00.000Z",
-      rendered: null,
+      rendered: "User igor logged in from 10.0.0.1.",
+      rendered_locale: "en",
       archived_at: null,
     });
     expect(fx.publisher.messages).toEqual([{ tenant: "acme", event }]);
@@ -75,6 +76,7 @@ describe("POST /memento/events", () => {
       })
     ).json().data;
     expect(event.rendered).toBe('Igor je poslao poruku: "Pozdrav!"');
+    expect(event.rendered_locale).toBeNull();
   });
 
   it.each([

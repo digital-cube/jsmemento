@@ -4,7 +4,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: {
-    alias: { "@memento/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)) },
+    alias: {
+      "@memento/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)),
+      "@memento/lookups": fileURLToPath(new URL("../lookups/src/index.ts", import.meta.url)),
+    },
   },
   test: {
     name: "server",

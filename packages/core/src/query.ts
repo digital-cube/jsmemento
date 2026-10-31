@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TimestampSchema } from "./common.js";
 import { and, type Filter, matchCondition } from "./filter.js";
+import { LocaleSchema } from "./template.js";
 
 export const MAX_PAGE_SIZE = 500;
 export const DEFAULT_PAGE_SIZE = 50;
@@ -26,6 +27,8 @@ export const EventQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
   order: z.enum(["asc", "desc"]).default("desc"),
   include_archived: booleanish.default(false),
+  /** Render `rendered` in this locale (fallback chain: sr-Latn → sr → default locale). */
+  locale: LocaleSchema.optional(),
 });
 export type EventQueryInput = z.input<typeof EventQuerySchema>;
 export type EventQuery = z.output<typeof EventQuerySchema>;

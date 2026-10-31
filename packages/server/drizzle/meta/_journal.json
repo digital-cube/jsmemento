@@ -15,6 +15,13 @@
       "when": 1793404091905,
       "tag": "0001_event_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793405340145,
+      "tag": "0002_rendered_locale",
+      "breakpoints": true
     }
   ]
 }

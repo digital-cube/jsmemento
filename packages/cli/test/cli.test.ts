@@ -1,5 +1,14 @@
-import { connect, loadConfig, MIGRATIONS_FOLDER, schema } from "@memento/server";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  connect,
+  GENERATED_LOOKUPS_PATH,
+  loadConfig,
+  MIGRATIONS_FOLDER,
+  schema,
+} from "@memento/server";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildProgram, runCli } from "../src/index.js";
 
 const handle = connect(loadConfig().testDatabaseUrl, { max: 2 });
@@ -137,17 +146,6 @@ describe("memento create-key", () => {
 });
 
 describe("other commands", () => {
-  it("create-template is a Phase 2 stub that still validates its input", async () => {
-    const base = ["create-template", "--tenant", "acme", "--event-type"];
-    expect(await run(...base, "USER_LOGIN", "--locale", "sr")).toBe(1);
-    expect(err).toEqual([
-      "error: create-template is not implemented yet: template rendering arrives in Phase 2",
-    ]);
-    err = [];
-    expect(await run(...base, "user login", "--locale", "sr")).toBe(1);
-    expect(err[0]).toMatch(/^error: value: event_type must be SCREAMING_SNAKE_CASE/);
-  });
-
   it("migrate applies migrations", async () => {
     expect(MIGRATIONS_FOLDER).toMatch(/drizzle$/);
     expect(await run("migrate")).toBe(0);
@@ -168,6 +166,9 @@ describe("other commands", () => {
       "revoke-key",
       "list-tenants",
       "create-template",
+      "list-templates",
+      "delete-template",
+      "lookups",
       "migrate",
     ]) {
       expect(help).toContain(command);
@@ -185,5 +186,189 @@ describe("other commands", () => {
         io,
       }),
     ).rejects.toThrow("boom");
+  });
+});
+
+describe("memento create-template", () => {
+  let dir: string;
+  beforeEach(async () => {
+    await run("create-tenant", "acme", "--name", "Acme");
+    out = [];
+    dir = await mkdtemp(join(tmpdir(), "memento-cli-"));
+  });
+  afterEach(() => rm(dir, { recursive: true, force: true }));
+  const base = ["create-template", "--tenant", "acme", "--event-type", "USER_LOGIN", "--locale"];
+
+  it("writes a template into memento_template from --body or --file", async () => {
+    expect(await run(...base, "en", "--body", "{{actor_id}} came in")).toBe(0);
+    expect(out).toEqual(["created template USER_LOGIN/en for acme"]);
+    await writeFile(join(dir, "t.hbs"), "Korisnik {{actor_id}} je tu\n\n");
+    expect(await run("--json", ...base, "sr", "--file", join(dir, "t.hbs"))).toBe(0);
+    expect(JSON.parse(out[1] as string)).toMatchObject({
+      locale: "sr",
+      body: "Korisnik {{actor_id}} je tu",
+      created: true,
+    });
+    const rows = await handle.db.select().from(schema.templates);
+    expect(rows.map((r) => [r.eventType, r.locale, r.body]).sort()).toEqual([
+      ["USER_LOGIN", "en", "{{actor_id}} came in"],
+      ["USER_LOGIN", "sr", "Korisnik {{actor_id}} je tu"],
+    ]);
+  });
+
+  it("refuses a duplicate unless --replace", async () => {
+    await run(...base, "en", "--body", "v1");
+    expect(await run(...base, "en", "--body", "v2")).toBe(1);
+    expect(err[0]).toMatch(/already exists for "acme" \(use replace\)/);
+    expect(await run(...base, "en", "--body", "v2", "--replace")).toBe(0);
+    expect(out.at(-1)).toBe("replaced template USER_LOGIN/en for acme");
+  });
+
+  it.each([
+    [["en"], "error: pass exactly one of --body or --file"],
+    [["en", "--body", "x", "--file", "y"], "error: pass exactly one of --body or --file"],
+    [["en", "--body", "{{> partial}}"], "error: invalid template: templates may not use partials"],
+    [["en", "--file", "/nonexistent/t.hbs"], /^error: ENOENT/],
+    [["EN", "--body", "x"], "error: invalid template"],
+  ])("rejects %j", async (args, message) => {
+    expect(await run(...base, ...args)).toBe(1);
+    if (typeof message === "string") expect(err).toEqual([message]);
+    else expect(err[0]).toMatch(message);
+  });
+
+  it("lists and deletes templates", async () => {
+    expect(await run("list-templates", "--tenant", "acme")).toBe(0);
+    expect(out).toEqual(["no templates (the bundled ones are used)"]);
+    await run(...base, "en", "--body", "line1\nline2");
+    await run(
+      "create-template",
+      "--tenant",
+      "acme",
+      "--event-type",
+      "_generic",
+      "--locale",
+      "sr",
+      "--body",
+      "g",
+    );
+    out = [];
+    await run("list-templates", "--tenant", "acme");
+    expect(out).toEqual(["USER_LOGIN\ten\tline1\\nline2\n_generic\tsr\tg"]);
+    out = [];
+    expect(
+      await run(
+        "delete-template",
+        "--tenant",
+        "acme",
+        "--event-type",
+        "_generic",
+        "--locale",
+        "sr",
+      ),
+    ).toBe(0);
+    expect(out).toEqual(["deleted template _generic/sr for acme"]);
+    expect(
+      await run(
+        "delete-template",
+        "--tenant",
+        "acme",
+        "--event-type",
+        "_generic",
+        "--locale",
+        "sr",
+      ),
+    ).toBe(1);
+  });
+});
+
+describe("memento lookups", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "memento-cli-lookups-"));
+    await mkdir(join(dir, "i18n"));
+    await writeFile(join(dir, "lookups.yaml"), "EventTypes: [USER_LOGIN]\nInstanceTypes: [USER]\n");
+    await writeFile(
+      join(dir, "i18n", "translations.csv"),
+      "section,term,en,sr\nEventTypes,USER_LOGIN,User login,Prijava\nInstanceTypes,USER,User,\n",
+    );
+  });
+  afterEach(() => rm(dir, { recursive: true, force: true }));
+  const yaml = () => join(dir, "lookups.yaml");
+
+  it("validate reports sections, warnings and errors with file:line", async () => {
+    expect(await run("lookups", "validate", "--path", yaml())).toBe(0);
+    expect(out[0]?.split("\n")).toEqual([
+      `${yaml()}: EventTypes (1), InstanceTypes (1)`,
+      `warning ${join(dir, "i18n", "translations.csv")}:3 [sr]: InstanceTypes.USER has no sr translation`,
+      "ok: en, sr — 1 warning(s)",
+    ]);
+    await writeFile(join(dir, "bad.csv"), "section,term,en\nEventTypes,NOPE,x\n");
+    out = [];
+    expect(
+      await run(
+        "--json",
+        "lookups",
+        "validate",
+        "--path",
+        yaml(),
+        "--translations",
+        join(dir, "bad.csv"),
+      ),
+    ).toBe(1);
+    expect(JSON.parse(out[0] as string)).toMatchObject({
+      ok: false,
+      errors: [{ line: 2, column: "term", message: 'unknown term "NOPE" in EventTypes' }],
+    });
+    expect(err).toEqual(["error: translations are invalid"]);
+  });
+
+  it("validate fails on invalid YAML", async () => {
+    await writeFile(yaml(), "EventTypes: [lower]\n");
+    expect(await run("lookups", "validate", "--path", yaml())).toBe(1);
+    expect(err[0]).toMatch(/term "lower" must be UPPER_SNAKE_CASE/);
+  });
+
+  it("codegen writes the module and --check detects drift", async () => {
+    const outFile = join(dir, "gen.ts");
+    expect(await run("lookups", "codegen", "--path", yaml(), "--out", outFile, "--check")).toBe(1);
+    expect(err[0]).toMatch(/is out of date: run memento lookups codegen/);
+    expect(await run("lookups", "codegen", "--path", yaml(), "--out", outFile)).toBe(0);
+    expect(await readFile(outFile, "utf8")).toContain(
+      'export const INSTANCE_TYPES = ["user"] as const;',
+    );
+    expect(await run("lookups", "codegen", "--path", yaml(), "--out", outFile, "--check")).toBe(0);
+    expect(out.at(-1)).toBe(`${outFile} is up to date`);
+  });
+
+  it("codegen --check passes for the repository's committed module", async () => {
+    expect(await run("lookups", "codegen", "--check")).toBe(0);
+    expect(out).toEqual([`${GENERATED_LOOKUPS_PATH} is up to date`]);
+  });
+
+  it("candidates lists recorded unknown values", async () => {
+    expect(await run("lookups", "candidates", "--path", yaml())).toBe(0);
+    expect(out).toEqual(["no candidates"]);
+    await mkdir(join(dir, "var", "candidates"), { recursive: true });
+    await writeFile(
+      join(dir, "var", "candidates", "EventTypes.yaml"),
+      "- value: INVOICE_PAID\n  count: 3\n  first_seen: 2026-10-30T10:00:00Z\n  last_seen: 2026-10-31T10:00:00Z\n",
+    );
+    out = [];
+    await run("lookups", "candidates", "--path", yaml());
+    expect(out).toEqual(["EventTypes.INVOICE_PAID\t3\t2026-10-30T10:00:00Z\t2026-10-31T10:00:00Z"]);
+    out = [];
+    await run(
+      "--json",
+      "lookups",
+      "candidates",
+      "--path",
+      yaml(),
+      "--dir",
+      join(dir, "var", "candidates"),
+    );
+    expect(JSON.parse(out[0] as string)).toMatchObject({
+      EventTypes: [{ value: "INVOICE_PAID", count: 3 }],
+      InstanceTypes: [],
+    });
   });
 });

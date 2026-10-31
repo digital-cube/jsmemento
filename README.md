@@ -7,8 +7,9 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 | package | |
 |---|---|
 | [`@memento/core`](packages/core) | Zod schemas + inferred types, API key / scope helpers, Filter DSL, envelope |
-| [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations |
-| [`@memento/cli`](packages/cli) | `memento` CLI: tenants, API keys, (templates in Phase 2) |
+| [`@memento/lookups`](packages/lookups) | `lookups.yaml` vocabulary, CSV translations, candidate recorder, TS/Zod codegen |
+| [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering |
+| [`@memento/cli`](packages/cli) | `memento` CLI: tenants, API keys, templates, lookups |
 
 ## Quick start
 
@@ -27,7 +28,12 @@ pnpm dev                        # http://localhost:8000/memento
 curl -X POST localhost:8000/memento/events -H "Authorization: Bearer mk_…" \
   -H 'content-type: application/json' \
   -d '{"event_type":"USER_LOGIN","instance_type":"user","instance_id":42,"actor_id":"igor"}'
-curl "localhost:8000/memento/entities/user/42/events" -H "Authorization: Bearer mk_…"
+curl "localhost:8000/memento/entities/user/42/events?locale=sr" -H "Authorization: Bearer mk_…"
+# → "rendered": "Korisnik igor se prijavio."
+
+pnpm memento create-template --tenant acme --event-type USER_LOGIN --locale en \
+  --body '{{upper actor_id}} signed in to Acme'          # per-tenant override
+pnpm memento lookups validate                            # lookups.yaml + i18n/translations.csv
 ```
 
 `.env` is not loaded automatically: export the variables (`set -a; . ./.env; set +a`) or rely
@@ -41,9 +47,11 @@ on the defaults, which match `compose.yaml`.
 | `pnpm test` / `pnpm test:cov` | Vitest (server + CLI need PostgreSQL at `TEST_DATABASE_URL`) |
 | `pnpm lint` / `pnpm format` | Biome |
 | `pnpm db:generate` | new Drizzle migration after editing `packages/server/src/db/schema.ts` |
+| `pnpm memento lookups codegen` | regenerate typed lookups after editing `lookups.yaml` |
 
 ## Docs
 
 - [docs/API.md](docs/API.md) — endpoints with examples
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — packages, database schema, request lifecycle
+- [docs/TEMPLATES.md](docs/TEMPLATES.md) — rendering, locale fallback, tenant templates, lookups
 - [docs/ANALYSIS.md](docs/ANALYSIS.md), [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) — background

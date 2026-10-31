@@ -1,7 +1,8 @@
-# JSMemento — Architecture (Phase 1)
+# JSMemento — Architecture (Phases 1–2)
 
-> Status: Phase 1 (core API & multitenancy) implemented. Templates (Phase 2), WebSocket
-> streaming, seen/star endpoints and UDC integration come later; their tables already exist.
+> Status: Phase 1 (core API & multitenancy) and Phase 2 (Handlebars templates, i18n fallback,
+> YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) implemented. WebSocket streaming,
+> seen/star endpoints and UDC integration come later; their tables already exist.
 
 Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
 Endpoint reference: [API.md](API.md).
@@ -16,14 +17,19 @@ jsmemento/
 ├── biome.json                 # lint + format
 ├── compose.yaml               # PostgreSQL 18 + Redis 7 (+ creates <db>_test)
 ├── .env.example               # every variable the server and CLI read
+├── lookups.yaml               # vocabulary: EventTypes, InstanceTypes, ActorTypes
+├── i18n/translations.csv      # lookup labels per locale
+├── var/candidates/            # unknown lookup values recorded at ingestion
 ├── packages/
 │   ├── core/    @memento/core    Zod schemas, inferred types, helpers (only dep: zod)
-│   ├── server/  @memento/server  Fastify plugin + app, Drizzle schema & migrations
+│   ├── lookups/ @memento/lookups YAML vocabulary, CSV translations, candidates, codegen
+│   ├── server/  @memento/server  Fastify plugin + app, Drizzle schema & migrations,
+│   │                             Handlebars renderer + bundled templates (templates/*.hbs)
 │   └── cli/     @memento/cli     `memento` command (Commander)
 └── apps/                      # example/demo apps (later phases)
 ```
 
-Dependency direction: `cli → server → core`. `core` has no Node-only APIs (it hashes with
+Dependency direction: `cli → server → core`, `server → lookups` (`lookups` depends only on `yaml`). `core` has no Node-only APIs (it hashes with
 Web Crypto), so the same package serves browsers, React and the future client SDK.
 
 Packages export `dist/` for consumers, plus a `@memento/source` export condition pointing
@@ -45,6 +51,8 @@ the same purpose.
 | `query.ts` | `EventQuerySchema` (GET query string), `eventQueryToFilter()`, keyset cursor encode/decode |
 | `view.ts` | `ViewConfigSchema`, `DEFAULT_EVENT_VIEW` (columns, default sort, page size) |
 | `describe.ts` | `buildDescribe()` — the `/describe` document incl. JSON Schemas generated from Zod |
+| `template.ts` | `LocaleSchema`, `TemplateSchema`, `TemplateInputSchema`, `GENERIC_TEMPLATE` (`_generic`), `FREE_TEXT_EVENT_TYPES` (`NOTE`) |
+| `lookups.generated.ts` | generated from `lookups.yaml`: `EVENT_TYPES` / `EventType` enum / `KnownEventTypeSchema` (`z.enum`), same for instance and actor types |
 
 Every type is inferred from its schema (`z.infer`), so server, CLI and clients cannot drift.
 
@@ -109,7 +117,8 @@ Key format: `mk_<8 × [a-z0-9]>_<32 × [A-Za-z0-9]>` (≈190 bits of secret).
 | instance_id | varchar(200) | |
 | actor_id | varchar(200) NULL | |
 | payload | jsonb, default `{}` | |
-| rendered | text NULL | filled by templates in Phase 2 (or sent pre-rendered) |
+| rendered | text NULL | rendered at push from the templates, or sent pre-rendered |
+| rendered_locale | varchar(35) NULL | locale of `rendered`; NULL = verbatim (pre-rendered or `NOTE`) — migration `0002` |
 | archived_at | timestamptz NULL | soft delete |
 
 Indexes (all lead with `tenant_id`): `(tenant_id, occurred_at desc, id desc)` for the feed
@@ -130,7 +139,8 @@ every `DELETE`, and every `UPDATE` except setting `archived_at` once from `NULL`
 
 ### `memento_template`
 `tenant_id, event_type, locale, body, created_at, updated_at`, unique
-`(tenant_id, event_type, locale)`. Used by Phase 2.
+`(tenant_id, event_type, locale)`. A tenant's Handlebars template for an event type (or
+`_generic`); beats the bundled template at the same locale step. See [TEMPLATES.md](TEMPLATES.md).
 
 ### `memento_chat`
 `tenant_id, instance_id, title, participants text[], created_at, archived_at`, unique
@@ -147,8 +157,11 @@ src/
 ├── errors.ts         MementoError(code, message, details) → envelope + HTTP status
 ├── publisher.ts      EventPublisher: RedisPublisher | MemoryPublisher | NoopPublisher
 ├── config.ts         loadConfig() from env (.env.example)
+├── lookups.ts        initLookups (YAML + translations + candidate recorder), strict check
+├── templates/        engine.ts (sandboxed Handlebars + helpers), renderer.ts (locale chain,
+│                     tenant overrides, bundled templates from ../templates/*.hbs)
 ├── db/               schema.ts, client.ts (connect, runMigrations), filter.ts (DSL → SQL)
-├── services/         tenants.ts, apikeys.ts, events.ts — all business logic
+├── services/         tenants.ts, apikeys.ts, events.ts, templates.ts — all business logic
 ├── routes/           health, events, entities, describe — thin HTTP adapters
 ├── main.ts           standalone entry (migrates, listens, graceful shutdown)
 └── migrate-cli.ts    `pnpm db:migrate`
@@ -181,8 +194,10 @@ tenant context throws `unauthorized`, so a new route cannot accidentally run uns
 
 ### Event push
 
-`POST /memento/events` → `EventInputSchema` → `INSERT … RETURNING` → publish to Redis
-channel `memento:events:<tenant_slug>` (JSON of the stored event) → `201`. Publishing is
+`POST /memento/events` → `EventInputSchema` → (strict lookups check) → render `rendered`
+in `?locale` unless the producer sent it → `INSERT … RETURNING` → publish to Redis
+channel `memento:events:<tenant_slug>` (JSON of the stored event) → record unknown lookup
+values as candidates → `201`. Publishing is
 best effort: the event is already durable, a Redis failure is logged as a warning and does
 not fail the request. With no `REDIS_URL` a `NoopPublisher` is used.
 
@@ -191,7 +206,9 @@ not fail the request. With no `REDIS_URL` a `NoopPublisher` is used.
 `GET /memento/events` turns the query string into a Filter (`eventQueryToFilter`), ANDs
 `tenant_id = …` and `archived_at IS NULL` (unless `include_archived`), and pages with a
 keyset cursor over `(occurred_at, id)` — stable under concurrent inserts, no `OFFSET` scans.
-`next_cursor` is `null` on the last page.
+`next_cursor` is `null` on the last page. With `?locale=` the page's events whose stored
+text is in another locale (or missing) are rendered in one batch — one query loads the
+tenant's templates for the page's event types.
 
 ### Error handling
 
@@ -201,7 +218,7 @@ keyset cursor over `(occurred_at, id)` — stable under concurrent inserts, no `
 | `unauthorized` | 401 | missing / invalid / revoked / expired key, inactive tenant |
 | `forbidden` | 403 | key lacks the route's scope |
 | `not_found` | 404 | unknown route, unknown tenant |
-| `conflict` | 409 | duplicate tenant slug |
+| `conflict` | 409 | duplicate tenant slug, duplicate template without `--replace` |
 | `validation_error` | 422 | Zod validation failed (`details` = Zod issues) |
 | `internal_error` | 500 | anything unexpected (logged with stack, message hidden) |
 
@@ -223,7 +240,11 @@ keyset cursor over `(occurred_at, id)` — stable under concurrent inserts, no `
 | `list-tenants` | list tenants |
 | `create-key --tenant <slug> --scopes read,write --name <name> [--expires-in-days N]` | create a key; prints the plaintext once |
 | `revoke-key <prefix>` | revoke a key |
-| `create-template --tenant --event-type --locale [--file]` | Phase 2 stub (validates input, then exits 1) |
+| `create-template --tenant --event-type --locale (--body \| --file) [--replace]` | write a tenant template into `memento_template` (compiled first) |
+| `list-templates --tenant` / `delete-template --tenant --event-type --locale` | manage tenant templates |
+| `lookups validate [--path] [--translations]` | check `lookups.yaml` + translations CSV (`file:line` errors/warnings) |
+| `lookups codegen [--path] [--out] [--check]` | regenerate `@memento/core`'s typed lookups; `--check` fails when stale |
+| `lookups candidates [--path] [--dir]` | list recorded unknown values |
 
 Exit codes: `0` ok, `1` domain/validation error (`error: …` on stderr), commander's code for
 usage errors.

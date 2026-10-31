@@ -1,12 +1,25 @@
-import { EventTypeSchema, LocaleSchema } from "@memento/core";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  generateLookupsModule,
+  LookupCompileError,
+  validateTranslationsCsv,
+} from "@memento/lookups";
 import {
   createApiKey,
   createTenant,
   type Database,
+  DEFAULT_LOOKUPS_PATH,
+  deleteTemplate,
+  GENERATED_LOOKUPS_PATH,
+  initLookups,
+  LOOKUPS_CODEGEN,
+  listTemplates,
   listTenants,
   MementoError,
   revokeApiKey,
   runMigrations,
+  saveTemplate,
 } from "@memento/server";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 
@@ -37,7 +50,7 @@ function positiveInt(value: string): number {
 /** Builds the `memento` command tree. Exported so tests can drive it in-process. */
 export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
   const program = new Command("memento")
-    .description("JSMemento administration: tenants, API keys, templates")
+    .description("JSMemento administration: tenants, API keys, templates, lookups")
     .option("--json", "print machine-readable JSON")
     .showHelpAfterError()
     .configureOutput({
@@ -121,18 +134,159 @@ export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
 
   program
     .command("create-template")
-    .description("create a per-tenant template override (available in Phase 2)")
+    .description("create a per-tenant Handlebars template (overrides the bundled one)")
     .requiredOption("--tenant <slug>", "tenant the template belongs to")
-    .requiredOption("--event-type <type>", "e.g. USER_LOGIN")
-    .requiredOption("--locale <locale>", "e.g. en, sr")
-    .option("--file <path>", "template body file")
-    .action((options: { eventType: string; locale: string }) => {
-      EventTypeSchema.parse(options.eventType);
-      LocaleSchema.parse(options.locale);
-      throw new MementoError(
-        "bad_request",
-        "create-template is not implemented yet: template rendering arrives in Phase 2",
+    .requiredOption("--event-type <type>", "e.g. USER_LOGIN, or _generic")
+    .requiredOption("--locale <locale>", "e.g. en, sr, sr-Latn")
+    .option("--body <template>", 'template body, e.g. "{{actor_id}} logged in"')
+    .option("--file <path>", "read the template body from a file")
+    .option("--replace", "overwrite an existing template for this event type and locale")
+    .action(
+      async (options: {
+        tenant: string;
+        eventType: string;
+        locale: string;
+        body?: string;
+        file?: string;
+        replace?: boolean;
+      }) => {
+        if ((options.body === undefined) === (options.file === undefined)) {
+          throw new MementoError("bad_request", "pass exactly one of --body or --file");
+        }
+        const body =
+          options.body ?? (await readFile(options.file as string, "utf8")).replace(/\s+$/, "");
+        const { template, created } = await saveTemplate(
+          db(),
+          options.tenant,
+          { event_type: options.eventType, locale: options.locale, body },
+          { replace: Boolean(options.replace) },
+        );
+        print(
+          { ...template, created },
+          `${created ? "created" : "replaced"} template ${template.event_type}/${template.locale} for ${options.tenant}`,
+        );
+      },
+    );
+
+  program
+    .command("list-templates")
+    .description("list a tenant's templates")
+    .requiredOption("--tenant <slug>")
+    .action(async (options: { tenant: string }) => {
+      const templates = await listTemplates(db(), options.tenant);
+      print(
+        templates,
+        templates.length === 0
+          ? "no templates (the bundled ones are used)"
+          : templates
+              .map((t) => `${t.event_type}\t${t.locale}\t${t.body.replaceAll("\n", "\\n")}`)
+              .join("\n"),
       );
+    });
+
+  program
+    .command("delete-template")
+    .description("delete a tenant's template; rendering falls back to the bundled one")
+    .requiredOption("--tenant <slug>")
+    .requiredOption("--event-type <type>")
+    .requiredOption("--locale <locale>")
+    .action(async (options: { tenant: string; eventType: string; locale: string }) => {
+      const template = await deleteTemplate(
+        db(),
+        options.tenant,
+        options.eventType,
+        options.locale,
+      );
+      print(
+        template,
+        `deleted template ${template.event_type}/${template.locale} for ${options.tenant}`,
+      );
+    });
+
+  const lookups = program
+    .command("lookups")
+    .description("controlled vocabulary: lookups.yaml + i18n/translations.csv");
+  const pathOption = ["--path <file>", "lookups.yaml", DEFAULT_LOOKUPS_PATH] as const;
+
+  lookups
+    .command("validate")
+    .description("check lookups.yaml and a translations CSV (exit 1 on errors)")
+    .option(...pathOption)
+    .option("--translations <file>", "default: i18n/translations.csv next to lookups.yaml")
+    .action(async (options: { path: string; translations?: string }) => {
+      const loaded = await initLookups({ path: options.path, candidatesDir: null });
+      const csvPath = options.translations ?? join(options.path, "..", "i18n", "translations.csv");
+      const result = validateTranslationsCsv(await readFile(csvPath, "utf8"), loaded.registry);
+      const where = (issue: { line: number; column?: string }) =>
+        issue.line > 0
+          ? `${csvPath}:${issue.line}${issue.column ? ` [${issue.column}]` : ""}`
+          : csvPath;
+      const sections = loaded.registry.sectionNames();
+      print(
+        {
+          ok: result.ok,
+          sections,
+          locales: result.locales,
+          errors: result.errors,
+          warnings: result.warnings,
+        },
+        [
+          `${options.path}: ${sections.map((s) => `${s} (${loaded.registry.terms(s).length})`).join(", ")}`,
+          ...result.errors.map((issue) => `error   ${where(issue)}: ${issue.message}`),
+          ...result.warnings.map((issue) => `warning ${where(issue)}: ${issue.message}`),
+          result.ok
+            ? `ok: ${result.locales.join(", ")} — ${result.warnings.length} warning(s)`
+            : `${result.errors.length} error(s)`,
+        ].join("\n"),
+      );
+      if (!result.ok) throw new MementoError("validation_error", "translations are invalid");
+    });
+
+  lookups
+    .command("codegen")
+    .description("generate TypeScript enums + Zod schemas from lookups.yaml into @memento/core")
+    .option(...pathOption)
+    .option("--out <file>", "output module", GENERATED_LOOKUPS_PATH)
+    .option("--check", "exit 1 if the output is out of date instead of writing it")
+    .action(async (options: { path: string; out: string; check?: boolean }) => {
+      const { registry } = await initLookups({ path: options.path, candidatesDir: null });
+      const code = generateLookupsModule(registry, LOOKUPS_CODEGEN);
+      if (options.check) {
+        const current = await readFile(options.out, "utf8").catch(() => "");
+        if (current !== code) {
+          throw new MementoError(
+            "conflict",
+            `${options.out} is out of date: run memento lookups codegen`,
+          );
+        }
+        print({ ok: true, out: options.out }, `${options.out} is up to date`);
+        return;
+      }
+      await writeFile(options.out, code);
+      print({ ok: true, out: options.out }, `wrote ${options.out}`);
+    });
+
+  lookups
+    .command("candidates")
+    .description("list unknown values recorded at ingestion, waiting to be promoted")
+    .option(...pathOption)
+    .option("--dir <dir>", "default: var/candidates next to lookups.yaml")
+    .action(async (options: { path: string; dir?: string }) => {
+      const loaded = await initLookups({
+        path: options.path,
+        candidatesDir: options.dir ?? join(options.path, "..", "var", "candidates"),
+      });
+      const recorder = loaded.recorder as NonNullable<typeof loaded.recorder>;
+      const all: Record<string, unknown[]> = {};
+      const lines: string[] = [];
+      for (const section of loaded.registry.sectionNames()) {
+        const candidates = await recorder.list(section);
+        all[section] = candidates;
+        for (const c of candidates) {
+          lines.push(`${section}.${c.value}\t${c.count}\t${c.first_seen}\t${c.last_seen}`);
+        }
+      }
+      print(all, lines.length === 0 ? "no candidates" : lines.join("\n"));
     });
 
   return program;
@@ -145,15 +299,22 @@ export function buildProgram({ db, io = defaultIO }: CliOptions): Command {
 export async function runCli(argv: string[], options: CliOptions): Promise<number> {
   const io = options.io ?? defaultIO;
   const program = buildProgram({ ...options, io });
-  program.exitOverride();
-  for (const command of program.commands) command.exitOverride();
+  const override = (command: Command): void => {
+    command.exitOverride();
+    for (const child of command.commands) override(child);
+  };
+  override(program);
   try {
     await program.parseAsync(argv, { from: "user" });
     return 0;
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode;
-    if (error instanceof MementoError) {
+    if (error instanceof MementoError || error instanceof LookupCompileError) {
       io.err(`error: ${error.message}`);
+      return 1;
+    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      io.err(`error: ${(error as Error).message}`);
       return 1;
     }
     if (error instanceof Error && error.name === "ZodError") {

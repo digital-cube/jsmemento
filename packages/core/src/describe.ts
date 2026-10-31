@@ -46,7 +46,7 @@ export function buildDescribe(
       query: true,
       entity_history: true,
       realtime: false,
-      templates: false,
+      templates: true,
       seen: false,
       star: false,
       ...capabilities,

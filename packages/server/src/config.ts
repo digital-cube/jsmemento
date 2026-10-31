@@ -1,4 +1,10 @@
+import { LocaleSchema } from "@memento/core";
 import { z } from "zod";
+import { DEFAULT_LOOKUPS_PATH } from "./lookups.js";
+
+const booleanish = z
+  .enum(["true", "false", "1", "0", "yes", "no"])
+  .transform((value) => value === "true" || value === "1" || value === "yes");
 
 const ConfigSchema = z.object({
   DATABASE_URL: z
@@ -18,6 +24,12 @@ const ConfigSchema = z.object({
     .string()
     .regex(/^\/[\w/-]*$/)
     .default("/memento"),
+  MEMENTO_DEFAULT_LOCALE: LocaleSchema.default("en"),
+  MEMENTO_LOOKUPS_PATH: z.string().optional(),
+  MEMENTO_TRANSLATIONS_PATH: z.string().optional(),
+  MEMENTO_CANDIDATES_DIR: z.string().optional(),
+  MEMENTO_RECORD_CANDIDATES: booleanish.default(true),
+  MEMENTO_LOOKUPS_STRICT: booleanish.default(false),
 });
 
 export interface Config {
@@ -29,6 +41,16 @@ export interface Config {
   port: number;
   logLevel: z.infer<typeof ConfigSchema>["LOG_LEVEL"];
   apiPrefix: string;
+  /** Locale events are rendered in when the request names none. */
+  defaultLocale: string;
+  lookups: {
+    path: string;
+    /** `undefined` → `<dir of path>/i18n/translations.csv`. */
+    translationsPath: string | undefined;
+    /** `undefined` → `<dir of path>/var/candidates`; `null` → recording off. */
+    candidatesDir: string | null | undefined;
+    strict: boolean;
+  };
 }
 
 /** Reads the configuration from the environment (see `.env.example`). */
@@ -45,5 +67,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port: parsed.PORT,
     logLevel: parsed.LOG_LEVEL,
     apiPrefix: parsed.MEMENTO_API_PREFIX.replace(/\/+$/, ""),
+    defaultLocale: parsed.MEMENTO_DEFAULT_LOCALE,
+    lookups: {
+      path: parsed.MEMENTO_LOOKUPS_PATH ?? DEFAULT_LOOKUPS_PATH,
+      translationsPath: parsed.MEMENTO_TRANSLATIONS_PATH,
+      candidatesDir: parsed.MEMENTO_RECORD_CANDIDATES ? parsed.MEMENTO_CANDIDATES_DIR : null,
+      strict: parsed.MEMENTO_LOOKUPS_STRICT,
+    },
   };
 }

@@ -70,9 +70,15 @@ Scope: `write`.
 | `actor_id` | string \| integer \| null | no | stored as string |
 | `payload` | object | no | any JSON object, default `{}` |
 | `occurred_at` | ISO-8601 with offset | no | default: time of receipt |
-| `rendered` | string \| null | no | pre-rendered text (templates render it from Phase 2) |
+| `rendered` | string \| null | no | pre-rendered text, stored verbatim and never translated; when absent memento renders it from the templates |
 
 Unknown fields are rejected (`422`) — in particular you cannot pass a `tenant_id`.
+
+Query string: `?locale=sr` renders `rendered` in that locale (default `MEMENTO_DEFAULT_LOCALE`,
+`en`; chain `sr-Latn → sr → en`). `NOTE` events need `payload.text`, which becomes `rendered`
+verbatim. With `MEMENTO_LOOKUPS_STRICT=true`, event/instance/actor types outside
+`lookups.yaml` are rejected (`422`, `details: [{ section, value, message }]`); otherwise they
+are recorded as candidates. See [TEMPLATES.md](TEMPLATES.md).
 
 ```bash
 curl -X POST http://localhost:8000/memento/events \
@@ -94,7 +100,8 @@ curl -X POST http://localhost:8000/memento/events \
     "instance_id": "42",
     "actor_id": "igor",
     "payload": { "ip": "10.0.0.1" },
-    "rendered": null,
+    "rendered": "User igor logged in from 10.0.0.1.",
+    "rendered_locale": "en",
     "archived_at": null
   }
 }
@@ -134,6 +141,7 @@ Scope: `read`. Newest first by default; archived events are hidden.
 | `cursor` | `meta.next_cursor` of the previous page |
 | `order` | `desc` (default) or `asc` |
 | `include_archived` | `true`/`1` to include soft-deleted events |
+| `locale` | render `rendered` in this locale (`sr`, `sr-Latn`, …); stored text in another locale is re-rendered in the response, verbatim text (`rendered_locale: null`) is returned as is |
 
 ```bash
 curl "http://localhost:8000/memento/events?instance_type=user&instance_id=42&event_type=USER_LOGIN&limit=100" \
@@ -195,7 +203,7 @@ Scope: `read`. What this server can do for the key's tenant.
     "collection": "events",
     "tenant": { "slug": "acme", "name": "Acme Inc" },
     "capabilities": { "push": true, "query": true, "entity_history": true,
-                      "realtime": false, "templates": false, "seen": false, "star": false },
+                      "realtime": false, "templates": true, "seen": false, "star": false },
     "scopes": ["read", "write", "admin"],
     "schema": { "event_input": { "type": "object", … JSON Schema … }, "event": { … } },
     "filter": { "fields": ["event_type", "instance_type", "instance_id", "actor_id", "occurred_at", "received_at"],

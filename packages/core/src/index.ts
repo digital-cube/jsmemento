@@ -6,6 +6,7 @@ export * from "./envelope.js";
 export * from "./event.js";
 export * from "./filter.js";
 export * from "./interactions.js";
+export * from "./lookups.generated.js";
 export * from "./query.js";
 export * from "./scopes.js";
 export * from "./template.js";

@@ -64,6 +64,8 @@ export const events = pgTable(
     actorId: varchar("actor_id", { length: 200 }),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
     rendered: text("rendered"),
+    /** Locale of `rendered`; NULL when it is verbatim text (pre-rendered by the producer, NOTE). */
+    renderedLocale: varchar("rendered_locale", { length: 35 }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [
@@ -120,7 +122,7 @@ export const stars = pgTable(
   ],
 );
 
-/** Per-tenant override of how an event type renders in a locale (used from Phase 2). */
+/** Per-tenant Handlebars template of an event type (or `_generic`) in a locale. */
 export const templates = pgTable(
   "memento_template",
   {
