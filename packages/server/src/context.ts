@@ -9,6 +9,11 @@ export interface TenantContext {
   tenantName: string;
   apiKeyId: string;
   scopes: readonly Scope[];
+  /**
+   * The locale the request asked its events to be rendered in, when it named one
+   * (`X-Memento-Locale` on `/udc/*`); `undefined`: the server's default locale.
+   */
+  locale?: string;
 }
 
 const storage = new AsyncLocalStorage<TenantContext>();

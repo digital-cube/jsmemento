@@ -15,7 +15,8 @@
 #   children         a list of nodes, or "udc:collections": every collection memento
 #                    serves, resolved on every read (those rows are `is_dynamic`)
 #
-# A new example: one entry under EXAMPLES, one page in apps/examples.
+# A new example: one entry under EXAMPLES, one page in apps/examples. An entry whose page is
+# not built yet opens the site's "planned" page (apps/examples/src/examples/planned/).
 
 - code: HOME
   translation_key: MENU_HOME
@@ -30,6 +31,34 @@
       translation_key: MENU_CPU_MONITOR
       icon: lucide:activity
       url: /examples/cpu-monitor
+    - code: ACTIVITY
+      translation_key: MENU_ACTIVITY
+      icon: lucide:file-text
+      url: /examples/activity
+    - code: ENTITY
+      translation_key: MENU_ENTITY
+      icon: lucide:folder-open
+      url: /examples/entity
+    - code: CHAT
+      translation_key: MENU_CHAT
+      icon: lucide:messages-square
+      url: /examples/chat
+    - code: TAIL
+      translation_key: MENU_TAIL
+      icon: lucide:network
+      url: /examples/tail
+    - code: SEARCH
+      translation_key: MENU_SEARCH
+      icon: lucide:database
+      url: /examples/search
+    - code: RENDERING
+      translation_key: MENU_RENDERING
+      icon: lucide:globe
+      url: /examples/rendering
+    - code: CHART
+      translation_key: MENU_CHART
+      icon: lucide:chart-line
+      url: /examples/chart
 
 - code: COLLECTIONS
   translation_key: MENU_COLLECTIONS

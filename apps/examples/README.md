@@ -11,6 +11,8 @@ each example is a route, and every list on every page comes from UDC.
 |---|---|
 | `/` | redirect to the first example, `/examples/cpu-monitor` |
 | `/examples/cpu-monitor` | [CPU monitor](#cpu-monitor) |
+| `/examples/activity` | [Activity feed](#activity-feed) |
+| `/examples/entity`, `chat`, `tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -35,8 +37,9 @@ pnpm memento create-key --tenant demo --scopes read --name examples-demo      # 
 # terminal 1: memento on http://localhost:8000/memento, handing the page its demo key
 MEMENTO_DEMO_API_KEY=mk_…read… pnpm dev
 
-# terminal 2: one CPU_LOAD event a second
+# terminal 2: one CPU_LOAD event a second, and a ticket desk story for the Activity feed
 pnpm memento cpu-monitor --interval 1 --tenant demo --key mk_…write…
+pnpm memento simulate --interval 1 --tenant demo --key mk_…write…
 
 # terminal 3: the site
 cd apps/examples && pnpm dev                # http://localhost:5173
@@ -71,10 +74,55 @@ at `http://localhost:3000/` (`MEMENTO_UI_DIR=/app/ui`), same origin as the API. 
 
 ## Adding an example
 
-1. A page under `src/examples/<name>/`, routed in `src/App.tsx` (`/examples/<name>`).
-2. An entry under `EXAMPLES` in [`menu.yaml`](../../menu.yaml) (`url: /examples/<name>`) and its
-   `MENU.<TERM>` label in `src/i18n/messages.ts`. Add the same entry to `BUILTIN_MENU_ROWS`
-   only if the site must show it without the server's menu.
+1. A page under `src/examples/<name>/`, routed in `src/App.tsx` (`/examples/<name>`, above the
+   `/examples/:slug` route of the planned pages).
+2. An entry under `EXAMPLES` in [`menu.yaml`](../../menu.yaml) (`url: /examples/<name>`), its
+   `MENU.<TERM>` label (en + sr) in `src/i18n/messages.ts`, and the same entry in
+   `BUILTIN_MENU_ROWS` (`src/shell/menu.ts`), which a test keeps equal to menu.yaml.
+3. Replacing a planned example: drop its row from `PLANNED_EXAMPLES`
+   (`src/examples/planned/planned.ts`) and add its url to `BUILT` in `test/planned.test.tsx`.
+
+## Planned examples
+
+Every example of the series is in `menu.yaml` already. The ones not built yet route to
+`PlannedExamplePage` (`/examples/:slug`): a "Planned" badge, one paragraph on what the example
+will show (`PLANNED_EXAMPLES`, slug → title and summary in EN and SR) and a link back to the
+Activity feed. An unknown slug leads to `/`.
+
+| slug | will show |
+|---|---|
+| `entity` | the history of one instance (`ticket/T-17`, `user/ana`) from `GET /entities/:type/:id/events` |
+| `chat` | a simulated room shown with `MementoChat`, seen markers |
+| `tail` | the WebSocket stream raw, with filters, like `memento tail` in the browser |
+| `search` | `MementoSearch` with the Filter DSL JSON it sends to `POST /events/query` |
+| `rendering` | one event, its EN and SR Handlebars templates and the result |
+| `chart` | events per minute by type as a UDC chart |
+
+## Activity feed
+
+The tenant's events as people read them: `memento simulate` plays a small team working a ticket
+desk, memento renders every event with its Handlebars template, and the page lists the
+sentences, newest first, live.
+
+```
+memento simulate ──POST /events──▶ memento ──POST /udc/list {collection: events}──▶ feed
+  (a ticket desk, 1 event/3 s)      renders  ◀── X-Memento-Locale: en | sr ────────  (EN / SR)
+                                             ──ws /memento/ws─────────────────────▶ refetch
+```
+
+- **Rows from UDC.** `useUdcCollection` (`@jsudc/react`) over `events`, filter
+  `event_type neq CPU_LOAD`, sorted `occurred_at desc`, infinite paging by offset (30 a page; the
+  next page loads when the end of the list scrolls into view, or on **Older events**). Each line:
+  time, the actor's initials avatar (`initials` / `hue` of `@memento/react`) and id, the
+  **rendered** text, the instance as a chip (`ticket/T-17`), the event type as a muted tag.
+- **The language is the header's.** The app's `UdcClient` sends `X-Memento-Locale: <en|sr>` with
+  every request; memento renders `rendered` in it (docs/TEMPLATES.md, "When it happens"). Switching
+  EN / SR invalidates every UDC list, so the feed comes back in the other language without a
+  reload. The choice is kept in `localStorage` (`udc-locale`).
+- **Live.** `useLive` (`src/live.ts`) follows the whole stream; every event that is not a
+  `CPU_LOAD` refetches the feed (at most once per 250 ms, `src/refresh.ts`). New lines fade in.
+- **Empty** (no simulator running): one sentence on what pushes these events and the compose
+  command, `docker compose -f docker-compose.yaml --profile demo up -d simulator`.
 
 ## CPU monitor
 
@@ -103,7 +151,7 @@ How it is wired:
   `httpUrl: "/memento"` and `Authorization: Bearer <key>`, so `UdcDataView` calls
   `POST /memento/udc/describe` and `POST /memento/udc/list`. Filtering, sorting and paging are
   the jsudc filter DSL; there is no hand-written fetch of list data.
-- **The stream only says "refetch".** `useLive` (`src/examples/cpu-monitor/live.ts`) subscribes
+- **The stream only says "refetch".** `useLive` (`src/live.ts`) subscribes
   to `/memento/ws?event_type=CPU_LOAD&instance_type=server` with `MementoStream` from
   `@memento/core`, and every event invalidates the collection's list queries (at most one
   refetch per 250 ms).
@@ -113,7 +161,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

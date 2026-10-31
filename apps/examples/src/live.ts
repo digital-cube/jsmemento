@@ -1,4 +1,4 @@
-import { MementoStream, type StreamStatus } from "@memento/core";
+import { type MementoEvent, MementoStream, type StreamStatus } from "@memento/core";
 import { useEffect, useRef, useState } from "react";
 
 /** The dot in the header: green while both the stream and the server are up. */
@@ -21,7 +21,7 @@ export interface LiveOptions {
   apiKey: string;
   filter: { event_type?: string; instance_type?: string };
   /** Called for every event the stream delivers (throttle what it triggers yourself). */
-  onEvent: () => void;
+  onEvent: (event: MementoEvent) => void;
   /** How often `/api/health` is polled. Default 5000. */
   healthIntervalMs?: number;
   fetch?: typeof fetch;
@@ -63,10 +63,10 @@ export function useLive(options: LiveOptions): LiveState {
       apiKey,
       filter: JSON.parse(filterKey),
       onStatus: setStream,
-      onEvent: () => {
+      onEvent: (event) => {
         const at = Date.now();
         setStamps((prev) => [...prev.filter((t) => at - t <= 10_000), at]);
-        onEvent.current();
+        onEvent.current(event);
       },
     });
     return () => live.close();

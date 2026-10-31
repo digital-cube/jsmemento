@@ -57,6 +57,13 @@ describe("the menu collection", () => {
       "HOME",
       "EXAMPLES",
       "CPU_MONITOR",
+      "ACTIVITY",
+      "ENTITY",
+      "CHAT",
+      "TAIL",
+      "SEARCH",
+      "RENDERING",
+      "CHART",
       "COLLECTIONS",
       "COLLECTION_EVENTS",
       "COLLECTION_CPU_LOAD",
@@ -67,6 +74,11 @@ describe("the menu collection", () => {
       translation_key: "MENU_CPU_MONITOR",
       parent_id: byCode.EXAMPLES.__meta.id,
       is_dynamic: false,
+    });
+    expect(byCode.CHART).toMatchObject({
+      url: "/examples/chart",
+      translation_key: "MENU_CHART",
+      parent_id: byCode.EXAMPLES.__meta.id,
     });
     expect(byCode.COLLECTION_CPU_LOAD).toMatchObject({
       url: "/udc/cpu_load",

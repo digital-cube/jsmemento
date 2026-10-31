@@ -50,7 +50,8 @@ export class FakeSocket implements WebSocketLike {
     });
   }
 
-  push(id: string): void {
+  /** A `memento.event.new` (a CPU sample unless `event` says otherwise). */
+  push(id: string, event: Record<string, unknown> = {}): void {
     this.onmessage?.({
       data: JSON.stringify({
         kind: "memento.event.new",
@@ -67,6 +68,7 @@ export class FakeSocket implements WebSocketLike {
           rendered: "x",
           rendered_locale: "en",
           archived_at: null,
+          ...event,
         },
       }),
     });

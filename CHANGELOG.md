@@ -21,6 +21,22 @@ share one version.
   `restart: unless-stopped`, so the CPU monitor demo stays live across server and host
   restarts. Configured by `CPU_MONITOR_API_KEY` (write scope), `CPU_MONITOR_TENANT`,
   `CPU_MONITOR_INTERVAL` and `CPU_MONITOR_INSTANCE_ID`; see docs/DEPLOYMENT.md "Demo pusher".
+- **`memento simulate`** (`@memento/cli`): plays a ticket desk — a cast of six users and a
+  `desk-bot` logging in and out, creating, modifying, noting and closing tickets
+  (`ticket/T-<n>`), newcomers (`USER_CREATED`) now and then — one event every `--interval`
+  seconds (default 3), deterministic from `--seed`, `--once` for one scene. Payloads carry the
+  fields the bundled templates read, so every event renders as a sentence. Flags and env like
+  `cpu-monitor`.
+- **`simulator` service** in `docker-compose.yaml` (profile `demo`): `memento simulate` from the
+  same image, key `SIMULATOR_API_KEY` (write; may be the CPU monitor's), `SIMULATOR_TENANT`,
+  `SIMULATOR_INTERVAL`; see docs/DEPLOYMENT.md "Demo pusher".
+- **`X-Memento-Locale`** on `POST /udc/*` (`@memento/server`): the `events` and `cpu_load`
+  rows' `rendered` text in that locale, like `?locale=` of `GET /events`; a malformed value is
+  refused in-protocol with `validation_error`.
+- **Examples site: the Activity feed** (`/examples/activity`): the tenant's events except
+  `CPU_LOAD` as rendered sentences, newest first, infinite paging over the `events` UDC
+  collection, refreshed by the stream, in the header's language (EN / SR). **Every example of the
+  series** is in `menu.yaml`; the ones not built yet open a "planned" page.
 - **`MementoClient.pushEvent()` and `.describe()`** (`@memento/core`).
 - **`apps/examples`** (`@memento/examples`, replaces `apps/cpu-monitor`): the examples site,
   served by the server at `/` and `/en/`. A sidebar drawn from the `menu` UDC collection

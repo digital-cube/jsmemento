@@ -137,11 +137,18 @@ describe("the menu tree from flat rows", () => {
     expect(codes(["COLLECTIONS/DATABASE"])).toEqual(["HOME", "COLLECTIONS", "VIEWS"]);
   });
 
-  it("builds the built-in HOME and EXAMPLES › CPU monitor entries", () => {
+  it("builds the built-in HOME and EXAMPLES › every example of menu.yaml", () => {
     const items = buildMenu(BUILTIN_MENU_ROWS, (key, code) => key ?? code);
     expect(items.map((i) => i.code)).toEqual(["HOME", "EXAMPLES"]);
     expect(items[1]?.children.map((c) => [c.code, c.url])).toEqual([
       ["CPU_MONITOR", "/examples/cpu-monitor"],
+      ["ACTIVITY", "/examples/activity"],
+      ["ENTITY", "/examples/entity"],
+      ["CHAT", "/examples/chat"],
+      ["TAIL", "/examples/tail"],
+      ["SEARCH", "/examples/search"],
+      ["RENDERING", "/examples/rendering"],
+      ["CHART", "/examples/chart"],
     ]);
     expect(items[1]?.children[0]?.ancestors).toEqual([items[1]?.id]);
   });

@@ -1,14 +1,11 @@
-import { UdcDataView, udcKeys } from "@jsudc/react";
-import { useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { UdcDataView } from "@jsudc/react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useSettings } from "../../connection.js";
+import { type Health, type LiveState, useLive } from "../../live.js";
+import { useThrottledRefresh } from "../../refresh.js";
 import { COLLECTIONS, type Settings, streamFilter, withSettingsFilter } from "../../settings.js";
 import { Connected } from "../../shell/AppShell.js";
-import { type Health, type LiveState, useLive } from "./live.js";
-
-/** At most one refetch per this many ms, however fast events arrive. */
-const REFRESH_THROTTLE_MS = 250;
 
 /**
  * The CPU monitor example (`/examples/cpu-monitor`): `memento cpu-monitor` pushes, the
@@ -60,24 +57,9 @@ export function CpuMonitorPage() {
 }
 
 function Monitor({ settings }: { settings: Settings }) {
-  const queryClient = useQueryClient();
-
   // Every stream event refetches the collection's lists (throttled): the rows always come
   // from UDC, the WebSocket only says that there is something new.
-  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refresh = useCallback(() => {
-    if (pending.current) return;
-    pending.current = setTimeout(() => {
-      pending.current = null;
-      void queryClient.invalidateQueries({ queryKey: udcKeys.lists(settings.collection) });
-    }, REFRESH_THROTTLE_MS);
-  }, [queryClient, settings.collection]);
-  useEffect(
-    () => () => {
-      if (pending.current) clearTimeout(pending.current);
-    },
-    [],
-  );
+  const refresh = useThrottledRefresh(settings.collection);
 
   const live = useLive({
     baseUrl: settings.baseUrl,

@@ -83,11 +83,22 @@ export function node(path: string, order: number, fields: Record<string, unknown
 export const SERVED_MENU: Row[] = [
   node("HOME", 0, { translation_key: "MENU_HOME", icon: "lucide:house", url: "/" }),
   node("EXAMPLES", 1, { translation_key: "MENU_EXAMPLES", icon: "lucide:layout-dashboard" }),
-  node("EXAMPLES/CPU_MONITOR", 0, {
-    translation_key: "MENU_CPU_MONITOR",
-    icon: "lucide:activity",
-    url: "/examples/cpu-monitor",
-  }),
+  ...[
+    ["CPU_MONITOR", "activity", "cpu-monitor"],
+    ["ACTIVITY", "file-text", "activity"],
+    ["ENTITY", "folder-open", "entity"],
+    ["CHAT", "messages-square", "chat"],
+    ["TAIL", "network", "tail"],
+    ["SEARCH", "database", "search"],
+    ["RENDERING", "globe", "rendering"],
+    ["CHART", "chart-line", "chart"],
+  ].map(([code, icon, slug], i) =>
+    node(`EXAMPLES/${code}`, i, {
+      translation_key: `MENU_${code}`,
+      icon: `lucide:${icon}`,
+      url: `/examples/${slug}`,
+    }),
+  ),
   node("COLLECTIONS", 2, { translation_key: "MENU_COLLECTIONS", icon: "lucide:layers" }),
   ...["events", "cpu_load", "menu"].map((name, i) =>
     node(`COLLECTIONS/COLLECTION_${name.toUpperCase()}`, i, {
@@ -99,6 +110,17 @@ export const SERVED_MENU: Row[] = [
   ),
 ];
 
+/** An event of the feed stub: its `rendered` text per locale, as memento would render it. */
+export interface FeedEvent {
+  id: string;
+  event_type: string;
+  instance_type: string;
+  instance_id: string;
+  actor_id: string | null;
+  occurred_at: string;
+  rendered: { en: string; sr: string };
+}
+
 export interface ServerOptions {
   /** The key every UDC request must carry. */
   key?: string;
@@ -106,14 +128,22 @@ export interface ServerOptions {
   demo?: { api_key: string; tenant: string } | null;
   /** Serve the `menu` collection. Default true. */
   menu?: boolean;
+  /**
+   * Serve these as the `events` collection (newest last; the stub sorts by `occurred_at` desc,
+   * applies `event_type neq`, pages by offset and renders in `X-Memento-Locale`). Tests may
+   * push to the array while the app runs. Default: one new CPU row per list, like `cpu_load`.
+   */
+  feed?: FeedEvent[];
 }
 
 /**
  * A `fetch` that plays memento: `/api/health`, `/api/demo`, and the UDC actions
  * (`collections`, `describe`, `list` — the menu rows, or one new CPU row per list).
  */
-export function udcServer({ key = "mk_k", demo = null, menu = true }: ServerOptions = {}) {
+export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: ServerOptions = {}) {
   const lists: Record<string, unknown>[] = [];
+  /** The `X-Memento-Locale` of every list, in order. */
+  const locales: (string | null)[] = [];
   const calls: string[] = [];
   let n = 0;
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -150,6 +180,25 @@ export function udcServer({ key = "mk_k", demo = null, menu = true }: ServerOpti
         return ok({ rows: SERVED_MENU, next_cursor: null, total: SERVED_MENU.length });
       }
       lists.push(body);
+      locales.push(new Headers(init?.headers).get("x-memento-locale"));
+      if (feed && body.collection === "events") {
+        const sr = new Headers(init?.headers).get("x-memento-locale") === "sr";
+        const excluded = body.filter?.op === "neq" ? body.filter.value : null;
+        const all = feed
+          .filter((e) => e.event_type !== excluded)
+          .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+        const offset = body.page?.offset ?? 0;
+        const limit = body.page?.limit ?? 50;
+        return ok({
+          rows: all.slice(offset, offset + limit).map(({ id, rendered, ...e }) => ({
+            __meta: { id, version: 1 },
+            ...e,
+            rendered: sr ? rendered.sr : rendered.en,
+          })),
+          next_cursor: null,
+          total: all.length,
+        });
+      }
       n += 1;
       return ok({
         rows: [
@@ -166,5 +215,5 @@ export function udcServer({ key = "mk_k", demo = null, menu = true }: ServerOpti
     }
     return ok({});
   });
-  return { fetch, lists, calls };
+  return { fetch, lists, locales, calls };
 }

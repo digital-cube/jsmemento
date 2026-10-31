@@ -66,6 +66,27 @@ services:
       # exits with "no API key" and `docker compose logs cpu-monitor` says so.
       MEMENTO_API_KEY: ${CPU_MONITOR_API_KEY:-}
 
+  simulator:
+    image: ${MEMENTO_IMAGE:-ghcr.io/digital-cube/jsmemento:latest}
+    profiles: ["demo"]
+    restart: unless-stopped
+    depends_on:
+      memento:
+        condition: service_healthy
+    # A ticket desk (logins, tickets, notes) for the examples site's Activity feed.
+    command:
+      - memento
+      - simulate
+      - --interval
+      - "${SIMULATOR_INTERVAL:-3}"
+      - --tenant
+      - "${SIMULATOR_TENANT:-demo}"
+    environment:
+      MEMENTO_URL: http://memento:3000/memento
+      # A write key of the same tenant (may be CPU_MONITOR_API_KEY's), from .env; empty: the
+      # CLI exits with "no API key" (see cpu-monitor above for why this is not `:?`).
+      MEMENTO_API_KEY: ${SIMULATOR_API_KEY:-}
+
   postgres:
     image: docker.io/library/postgres:18
     restart: unless-stopped

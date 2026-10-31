@@ -123,7 +123,13 @@ export {
   type MenuCollectionOptions,
   menuCollection,
 } from "./udc/menu.js";
-export { actionOf, scopeForAction, type UdcRoutesOptions, udcRoutes } from "./udc/plugin.js";
+export {
+  actionOf,
+  LOCALE_HEADER,
+  scopeForAction,
+  type UdcRoutesOptions,
+  udcRoutes,
+} from "./udc/plugin.js";
 export {
   EVENT_SOURCE_CAPABILITIES,
   EventCollectionSource,

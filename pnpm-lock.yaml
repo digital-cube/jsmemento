@@ -66,6 +66,9 @@ importers:
       '@memento/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@memento/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)

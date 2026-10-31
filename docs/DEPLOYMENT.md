@@ -42,6 +42,7 @@ full stack.
 | `postgres` | `127.0.0.1:${POSTGRES_PORT:-5432}` | `postgres-data:/var/lib/postgresql` | `pg_isready` |
 | `redis` | `127.0.0.1:${REDIS_PORT:-6379}` | `redis-data:/data` (AOF on) | `redis-cli ping` |
 | `cpu-monitor` | — (profile `demo`, off by default) | — | — (pushes `CPU_LOAD` every second; see [Demo pusher](#demo-pusher-profile-demo)) |
+| `simulator` | — (profile `demo`, off by default) | — | — (plays a ticket desk, one event every 3 s; see [Demo pusher](#demo-pusher-profile-demo)) |
 
 PostgreSQL and Redis are published on `127.0.0.1` only; set `POSTGRES_BIND` / `REDIS_BIND`
 to change that, or remove their `ports:` when nothing outside the stack needs them.
@@ -83,11 +84,31 @@ docker compose -f docker-compose.yaml --profile demo logs -f cpu-monitor
 | `CPU_MONITOR_INTERVAL` | `1` | Seconds between samples. |
 | `CPU_MONITOR_INSTANCE_ID` | `stage` | `instance_id` of the events (the UI shows `server/<id>`). |
 
+**The simulator.** The examples site's Activity feed (`/examples/activity`) shows the tenant's
+events as sentences; the `simulator` service (same profile, same image, `memento simulate`)
+gives it a story to show: a small team logging in, creating, modifying, noting and closing
+tickets, and a bot closing stale ones — one event every `SIMULATOR_INTERVAL` seconds. It needs a
+**write** key of the same tenant, which may be the same key as `CPU_MONITOR_API_KEY`:
+
+```bash
+# in .env (never in the repository)
+SIMULATOR_API_KEY=mk_…        # write scope; e.g. the CPU_MONITOR_API_KEY value
+docker compose -f docker-compose.yaml --profile demo up -d
+docker compose -f docker-compose.yaml --profile demo logs -f simulator
+#   [10:00:03]  TICKET_CREATED   ticket/T-4  ana created ticket T-4: "CSV export drops the last row".  → 0193…
+```
+
+| variable | default | |
+|---|---|---|
+| `SIMULATOR_API_KEY` | *(empty)* | Key with the `write` scope of the tenant the site shows. Empty: the service exits with `no API key` and keeps being restarted. |
+| `SIMULATOR_TENANT` | `demo` | Checked once at start, like `CPU_MONITOR_TENANT`. |
+| `SIMULATOR_INTERVAL` | `3` | Seconds between events. |
+
 While the server restarts the log shows `✗ push failed … — retrying` once per sample and
 `● reconnected after N failed push(es)` when it is back; the container itself keeps running. A
 refused key (revoked, wrong scope) stops the process, and `restart: unless-stopped` starts it
 again. To see the data without typing a key, give the site a [demo key](#demo-key-examples-site)
-of the same tenant. Stop it with `docker compose -f docker-compose.yaml --profile demo stop cpu-monitor`.
+of the same tenant. Stop them with `docker compose -f docker-compose.yaml --profile demo stop cpu-monitor simulator`.
 
 ## Demo key (examples site)
 

@@ -12,7 +12,7 @@ tenant and per locale, and keeps the vocabulary of event / instance / actor type
 | moment | what is rendered | where it goes |
 |---|---|---|
 | `POST /memento/events[?locale=sr]` | the new event, in `?locale` or `MEMENTO_DEFAULT_LOCALE` (`en`) | stored in `memento_event.rendered`, its locale in `rendered_locale`; published to Redis with it |
-| `GET /memento/events?locale=sr` (also `POST /events/query` with `"locale"` in the body, and `GET /entities/:type/:id/events?locale=`) | events whose stored text is in another locale, or that have no text (stored before Phase 2) | the response only — rows are immutable and never updated |
+| `GET /memento/events?locale=sr` (also `POST /events/query` with `"locale"` in the body, `GET /entities/:type/:id/events?locale=`, and the UDC collections `events` / `cpu_load` with the header `X-Memento-Locale: sr` on `POST /udc/list` and `/udc/read`) | events whose stored text is in another locale, or that have no text (stored before Phase 2) | the response only — rows are immutable and never updated |
 
 Rules:
 

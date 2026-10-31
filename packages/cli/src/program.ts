@@ -41,6 +41,7 @@ import {
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CpuMonitorError, runCpuMonitor } from "./cpu-monitor.js";
 import { friendlyError } from "./errors.js";
+import { runSimulate, SimulateError } from "./simulate.js";
 import { DEFAULT_SERVER_URL, runTail, TailError } from "./tail.js";
 import { inquirerPrompter, makeUi, type Prompter, type SpinnerFactory, type Ui } from "./ui.js";
 
@@ -177,8 +178,8 @@ export function buildProgram(options: CliOptions): Command {
 Environment:
   DATABASE_URL     PostgreSQL the admin commands use
   MEMENTO_TENANT   default --tenant for chat commands
-  MEMENTO_URL      server for \`tail\` and \`cpu-monitor\` (default ${DEFAULT_SERVER_URL})
-  MEMENTO_API_KEY  key for \`tail\` and \`cpu-monitor\`
+  MEMENTO_URL      server for \`tail\`, \`cpu-monitor\` and \`simulate\` (default ${DEFAULT_SERVER_URL})
+  MEMENTO_API_KEY  key for \`tail\`, \`cpu-monitor\` and \`simulate\`
   MEMENTO_DEBUG=1  print stack traces of unexpected errors`,
     );
 
@@ -715,6 +716,71 @@ server errors are logged and retried on the next tick; a refused key stops the m
       },
     );
 
+  program
+    .command("simulate")
+    .description(
+      "play a ticket desk: a small team's logins, tickets, notes, one event per --interval",
+    )
+    .option("--interval <seconds>", "seconds between events", positiveNumber, 3)
+    .option("--seed <n>", "the same seed plays the same story (default: random)", nonNegativeInt)
+    .option("--tenant <slug>", "fail unless the key belongs to this tenant")
+    .option("--locale <locale>", "locale the stored `rendered` text is in")
+    .option("--count <n>", "stop after N events (default: run until Ctrl+C)", positiveInt)
+    .option("--once", "push one scene and exit (same as --count 1)")
+    .addOption(
+      new Option("--url <url>", "server API base URL")
+        .env("MEMENTO_URL")
+        .default(DEFAULT_SERVER_URL),
+    )
+    .addOption(new Option("--key <key>", "API key with the write scope").env("MEMENTO_API_KEY"))
+    .addOption(new Option("--api-key <key>", "same as --key").hideHelp())
+    .addHelpText(
+      "after",
+      `${examples(
+        ["memento simulate --interval 1 --tenant demo --key mk_...", "one event a second"],
+        ["memento simulate --seed 42 --count 20", "the same twenty events every time"],
+        ["memento simulate --once --json", "push one scene, print the stored event"],
+      )}
+
+The cast (igor, marko, ana, jelena, nikola, mila, and a desk-bot) logs in and out, creates,
+modifies, notes and closes tickets (instance ticket/T-<n>); newcomers appear now and then
+(USER_CREATED) and the bot closes tickets nobody touched. Payloads carry the fields the
+bundled templates read, so every event renders as a sentence. Network and server errors are
+logged and the same scene retried; a refused key stops the simulator.`,
+    )
+    .action(
+      async (flags: {
+        interval: number;
+        seed?: number;
+        tenant?: string;
+        locale?: string;
+        count?: number;
+        once?: boolean;
+        url: string;
+        key?: string;
+        apiKey?: string;
+      }) => {
+        const { key, apiKey, once, count, ...rest } = flags;
+        const resolvedKey = apiKey ?? key;
+        const steps = once ? 1 : count;
+        await runSimulate(
+          {
+            ...rest,
+            ...(resolvedKey ? { apiKey: resolvedKey } : {}),
+            ...(steps !== undefined ? { count: steps } : {}),
+          },
+          {
+            io,
+            ui,
+            json: json(),
+            signal: options.signal,
+            fetch: options.fetch,
+            timeZone: options.timeZone,
+          },
+        );
+      },
+    );
+
   const lookups = program
     .command("lookups")
     .description("controlled vocabulary: lookups.yaml + i18n/translations.csv")
@@ -851,7 +917,8 @@ export async function runCli(argv: string[], options: CliOptions): Promise<numbe
     if (
       error instanceof LookupCompileError ||
       error instanceof TailError ||
-      error instanceof CpuMonitorError
+      error instanceof CpuMonitorError ||
+      error instanceof SimulateError
     ) {
       return fail(error.message);
     }

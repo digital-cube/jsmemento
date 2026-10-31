@@ -186,7 +186,8 @@ export class EventCollectionSource implements Source {
   private async toRows(rows: EventRow[]): Promise<Row[]> {
     let list = rows.map(serializeEvent);
     if (this.renderer && list.length > 0) {
-      list = await localizeEvents(this.renderer, requireTenant().tenantId, list);
+      const { tenantId, locale } = requireTenant();
+      list = await localizeEvents(this.renderer, tenantId, list, locale);
     }
     return list.map((event) => {
       const row: Row = { __meta: { id: event.id, version: 1 } };

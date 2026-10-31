@@ -16,11 +16,16 @@ afterAll(async () => {
   await handle.close();
 });
 
-async function udc(action: string, payload: unknown, key: string | null = fx.keys.read) {
+async function udc(
+  action: string,
+  payload: unknown,
+  key: string | null = fx.keys.read,
+  headers: Record<string, string> = {},
+) {
   const response = await fx.app.inject({
     method: "POST",
     url: `/memento/udc/${action}`,
-    headers: { ...(key ? auth(key) : {}), "x-udc-message-id": "m1" },
+    headers: { ...(key ? auth(key) : {}), "x-udc-message-id": "m1", ...headers },
     payload: payload as Record<string, unknown>,
   });
   expect(response.statusCode).toBe(200);
@@ -186,6 +191,26 @@ describe("UDC list", () => {
       filter: { not: { field: "payload", op: "is_null" } },
     });
     expect(nonEmpty.total).toBe(4);
+  });
+
+  it("renders the rows in the locale X-Memento-Locale names", async () => {
+    const login = { field: "event_type", op: "eq", value: "USER_LOGIN" };
+    const list = async (headers: Record<string, string>) =>
+      udc("list", { collection: "events", filter: login }, fx.keys.read, headers);
+    const sr = await list({ "x-memento-locale": "sr" });
+    expect(sr.payload.rows[0].rendered).toBe("Korisnik igor se prijavio.");
+    const en = await list({ "x-memento-locale": "en" });
+    expect(en.payload.rows[0].rendered).toBe("User igor logged in.");
+    // Unknown locales fall back along the chain; malformed ones are refused in-protocol.
+    expect((await list({ "x-memento-locale": "sr-Latn-RS" })).payload.rows[0].rendered).toBe(
+      "Korisnik igor se prijavio.",
+    );
+    const bad = await list({ "x-memento-locale": "Serbian!" });
+    expect(bad.kind).toBe("udc.list.err");
+    expect(bad.payload).toEqual({
+      code: "validation_error",
+      message: "invalid x-memento-locale: Serbian!",
+    });
   });
 
   it("filters on payload numbers, text and time", async () => {

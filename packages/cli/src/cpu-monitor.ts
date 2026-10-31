@@ -73,7 +73,8 @@ export function isFatal(error: unknown): boolean {
   return error instanceof MementoApiError && error.status >= 400 && error.status < 500;
 }
 
-const defaultSleep = (ms: number, signal?: AbortSignal) =>
+/** Resolves after `ms`, or at once when `signal` aborts (also used by `simulate`). */
+export const abortableSleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve) => {
     if (signal?.aborted) return resolve();
     const timer = setTimeout(done, ms);
@@ -110,7 +111,7 @@ export async function runCpuMonitor(
   });
   const instanceId = options.instanceId ?? (deps.hostname ?? hostname)();
   const read = deps.loadavg ?? loadavg;
-  const sleep = deps.sleep ?? defaultSleep;
+  const sleep = deps.sleep ?? abortableSleep;
   const intervalMs = options.interval * 1000;
 
   if (options.tenant) await checkTenant(client, options.tenant, ui, options.url);
@@ -155,7 +156,13 @@ export async function runCpuMonitor(
   return summary;
 }
 
-async function checkTenant(client: MementoClient, tenant: string, ui: Ui, url: string) {
+/** Fails unless the key belongs to `tenant` (a write-only key cannot tell: not checked). */
+export async function checkTenant(
+  client: MementoClient,
+  tenant: string,
+  ui: Ui,
+  url: string,
+): Promise<void> {
   try {
     const describe = await ui.step(`Connecting to ${url}`, () => client.describe());
     if (describe.tenant.slug !== tenant) {
