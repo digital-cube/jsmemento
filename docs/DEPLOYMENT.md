@@ -53,7 +53,8 @@ run several.
 
 ## Demo pusher (profile `demo`)
 
-The CPU monitor UI at `/en/` only moves while something pushes `CPU_LOAD` events. The
+The CPU monitor of the examples site (`/` and `/en/`) only moves while something pushes
+`CPU_LOAD` events. The
 `cpu-monitor` service does that from the same image (`memento cpu-monitor`, every
 `CPU_MONITOR_INTERVAL` seconds, `server/<CPU_MONITOR_INSTANCE_ID>`), restarts with the stack and
 retries on its own while the server is down. It belongs to the compose profile `demo`, so a
@@ -85,8 +86,33 @@ docker compose -f docker-compose.yaml --profile demo logs -f cpu-monitor
 While the server restarts the log shows `✗ push failed … — retrying` once per sample and
 `● reconnected after N failed push(es)` when it is back; the container itself keeps running. A
 refused key (revoked, wrong scope) stops the process, and `restart: unless-stopped` starts it
-again. To see the data, open `/en/` and connect with a key that has the `read` scope for the
-same tenant. Stop it with `docker compose -f docker-compose.yaml --profile demo stop cpu-monitor`.
+again. To see the data without typing a key, give the site a [demo key](#demo-key-examples-site)
+of the same tenant. Stop it with `docker compose -f docker-compose.yaml --profile demo stop cpu-monitor`.
+
+## Demo key (examples site)
+
+The examples site (`apps/examples`, served at `/` and `/en/`) connects by itself when the server
+has a **read-only demo key**: `GET /memento/api/demo` (no auth) answers it, and the page uses it
+until the visitor pastes a key of their own. The key belongs to the deployment, never to the
+repository — a key is a hash in one database, so every stage database needs its own.
+
+```bash
+# a key with the read scope only, of the tenant the pusher writes to (printed once)
+docker compose -f docker-compose.yaml exec memento \
+  memento create-key --tenant demo --scopes read --name examples-demo
+
+# into .env next to docker-compose.yaml (passed to the server as MEMENTO_DEMO_API_KEY)
+DEMO_API_KEY=mk_…
+
+docker compose -f docker-compose.yaml up -d memento
+curl -s localhost:3000/memento/api/demo
+#   {"ok":true,"data":{"api_key":"mk_…","tenant":"demo"}}
+```
+
+At startup the server resolves the key as a request would. When it is unknown, revoked or
+expired, or has any scope other than `read`, the server **refuses to start**
+(`MEMENTO_DEMO_API_KEY must be a read-only key: …`) — a write key never leaves the server.
+Without `DEMO_API_KEY` the route answers `404` and the page asks for a key.
 
 ## The image
 
@@ -109,6 +135,8 @@ docker run -d -p 3000:3000 \
   also the image's `HEALTHCHECK`.
 - `/app/config/lookups.yaml` and `/app/config/i18n/translations.csv` — the bundled vocabulary.
   Mount your own over `/app/config` (or point `MEMENTO_LOOKUPS_PATH` elsewhere).
+- `/app/config/menu.yaml` — the examples site's menu (`MEMENTO_MENU_PATH`), served as the
+  `menu` UDC collection; `/app/ui` — the built examples site (`MEMENTO_UI_DIR`).
 - `/data` — a volume; unknown lookup values are recorded under `/data/candidates`.
 
 ## Environment variables
@@ -122,7 +150,9 @@ docker run -d -p 3000:3000 \
 | `PORT` | `3000` | Listen port (the code default outside the image is 8000). |
 | `LOG_LEVEL` | `info` | pino: `fatal` `error` `warn` `info` `debug` `trace` `silent`. Logs are JSON on stdout. |
 | `MEMENTO_API_PREFIX` | `/memento` | Path every route is mounted under. |
-| `MEMENTO_UI_DIR` | `/app/ui` (image) · unset | Built web UI (the CPU monitor) served at `/` and `/en/`; unset → API only. |
+| `MEMENTO_UI_DIR` | `/app/ui` (image) · unset | Built web UI (the examples site, `apps/examples`) served at `/` and `/en/`; unset → API only. |
+| `MEMENTO_MENU_PATH` | `/app/config/menu.yaml` (image) · `menu.yaml` at the repository root | The examples site's sidebar, served as the `menu` UDC collection. Missing → no `menu` collection (warning); the site shows its built-in entries. |
+| `MEMENTO_DEMO_API_KEY` | *(unset)* | Read-only key `GET <prefix>/api/demo` hands to the examples site ([Demo key](#demo-key-examples-site)). Not exactly `read`, unknown or revoked → the server does not start. Compose: `DEMO_API_KEY`. |
 | `MEMENTO_DEFAULT_LOCALE` | `en` | Locale events are rendered in when a request names none. |
 | `MEMENTO_LOOKUPS_PATH` | `/app/config/lookups.yaml` | Vocabulary file. Missing → lookups disabled (warning). |
 | `MEMENTO_TRANSLATIONS_PATH` | `<dir of lookups>/i18n/translations.csv` | Label sheet. |

@@ -25,7 +25,7 @@ function cacheHeaders(reply: FastifyReply, path: string): void {
 }
 
 /**
- * Serves a built React app (the CPU monitor) at `/` and every mount (default `/en/`), with an
+ * Serves a built React app (the examples site, `apps/examples`) at `/` and every mount (default `/en/`), with an
  * `index.html` fallback for client-side routes. Register it at the root of the app, next to
  * the memento plugin; it never answers under `apiPrefix`.
  */

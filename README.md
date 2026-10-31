@@ -15,7 +15,7 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 | [`@memento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail`, `cpu-monitor` |
 | [`@memento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
 | [`apps/example`](apps/example) | Vite + React demo of `@memento/react`: paste a key, watch the live table |
-| [`apps/cpu-monitor`](apps/cpu-monitor) | demo: `memento cpu-monitor` → the `cpu_load` UDC collection → a live `@jsudc/react` table |
+| [`apps/examples`](apps/examples) | the examples site (served at `/` and `/en/`): a sidebar from the `menu` UDC collection, the live CPU monitor (`memento cpu-monitor` → `cpu_load` → `@jsudc/react`) as its first example |
 | [`packages/e2e`](packages/e2e) | end-to-end suite: the built server ×2 against PostgreSQL + Redis (not published) |
 
 ## Run it with Docker
@@ -69,25 +69,31 @@ pnpm memento lookups validate                            # lookups.yaml + i18n/t
 `.env` is not loaded automatically: export the variables (`set -a; . ./.env; set +a`) or rely
 on the defaults, which match `compose.yaml`.
 
-## Demo: live CPU monitor
+## Examples site: live CPU monitor
 
-The whole stack end to end — auth, event push, UDC, WebSocket, React — on one screen: the CLI
-pushes this machine's load averages every second, the server serves them as the `cpu_load`
-UDC collection (`POST /memento/udc/list`), and [`apps/cpu-monitor`](apps/cpu-monitor) draws
-them with `@jsudc/react`, refreshed by the stream.
+[`apps/examples`](apps/examples) holds every memento example behind one sidebar, drawn from the
+`menu` UDC collection (`menu.yaml`). The first example is the whole stack end to end — auth,
+event push, UDC, WebSocket, React — on one screen: the CLI pushes this machine's load averages
+every second, the server serves them as the `cpu_load` UDC collection
+(`POST /memento/udc/list`), and the page draws them with `@jsudc/react`, refreshed by the stream.
+With a read-only `MEMENTO_DEMO_API_KEY` the server hands the page its key (`GET /api/demo`), so
+nobody has to paste one.
 
 ```bash
 pnpm memento create-tenant demo --name Demo
-pnpm memento create-key --tenant demo --scopes read,write --name cpu-monitor   # mk_…
+pnpm memento create-key --tenant demo --scopes write --name cpu-monitor        # mk_… (pusher)
+pnpm memento create-key --tenant demo --scopes read --name examples-demo       # mk_… (page)
+MEMENTO_DEMO_API_KEY=mk_… pnpm dev                                             # terminal 1
 pnpm memento cpu-monitor --interval 1 --tenant demo --key mk_…                 # terminal 2
-cd apps/cpu-monitor && pnpm dev                                                # terminal 3, :5173
+cd apps/examples && pnpm dev                                                   # terminal 3, :5173
 ```
 
-In the Docker stack the pusher is the optional `cpu-monitor` service (`docker compose -f
-docker-compose.yaml --profile demo up -d`), which keeps the table live across restarts — see
-[Demo pusher](docs/DEPLOYMENT.md#demo-pusher-profile-demo).
+In the Docker stack the site is served at `/` and `/en/`, the pusher is the optional
+`cpu-monitor` service (`docker compose -f docker-compose.yaml --profile demo up -d`) and the
+page's key is `DEMO_API_KEY` in `.env` — see [Demo pusher](docs/DEPLOYMENT.md#demo-pusher-profile-demo)
+and [Demo key](docs/DEPLOYMENT.md#demo-key-examples-site).
 
-![Live CPU load table](apps/cpu-monitor/screenshot.png)
+![The examples site: sidebar menu and the live CPU monitor](apps/examples/screenshot.png)
 
 ## Commands
 

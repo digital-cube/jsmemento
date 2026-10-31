@@ -7,11 +7,14 @@ export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: { alias: { "@memento/core": src("../../packages/core/src/index.ts") } },
   test: {
-    name: "cpu-monitor",
+    name: "examples",
     root: src("."),
     include: ["test/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["test/setup.ts"],
+    // One react-router for the app and @jsudc/react's router adapter: run the library
+    // through Vite too, instead of Node resolving its own copy of the router.
+    server: { deps: { inline: [/@jsudc\/react/] } },
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
       // The entry point only mounts <App />.

@@ -23,6 +23,10 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MEMENTO_DEFAULT_LOCALE: ${MEMENTO_DEFAULT_LOCALE:-en}
       MEMENTO_LOOKUPS_STRICT: ${MEMENTO_LOOKUPS_STRICT:-false}
+      # A read-only key GET /memento/api/demo hands to the examples site, so it connects
+      # without a pasted key (memento create-key --tenant demo --scopes read). Empty: no demo
+      # key, the route answers 404. A key that is not read-only stops the server at startup.
+      MEMENTO_DEMO_API_KEY: ${DEMO_API_KEY:-}
     ports:
       - "${MEMENTO_PORT:-3000}:3000"
     volumes:
@@ -36,7 +40,7 @@ services:
       retries: 5
 
   # Demo data: pushes the host's load averages as CPU_LOAD events every second, so the
-  # CPU monitor UI at /en/ always shows a live table. Off unless the `demo` profile is on
+  # CPU monitor of the examples site (/ and /en/) always shows a live table. Off unless the `demo` profile is on
   # (`--profile demo` or COMPOSE_PROFILES=demo); see docs/DEPLOYMENT.md "Demo pusher".
   # Same image as `memento`, no `build:` — the image is built once, by `memento`.
   cpu-monitor:

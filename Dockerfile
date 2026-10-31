@@ -13,18 +13,17 @@ RUN corepack enable
 WORKDIR /src
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm turbo run build --filter=@memento/cli... --filter=@memento/cpu-monitor
-
-# The CPU monitor web UI (Vite build), served by the server at / and /en/ (MEMENTO_UI_DIR).
-RUN pnpm --filter @memento/cpu-monitor build
+# …and the examples site (apps/examples, Vite build), served by the server at / and /en/
+# (MEMENTO_UI_DIR), its sidebar the menu.yaml copied next to lookups.yaml (MEMENTO_MENU_PATH).
+RUN pnpm turbo run build --filter=@memento/cli... --filter=@memento/examples
 # Standalone copies of @memento/server and @memento/cli with their production dependencies;
 # the workspace packages they use (@memento/core, @memento/lookups, …) are copied in, not
 # symlinked.
 RUN pnpm --config.inject-workspace-packages=true --filter @memento/server deploy --prod /out/app \
  && pnpm --config.inject-workspace-packages=true --filter @memento/cli deploy --prod /out/cli \
  && mkdir -p /out/app/config \
- && cp -r lookups.yaml i18n /out/app/config/ \
- && cp -r apps/cpu-monitor/dist /out/app/ui \
+ && cp -r lookups.yaml menu.yaml i18n /out/app/config/ \
+ && cp -r apps/examples/dist /out/app/ui \
  && printf '#!/bin/sh\nexec node /opt/memento-cli/dist/main.js "$@"\n' > /out/memento \
  && chmod 755 /out/memento
 
@@ -43,6 +42,7 @@ ENV NODE_ENV=production \
     MEMENTO_API_PREFIX=/memento \
     MEMENTO_LOOKUPS_PATH=/app/config/lookups.yaml \
     MEMENTO_CANDIDATES_DIR=/data/candidates \
+    MEMENTO_MENU_PATH=/app/config/menu.yaml \
     MEMENTO_UI_DIR=/app/ui
 WORKDIR /app
 COPY --from=build --chown=node:node /out/app /app

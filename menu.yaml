@@ -1,0 +1,37 @@
+# JSMemento — the examples site's menu (apps/examples). This file IS its sidebar.
+#
+# Served by @memento/server as the `menu` UDC collection (source `yaml_menu` of
+# @jsudc/server, POST /memento/udc/list {collection: "menu"}), read again whenever the
+# file changes. Path: MEMENTO_MENU_PATH; default: menu.yaml at the repository root
+# (the Docker image: /app/config/menu.yaml). Without the file there is no `menu`
+# collection and the site draws only its built-in HOME and EXAMPLES entries.
+#
+# Keys of a node:
+#   code             unique among its siblings; letters, digits, _ . -
+#   translation_key  <SECTION>_<TERM>, shown through t(section, term) of the site's
+#                    messages (apps/examples/src/i18n/messages.ts): MENU_HOME → t("MENU", "HOME")
+#   icon             lucide:<kebab-name>, one @jsudc/react's LUCIDE_ICONS has
+#   url              a route of the site; a node with a url is a link
+#   children         a list of nodes, or "udc:collections": every collection memento
+#                    serves, resolved on every read (those rows are `is_dynamic`)
+#
+# A new example: one entry under EXAMPLES, one page in apps/examples.
+
+- code: HOME
+  translation_key: MENU_HOME
+  icon: lucide:house
+  url: /
+
+- code: EXAMPLES
+  translation_key: MENU_EXAMPLES
+  icon: lucide:layout-dashboard
+  children:
+    - code: CPU_MONITOR
+      translation_key: MENU_CPU_MONITOR
+      icon: lucide:activity
+      url: /examples/cpu-monitor
+
+- code: COLLECTIONS
+  translation_key: MENU_COLLECTIONS
+  icon: lucide:layers
+  children: "udc:collections"

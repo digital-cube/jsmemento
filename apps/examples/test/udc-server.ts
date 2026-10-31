@@ -1,0 +1,170 @@
+import type { Row } from "@jsudc/core";
+import { expect, vi } from "vitest";
+
+export const caps = {
+  mutate: false,
+  subscribe: false,
+  total_count: true,
+  schema_edit: false,
+  config_edit: false,
+  reindex: false,
+  tree_reparent: false,
+  source_yaml: false,
+  paging: ["offset" as const],
+  supported_filter_ops: ["eq", "gt"],
+};
+
+export const describeCpu = {
+  collection: "cpu_load",
+  capabilities: caps,
+  source_kind: "postgres_jsonb",
+  schema: {
+    version: "v1",
+    core_fields: [],
+    field_order: ["occurred_at", "instance_type", "instance_id", "load_1min"],
+    fields: {
+      occurred_at: { type: "datetime" },
+      instance_type: { type: "string" },
+      instance_id: { type: "string" },
+      load_1min: { type: "decimal" },
+    },
+  },
+  view: {
+    default_renderer: "table",
+    available_renderers: ["table"],
+    columns: [{ field: "occurred_at" }, { field: "instance_id" }, { field: "load_1min" }],
+    page_size_default: 50,
+    pagination: "pages",
+    default_column_width: 160,
+    row_actions: [],
+  },
+  filterable: {
+    fields: [
+      {
+        field: "instance_type",
+        type: "string",
+        ops: ["eq", "contains"],
+        default_op: "contains",
+        widget: "text",
+      },
+    ],
+  },
+};
+
+const listing = (name: string, source_kind = "postgres_jsonb") => ({
+  name,
+  default_renderer: "table",
+  capabilities: caps,
+  source_kind,
+  group: source_kind === "yaml_menu" ? "files" : "database",
+});
+
+/** A menu row as the yaml_menu source flattens it; ids are the path, for readability. */
+export function node(path: string, order: number, fields: Record<string, unknown> = {}): Row {
+  const codes = path.split("/");
+  const ancestors = codes.slice(0, -1).map((_, i) => codes.slice(0, i + 1).join("/"));
+  return {
+    __meta: { id: path, version: 1 },
+    code: codes.at(-1),
+    translation_key: null,
+    icon: null,
+    url: null,
+    parent_id: ancestors.at(-1) ?? null,
+    order,
+    depth: ancestors.length,
+    ancestor_ids: ancestors,
+    children_count: 0,
+    is_dynamic: false,
+    ...fields,
+  };
+}
+
+/** What memento's menu.yaml flattens to, `udc:collections` resolved. */
+export const SERVED_MENU: Row[] = [
+  node("HOME", 0, { translation_key: "MENU_HOME", icon: "lucide:house", url: "/" }),
+  node("EXAMPLES", 1, { translation_key: "MENU_EXAMPLES", icon: "lucide:layout-dashboard" }),
+  node("EXAMPLES/CPU_MONITOR", 0, {
+    translation_key: "MENU_CPU_MONITOR",
+    icon: "lucide:activity",
+    url: "/examples/cpu-monitor",
+  }),
+  node("COLLECTIONS", 2, { translation_key: "MENU_COLLECTIONS", icon: "lucide:layers" }),
+  ...["events", "cpu_load", "menu"].map((name, i) =>
+    node(`COLLECTIONS/COLLECTION_${name.toUpperCase()}`, i, {
+      translation_key: `COLLECTIONS_${name.toUpperCase()}`,
+      icon: "lucide:table",
+      url: `/udc/${name}`,
+      is_dynamic: true,
+    }),
+  ),
+];
+
+export interface ServerOptions {
+  /** The key every UDC request must carry. */
+  key?: string;
+  /** What `GET /api/demo` answers; `null` → 404. */
+  demo?: { api_key: string; tenant: string } | null;
+  /** Serve the `menu` collection. Default true. */
+  menu?: boolean;
+}
+
+/**
+ * A `fetch` that plays memento: `/api/health`, `/api/demo`, and the UDC actions
+ * (`collections`, `describe`, `list` — the menu rows, or one new CPU row per list).
+ */
+export function udcServer({ key = "mk_k", demo = null, menu = true }: ServerOptions = {}) {
+  const lists: Record<string, unknown>[] = [];
+  const calls: string[] = [];
+  let n = 0;
+  const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.endsWith("/api/health")) return new Response('{"ok":true}', { status: 200 });
+    if (url.endsWith("/api/demo")) {
+      return demo
+        ? new Response(JSON.stringify({ ok: true, data: demo }), { status: 200 })
+        : new Response('{"ok":false,"error":{"code":"not_found","message":"no demo key"}}', {
+            status: 404,
+          });
+    }
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${key}`);
+    const action = url.split("/udc/")[1];
+    const ok = (payload: unknown) =>
+      new Response(JSON.stringify({ kind: `udc.${action}.ok`, id: "", payload }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    if (action === "collections") {
+      return ok({
+        collections: [
+          listing("events"),
+          listing("cpu_load"),
+          ...(menu ? [listing("menu", "yaml_menu")] : []),
+        ],
+      });
+    }
+    if (action === "describe") return ok({ ...describeCpu, collection: body.collection });
+    if (action === "list") {
+      if (body.collection === "menu") {
+        return ok({ rows: SERVED_MENU, next_cursor: null, total: SERVED_MENU.length });
+      }
+      lists.push(body);
+      n += 1;
+      return ok({
+        rows: [
+          {
+            __meta: { id: `r${n}`, version: 1 },
+            occurred_at: "2026-10-31T10:00:00Z",
+            instance_id: `backend-${n}`,
+            load_1min: 0.5,
+          },
+        ],
+        next_cursor: null,
+        total: 1,
+      });
+    }
+    return ok({});
+  });
+  return { fetch, lists, calls };
+}

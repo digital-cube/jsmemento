@@ -91,7 +91,7 @@ memento --json cpu-monitor | jq .payload                    # one stored event p
 - Every `--interval` seconds (default 1, fractions allowed) reads `os.loadavg()` and pushes
   `POST /events` `{event_type: "CPU_LOAD", instance_type, instance_id, actor_id, payload:
   {load_1min, load_5min, load_15min}}`, rounded to two decimals. The demo that shows them
-  live is [`apps/cpu-monitor`](../apps/cpu-monitor).
+  live is the CPU monitor of [`apps/examples`](../apps/examples).
 - **Options:** `--instance-type` (default `server`), `--instance-id` (default the host name),
   `--actor` (default `monitor`), `--locale` (of the stored `rendered`), `--count` (stop
   after N samples).

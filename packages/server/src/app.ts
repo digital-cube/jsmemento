@@ -17,10 +17,12 @@ import Fastify, {
 } from "fastify";
 import { installAuth } from "./auth.js";
 import type { Database } from "./db/client.js";
+import { resolveDemoKey } from "./demo.js";
 import { MementoError } from "./errors.js";
 import { emptyLookups, type Lookups } from "./lookups.js";
 import { type EventPublisher, NoopPublisher } from "./publisher.js";
 import { chatRoutes } from "./routes/chats.js";
+import { demoRoutes } from "./routes/demo.js";
 import { describeRoutes } from "./routes/describe.js";
 import { entityRoutes } from "./routes/entities.js";
 import { eventRoutes } from "./routes/events.js";
@@ -30,6 +32,7 @@ import type { EventFeed } from "./stream/feed.js";
 import { StreamHub } from "./stream/hub.js";
 import { EventRenderer } from "./templates/renderer.js";
 import { eventCollections } from "./udc/collections.js";
+import { menuCollection } from "./udc/menu.js";
 import { udcRoutes } from "./udc/plugin.js";
 import { type UiOptions, uiRoutes } from "./ui.js";
 
@@ -61,6 +64,17 @@ export interface MementoPluginOptions {
    * `false` to serve none.
    */
   udc?: CollectionRegistry | false;
+  /**
+   * A menu YAML served as the `menu` UDC collection next to the others (`menuCollection`):
+   * the examples site's sidebar. The file must exist. Default: no `menu` collection.
+   */
+  menu?: string;
+  /**
+   * A read-only API key `GET /api/demo` hands out (no auth), so the examples site connects
+   * without the visitor pasting one. Checked while the plugin registers: an unknown, revoked
+   * or not exactly `read`-scoped key fails startup (`DemoKeyError`). Default: none → 404.
+   */
+  demoApiKey?: string;
 }
 
 /** Selects `memento.v1` when offered, else the `bearer.<key>` protocol the client sent. */
@@ -180,8 +194,11 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(entityRoutes, deps);
   await app.register(chatRoutes, deps);
   await app.register(describeRoutes, deps);
+  const demo = options.demoApiKey ? await resolveDemoKey(deps.db, options.demoApiKey) : null;
+  await app.register(demoRoutes, { demo });
   if (options.udc !== false) {
     const registry = options.udc ?? eventCollections({ db: deps.db, renderer: deps.renderer });
+    if (options.menu) registry.register(menuCollection({ file: options.menu, registry }));
     await app.register(udcRoutes, { db: deps.db, registry });
   }
 };
@@ -192,7 +209,7 @@ export interface BuildAppOptions extends MementoPluginOptions {
   /** pino options, `false` to silence, `true` for defaults. */
   logger?: FastifyServerOptions["logger"];
   /**
-   * A built web UI (the CPU monitor) served at `/` and `/en/` next to the API (`uiRoutes`).
+   * A built web UI (the examples site) served at `/` and `/en/` next to the API (`uiRoutes`).
    * Default: none — only the API answers.
    */
   ui?: Omit<UiOptions, "apiPrefix">;

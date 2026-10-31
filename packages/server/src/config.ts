@@ -1,6 +1,7 @@
 import { LocaleSchema } from "@memento/core";
 import { z } from "zod";
 import { DEFAULT_LOOKUPS_PATH } from "./lookups.js";
+import { DEFAULT_MENU_PATH } from "./udc/menu.js";
 
 const booleanish = z
   .enum(["true", "false", "1", "0", "yes", "no"])
@@ -33,6 +34,8 @@ const ConfigSchema = z.object({
   MEMENTO_WS_HEARTBEAT_MS: z.coerce.number().int().min(1000).default(30_000),
   MEMENTO_WS_MAX_BUFFERED: z.coerce.number().int().min(1).default(1000),
   MEMENTO_UI_DIR: z.string().optional(),
+  MEMENTO_MENU_PATH: z.string().optional(),
+  MEMENTO_DEMO_API_KEY: z.string().optional(),
 });
 
 export interface Config {
@@ -62,6 +65,13 @@ export interface Config {
   };
   /** Built web UI served at `/` and `/en/` (`MEMENTO_UI_DIR`); `null` → API only. */
   uiDir: string | null;
+  /** The menu YAML served as the `menu` UDC collection (`MEMENTO_MENU_PATH`). */
+  menuPath: string;
+  /**
+   * A read-only key `GET /api/demo` hands to the examples site (`MEMENTO_DEMO_API_KEY`);
+   * `null` → no demo key, the route answers 404.
+   */
+  demoApiKey: string | null;
 }
 
 /** Reads the configuration from the environment (see `.env.example`). */
@@ -90,5 +100,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       maxBufferedMessages: parsed.MEMENTO_WS_MAX_BUFFERED,
     },
     uiDir: parsed.MEMENTO_UI_DIR ?? null,
+    menuPath: parsed.MEMENTO_MENU_PATH ?? DEFAULT_MENU_PATH,
+    demoApiKey: parsed.MEMENTO_DEMO_API_KEY?.trim() || null,
   };
 }

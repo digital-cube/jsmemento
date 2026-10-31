@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { connect, runMigrations } from "./db/client.js";
+import { DemoKeyError } from "./demo.js";
 import { emptyLookups, initLookups, type Lookups } from "./lookups.js";
 import { type EventPublisher, RedisPublisher } from "./publisher.js";
 import { type EventFeed, LocalBus, RedisFeed } from "./stream/feed.js";
@@ -27,6 +28,9 @@ if (existsSync(config.lookups.path)) {
   lookups = emptyLookups();
   lookupWarnings.push(`${config.lookups.path} not found: lookups disabled`);
 }
+const menuWarnings: string[] = [];
+const menu = existsSync(config.menuPath) ? config.menuPath : undefined;
+if (!menu) menuWarnings.push(`${config.menuPath} not found: no menu UDC collection`);
 // With Redis, every process publishes there and streams what any process stored; without
 // it, one process streams its own events through an in-memory bus.
 let publisher: EventPublisher;
@@ -56,12 +60,22 @@ const app = await buildApp({
     maxBufferedMessages: config.stream.maxBufferedMessages,
   },
   ...(config.uiDir ? { ui: { root: config.uiDir } } : {}),
+  ...(menu ? { menu } : {}),
+  // Refuses to start (DemoKeyError) unless the key resolves and is read-only.
+  ...(config.demoApiKey ? { demoApiKey: config.demoApiKey } : {}),
+}).catch(async (error: unknown) => {
+  if (!(error instanceof DemoKeyError)) throw error;
+  console.error(`memento: ${error.message}`);
+  await database.close();
+  process.exit(1);
 });
 app.log.info(
   { path: config.lookups.path, sections: lookups.registry.sectionNames(), strict: lookups.strict },
   "lookups loaded",
 );
-for (const warning of lookupWarnings) app.log.warn(warning);
+for (const warning of [...lookupWarnings, ...menuWarnings]) app.log.warn(warning);
+if (menu) app.log.info({ path: menu }, "serving the menu UDC collection");
+if (config.demoApiKey) app.log.info("GET /api/demo hands out the read-only demo key");
 if (config.uiDir) app.log.info({ root: config.uiDir }, "serving the web UI at / and /en/");
 
 app.addHook("onClose", async () => {

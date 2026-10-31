@@ -1,8 +1,8 @@
 {
-  "name": "@memento/cpu-monitor",
+  "name": "@memento/examples",
   "version": "1.0.0",
   "private": true,
-  "description": "JSMemento demo: live CPU load table — `memento cpu-monitor` pushes, the cpu_load UDC collection serves, @jsudc/react draws, the WebSocket stream refreshes.",
+  "description": "JSMemento examples site: a sidebar drawn from the `menu` UDC collection and one page per example (first: the live CPU monitor), on @jsudc/react, served by @memento/server at / and /en/.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-router": "^7.18.4",
     "recharts": "^3.10.1"
   },
   "devDependencies": {

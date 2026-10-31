@@ -7,7 +7,7 @@ Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
 
 ## Authentication
 
-Every endpoint except `/api/health` needs an API key, sent either way:
+Every endpoint except `/api/health` and `/api/demo` needs an API key, sent either way:
 
 ```
 Authorization: Bearer mk_ab12cd34_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -248,9 +248,10 @@ without the scope, is answered in-protocol: `{"kind":"udc.list.err","payload":{"
 |---|---|
 | `events` | every live (not archived) event of the key's tenant: `occurred_at`, `event_type`, `instance_type`, `instance_id`, `actor_id`, `rendered`, `payload` (json), `received_at` |
 | `cpu_load` | `CPU_LOAD` events only, `payload.load_1min/5min/15min` as decimal columns; table + chart |
+| `menu` | the examples site's sidebar: `menu.yaml` (`MEMENTO_MENU_PATH`) as flat tree rows (`code`, `translation_key`, `icon`, `url`, `parent_id`, `order`, `depth`, `ancestor_ids`, `children_count`, `is_dynamic`), `source_kind: yaml_menu`. Its `udc:collections` branch lists every collection served, this one included. Not tenant data: the same for every key. Only when the file exists. |
 
 Actions: `collections`, `describe`, `list` (filter DSL, sort, offset paging, exact `total`),
-`read`. Both collections are read-only — events are immutable, push them with
+`read`. Every collection is read-only — events are immutable, push them with
 `POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`.
 
 ```bash
@@ -267,6 +268,20 @@ curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
 `GET /memento/healthz` (the UDC plugin's own liveness, no key) answers `{"ok":true}`.
 Embedding the plugin: `mementoPlugin`'s `udc` option takes your own `CollectionRegistry`, or
 `false` to serve none.
+
+## `GET /memento/api/demo`
+
+No key. The deployment's read-only demo key (`MEMENTO_DEMO_API_KEY`), which the examples site
+connects with when the visitor has not pasted a key of their own; `cache-control: no-store`.
+
+```bash
+curl -s localhost:3000/memento/api/demo
+# {"ok":true,"data":{"api_key":"mk_…","tenant":"demo"}}
+```
+
+`404 {"ok":false,"error":{"code":"not_found",…}}` when the server has no demo key. The server
+does not start with a demo key that is unknown, revoked or has any scope besides `read`, so this
+route never hands out a key that can write.
 
 ## `GET /memento/api/health`
 

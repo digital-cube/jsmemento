@@ -20,6 +20,7 @@ export {
 } from "./db/client.js";
 export { compileFilter, escapeLike } from "./db/filter.js";
 export * as schema from "./db/schema.js";
+export { type DemoKey, DemoKeyError, resolveDemoKey } from "./demo.js";
 export { MementoError } from "./errors.js";
 export {
   DEFAULT_LOOKUPS_PATH,
@@ -114,6 +115,14 @@ export {
   type EventCollectionsOptions,
   eventCollections,
 } from "./udc/collections.js";
+export {
+  DEFAULT_MENU_PATH,
+  MENU_COLLECTION,
+  MENU_COLLECTION_ICONS,
+  MENU_VIEW,
+  type MenuCollectionOptions,
+  menuCollection,
+} from "./udc/menu.js";
 export { actionOf, scopeForAction, type UdcRoutesOptions, udcRoutes } from "./udc/plugin.js";
 export {
   EVENT_SOURCE_CAPABILITIES,

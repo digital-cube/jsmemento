@@ -1,10 +1,14 @@
 import type { FilterNode } from "@jsudc/core";
 import { encodeFilterParam, PARAM } from "@jsudc/react/headless";
 
-/** What the settings bar edits: where the server is, which key, which collection, which instances. */
+/**
+ * What the visitor can set: where the server is and which key (the header's settings), which
+ * collection and which instances (the CPU monitor's bar). Kept in localStorage.
+ */
 export interface Settings {
   /** API base URL: `/memento` through the dev server's proxy, or `http://host:port/memento`. */
   baseUrl: string;
+  /** The visitor's own key; empty: the server's demo key (`GET /api/demo`), when it has one. */
   apiKey: string;
   /** A UDC collection memento serves: `cpu_load` (the demo) or `events` (every event). */
   collection: string;

@@ -22,8 +22,19 @@ share one version.
   restarts. Configured by `CPU_MONITOR_API_KEY` (write scope), `CPU_MONITOR_TENANT`,
   `CPU_MONITOR_INTERVAL` and `CPU_MONITOR_INSTANCE_ID`; see docs/DEPLOYMENT.md "Demo pusher".
 - **`MementoClient.pushEvent()` and `.describe()`** (`@memento/core`).
-- **`apps/cpu-monitor`**: Vite + React demo — `UdcDataView` over the `cpu_load` collection,
-  refreshed by the WebSocket stream, with a live/offline health indicator.
+- **`apps/examples`** (`@memento/examples`, replaces `apps/cpu-monitor`): the examples site,
+  served by the server at `/` and `/en/`. A sidebar drawn from the `menu` UDC collection
+  (ported from the jsudc example's shell: tree, expand state, en/sr labels), react-router routes
+  (`/examples/cpu-monitor`, `/udc/:collection`), and the CPU monitor as its first example —
+  `UdcDataView` over `cpu_load`, refreshed by the WebSocket stream, with a live/offline health
+  indicator. Connects by itself with the server's demo key; settings (base URL, own key) in the
+  header.
+- **`menu` UDC collection** (`@memento/server`): `menu.yaml` at the repository root
+  (`MEMENTO_MENU_PATH`; image `/app/config/menu.yaml`) served by `@jsudc/server`'s `yaml_menu`
+  source, `udc:collections` resolved against the live registry. `mementoPlugin({ menu })`.
+- **`GET <prefix>/api/demo`** (`@memento/server`, no auth): the read-only demo key of
+  `MEMENTO_DEMO_API_KEY` (compose: `DEMO_API_KEY`) for the examples site; 404 without one. The
+  server refuses to start when that key is unknown, revoked or not exactly `read`.
 - Vocabulary: event type `CPU_LOAD`, instance type `SERVER`, and the `CPU_LOAD` templates
   (`Server {{instance_id}} — CPU: …`).
 
