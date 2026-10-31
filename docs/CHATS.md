@@ -158,6 +158,16 @@ memento send-message --tenant acme --chat-id chat-6f1c… --user igor --content 
 #   sent 9b2e… to chat-6f1c…: igor sent a message: "Zdravo!"
 ```
 
+Follow a chat live, like `tail -f` (talks to the server's `/ws`, so it needs a running server
+and a `read` key):
+
+```bash
+MEMENTO_API_KEY=mk_… memento tail --chat-id chat-123      # --url / MEMENTO_URL, default http://localhost:8000/memento
+#   [09:59:00] Marko: Ćao!
+#   ● live: following chat-123 (Ctrl+C to stop)
+#   [10:00:00] Igor: Pozdrav!
+```
+
 `--tenant` defaults to `$MEMENTO_TENANT`. `create-chat` also takes `--kind direct|room` and
 `--chat-id <id>`; `--chat-id` of `send-message` accepts `123` or `chat-123`. `send-message`
 renders with the bundled and tenant templates and publishes to Redis when `REDIS_URL` is set,

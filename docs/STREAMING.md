@@ -46,6 +46,27 @@ All optional; every one that is set must match exactly (AND).
 
 Without `locale` an event arrives with the `rendered` text it was stored with.
 
+### Client: `MementoStream` (`@memento/core`)
+
+The browser, `@memento/react` and `memento tail` share one client. It handles the subprotocol
+auth, waits for the welcome, and reconnects with exponential backoff (0.5 s → 15 s, reset
+after each welcome).
+
+```ts
+import { MementoStream } from "@memento/core";
+const stream = new MementoStream({
+  baseUrl: "http://localhost:8000/memento",          // or "/memento" in a browser
+  apiKey,
+  filter: { instance_type: "chat", instance_id: "chat-123" },
+  onEvent: (event) => console.log(event.rendered),
+  onStatus: (status) => console.log(status),          // connecting | live | offline | closed
+});
+// … stream.close();
+```
+
+`liveFilter(query)` splits a `GET /events`-style query that may contain `prefix*` values
+into the exact filter `/ws` accepts and a predicate for the rest.
+
 ## Messages (server → client, JSON text frames)
 
 Schemas: `StreamMessageSchema` in `@memento/core` (`src/stream.ts`).

@@ -178,15 +178,19 @@ describe("other commands", () => {
     expect(await run("nope")).toBe(1);
   });
 
-  it("rethrows unexpected errors", async () => {
-    await expect(
-      runCli(["list-tenants"], {
-        db: () => {
-          throw new Error("boom");
-        },
-        io,
-      }),
-    ).rejects.toThrow("boom");
+  it("reports unexpected errors without a stack trace", async () => {
+    const code = await runCli(["list-tenants"], {
+      db: () => {
+        throw new Error("boom");
+      },
+      io,
+      debug: false,
+    });
+    expect(code).toBe(1);
+    expect(err).toEqual([
+      "error: unexpected failure: boom",
+      "hint: set MEMENTO_DEBUG=1 to see the stack trace",
+    ]);
   });
 });
 

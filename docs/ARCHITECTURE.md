@@ -1,9 +1,10 @@
-# JSMemento — Architecture (Phases 1–4)
+# JSMemento — Architecture (Phases 1–5)
 
 > Status: Phase 1 (core API & multitenancy), Phase 2 (Handlebars templates, i18n fallback,
 > YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) and Phase 3 (chats as first-class
 > instances — see [CHATS.md](CHATS.md)) and Phase 4 (WebSocket streaming `/memento/ws` over
-> Redis Pub/Sub — see [STREAMING.md](STREAMING.md)) implemented. Per-event seen/star
+> Redis Pub/Sub — see [STREAMING.md](STREAMING.md)) and Phase 5 (`@memento/react` UI, the
+> example app and CLI polish — see [REACT.md](REACT.md), [CLI.md](CLI.md)) implemented. Per-event seen/star
 > endpoints and UDC integration come later; their tables already exist.
 
 Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
@@ -27,11 +28,13 @@ jsmemento/
 │   ├── lookups/ @memento/lookups YAML vocabulary, CSV translations, candidates, codegen
 │   ├── server/  @memento/server  Fastify plugin + app, Drizzle schema & migrations,
 │   │                             Handlebars renderer + bundled templates (templates/*.hbs)
-│   └── cli/     @memento/cli     `memento` command (Commander)
-└── apps/                      # example/demo apps (later phases)
+│   ├── cli/     @memento/cli     `memento` command (Commander, chalk, ora, @inquirer/prompts)
+│   └── react/   @memento/react   React components + hooks over the HTTP API and /ws
+└── apps/
+    └── example/ @memento/example Vite + React demo (proxies /memento to the server)
 ```
 
-Dependency direction: `cli → server → core`, `server → lookups` (`lookups` depends only on `yaml`). `core` has no Node-only APIs (it hashes with
+Dependency direction: `cli → server → core`, `react → core`, `server → lookups` (`lookups` depends only on `yaml`). `core` has no Node-only APIs (it hashes with
 Web Crypto), so the same package serves browsers, React and the future client SDK.
 
 Packages export `dist/` for consumers, plus a `@memento/source` export condition pointing
