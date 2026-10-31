@@ -11,10 +11,11 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 |---|---|
 | [`@memento/core`](packages/core) | Zod schemas + inferred types, API key / scope helpers, Filter DSL, envelope |
 | [`@memento/lookups`](packages/lookups) | `lookups.yaml` vocabulary, CSV translations, candidate recorder, TS/Zod codegen |
-| [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering, WebSocket stream |
-| [`@memento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail` |
+| [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering, WebSocket stream, UDC collections |
+| [`@memento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail`, `cpu-monitor` |
 | [`@memento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
 | [`apps/example`](apps/example) | Vite + React demo of `@memento/react`: paste a key, watch the live table |
+| [`apps/cpu-monitor`](apps/cpu-monitor) | demo: `memento cpu-monitor` → the `cpu_load` UDC collection → a live `@jsudc/react` table |
 | [`packages/e2e`](packages/e2e) | end-to-end suite: the built server ×2 against PostgreSQL + Redis (not published) |
 
 ## Run it with Docker
@@ -23,7 +24,7 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 docker compose -f docker-compose.yaml up -d --wait      # memento :3000 + PostgreSQL + Redis
 docker compose -f docker-compose.yaml exec memento memento create-tenant acme --name "Acme Inc"
 docker compose -f docker-compose.yaml exec memento memento create-key --tenant acme --scopes read,write
-curl localhost:3000/memento/health
+curl localhost:3000/memento/api/health
 ```
 
 Image: `ghcr.io/digital-cube/jsmemento:<version>` (`latest`, `main`). Environment variables,
@@ -67,6 +68,22 @@ pnpm memento lookups validate                            # lookups.yaml + i18n/t
 
 `.env` is not loaded automatically: export the variables (`set -a; . ./.env; set +a`) or rely
 on the defaults, which match `compose.yaml`.
+
+## Demo: live CPU monitor
+
+The whole stack end to end — auth, event push, UDC, WebSocket, React — on one screen: the CLI
+pushes this machine's load averages every second, the server serves them as the `cpu_load`
+UDC collection (`POST /memento/udc/list`), and [`apps/cpu-monitor`](apps/cpu-monitor) draws
+them with `@jsudc/react`, refreshed by the stream.
+
+```bash
+pnpm memento create-tenant demo --name Demo
+pnpm memento create-key --tenant demo --scopes read,write --name cpu-monitor   # mk_…
+pnpm memento cpu-monitor --interval 1 --tenant demo --key mk_…                 # terminal 2
+cd apps/cpu-monitor && pnpm dev                                                # terminal 3, :5173
+```
+
+![Live CPU load table](apps/cpu-monitor/screenshot.png)
 
 ## Commands
 

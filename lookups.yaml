@@ -19,11 +19,13 @@ EventTypes:
   - CHAT_MESSAGE_SEEN
   - CHAT_PARTICIPANT_ADDED
   - NOTE
+  - CPU_LOAD
 
 InstanceTypes:
   - USER
   - TICKET
   - CHAT
+  - SERVER
 
 ActorTypes:
   - USER

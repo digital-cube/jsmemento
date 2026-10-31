@@ -39,6 +39,7 @@ import {
   sendMessage,
 } from "@memento/server";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
+import { CpuMonitorError, runCpuMonitor } from "./cpu-monitor.js";
 import { friendlyError } from "./errors.js";
 import { DEFAULT_SERVER_URL, runTail, TailError } from "./tail.js";
 import { inquirerPrompter, makeUi, type Prompter, type SpinnerFactory, type Ui } from "./ui.js";
@@ -86,6 +87,14 @@ function nonNegativeInt(value: string): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 0) {
     throw new InvalidArgumentError("must be 0 or a positive integer");
+  }
+  return parsed;
+}
+
+function positiveNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new InvalidArgumentError("must be a positive number");
   }
   return parsed;
 }
@@ -168,8 +177,8 @@ export function buildProgram(options: CliOptions): Command {
 Environment:
   DATABASE_URL     PostgreSQL the admin commands use
   MEMENTO_TENANT   default --tenant for chat commands
-  MEMENTO_URL      server for \`tail\` (default ${DEFAULT_SERVER_URL})
-  MEMENTO_API_KEY  key for \`tail\`
+  MEMENTO_URL      server for \`tail\` and \`cpu-monitor\` (default ${DEFAULT_SERVER_URL})
+  MEMENTO_API_KEY  key for \`tail\` and \`cpu-monitor\`
   MEMENTO_DEBUG=1  print stack traces of unexpected errors`,
     );
 
@@ -648,6 +657,64 @@ Runs until Ctrl+C and reconnects by itself; connection notices go to stderr.`,
         }),
     );
 
+  program
+    .command("cpu-monitor")
+    .description("push this machine's CPU load averages as CPU_LOAD events, every --interval")
+    .option("--interval <seconds>", "seconds between samples", positiveNumber, 1)
+    .option("--tenant <slug>", "fail unless the key belongs to this tenant")
+    .option("--instance-type <type>", "instance_type of the events", "server")
+    .option("--instance-id <id>", "instance_id of the events (default: the host name)")
+    .option("--actor <id>", "actor_id of the events", "monitor")
+    .option("--locale <locale>", "locale the stored `rendered` text is in")
+    .option("--count <n>", "stop after N samples (default: run until Ctrl+C)", positiveInt)
+    .addOption(
+      new Option("--url <url>", "server API base URL")
+        .env("MEMENTO_URL")
+        .default(DEFAULT_SERVER_URL),
+    )
+    .addOption(new Option("--key <key>", "API key with the write scope").env("MEMENTO_API_KEY"))
+    .addOption(new Option("--api-key <key>", "same as --key").hideHelp())
+    .addHelpText(
+      "after",
+      `${examples(
+        ["memento cpu-monitor --interval 1 --tenant demo --key mk_...", "one sample a second"],
+        ["memento cpu-monitor --instance-id backend-01 --count 10", "ten samples, then exit"],
+        ["memento cpu-monitor --json | jq .payload", "one stored event per line"],
+      )}
+
+Each sample is POST /events {event_type: CPU_LOAD, instance_type, instance_id, actor_id,
+payload: {load_1min, load_5min, load_15min}} (os.loadavg(), two decimals). Network and
+server errors are logged and retried on the next tick; a refused key stops the monitor.`,
+    )
+    .action(
+      async (flags: {
+        interval: number;
+        tenant?: string;
+        instanceType: string;
+        instanceId?: string;
+        actor: string;
+        locale?: string;
+        count?: number;
+        url: string;
+        key?: string;
+        apiKey?: string;
+      }) => {
+        const { key, apiKey, ...rest } = flags;
+        const resolvedKey = apiKey ?? key;
+        await runCpuMonitor(
+          { ...rest, ...(resolvedKey ? { apiKey: resolvedKey } : {}) },
+          {
+            io,
+            ui,
+            json: json(),
+            signal: options.signal,
+            fetch: options.fetch,
+            timeZone: options.timeZone,
+          },
+        );
+      },
+    );
+
   const lookups = program
     .command("lookups")
     .description("controlled vocabulary: lookups.yaml + i18n/translations.csv")
@@ -781,14 +848,18 @@ export async function runCli(argv: string[], options: CliOptions): Promise<numbe
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode;
     if (error instanceof MementoError) return fail(`${error.message}${issueText(error.details)}`);
-    if (error instanceof LookupCompileError || error instanceof TailError) {
+    if (
+      error instanceof LookupCompileError ||
+      error instanceof TailError ||
+      error instanceof CpuMonitorError
+    ) {
       return fail(error.message);
     }
     if (error instanceof MementoApiError) {
       return fail(
         error.message,
         error.code === "unauthorized"
-          ? "check --api-key / MEMENTO_API_KEY"
+          ? "check --key / --api-key / MEMENTO_API_KEY"
           : error.code === "network_error"
             ? "is the server running? start it with `pnpm dev`, or pass --url / MEMENTO_URL"
             : undefined,

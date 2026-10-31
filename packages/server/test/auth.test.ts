@@ -144,8 +144,8 @@ describe("request id, health, routing", () => {
     expect(requestId(undefined)).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it("serves /health without a key", async () => {
-    const response = await fx.app.inject({ method: "GET", url: "/memento/health" });
+  it("serves /api/health without a key", async () => {
+    const response = await fx.app.inject({ method: "GET", url: "/memento/api/health" });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ ok: true, data: { status: "ok" } });
   });

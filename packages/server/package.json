@@ -39,6 +39,8 @@
   },
   "dependencies": {
     "@fastify/websocket": "^11.3.4",
+    "@jsudc/core": "0.2.0",
+    "@jsudc/server": "0.2.1",
     "@memento/core": "workspace:*",
     "@memento/lookups": "workspace:*",
     "drizzle-orm": "^0.45.4",

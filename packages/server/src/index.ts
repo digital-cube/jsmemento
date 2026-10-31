@@ -105,3 +105,21 @@ export {
   type RenderResult,
   ULTIMATE_FALLBACK,
 } from "./templates/renderer.js";
+export {
+  CPU_LOAD_EVENT_TYPE,
+  CPU_LOAD_FIELDS,
+  CPU_LOAD_VIEW,
+  EVENTS_FIELDS,
+  EVENTS_VIEW,
+  type EventCollectionsOptions,
+  eventCollections,
+} from "./udc/collections.js";
+export { actionOf, scopeForAction, type UdcRoutesOptions, udcRoutes } from "./udc/plugin.js";
+export {
+  EVENT_SOURCE_CAPABILITIES,
+  EventCollectionSource,
+  type EventCollectionSpec,
+  type EventField,
+  type FieldKind,
+  payloadNumber,
+} from "./udc/source.js";

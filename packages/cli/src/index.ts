@@ -1,3 +1,15 @@
+export {
+  CPU_LOAD_EVENT_TYPE,
+  type CpuMonitorDeps,
+  CpuMonitorError,
+  type CpuMonitorOptions,
+  type CpuMonitorSummary,
+  cpuEvent,
+  cpuPayload,
+  isFatal,
+  runCpuMonitor,
+  sampleLine,
+} from "./cpu-monitor.js";
 export { describeDatabaseUrl, type FriendlyError, friendlyError } from "./errors.js";
 export { buildProgram, type CliIO, type CliOptions, runCli } from "./program.js";
 export {

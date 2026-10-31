@@ -45,7 +45,7 @@ async function waitHealthy(base: string, child: ChildProcess, output: string[]):
       throw new Error(`server exited with ${child.exitCode}:\n${output.join("")}`);
     }
     try {
-      const response = await fetch(`${base}/health`);
+      const response = await fetch(`${base}/api/health`);
       if (response.ok) return;
     } catch {
       // not listening yet
@@ -89,10 +89,10 @@ export default async function setup({ provide }: TestProject) {
   const external = process.env.MEMENTO_E2E_URL;
   if (external) {
     const base = external.replace(/\/+$/, "");
-    const response = await fetch(`${base}/health`).catch((error: unknown) => {
+    const response = await fetch(`${base}/api/health`).catch((error: unknown) => {
       throw new Error(`MEMENTO_E2E_URL ${base} is not reachable: ${String(error)}`);
     });
-    if (!response.ok) throw new Error(`${base}/health answered ${response.status}`);
+    if (!response.ok) throw new Error(`${base}/api/health answered ${response.status}`);
     provide("servers", [base]);
     return;
   }
