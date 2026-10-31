@@ -189,7 +189,7 @@ describe("memento tail", () => {
     ).toBe(1);
     expect(err).toEqual([
       "error: invalid or expired API key",
-      "hint: check --api-key / MEMENTO_API_KEY",
+      "hint: check --key / --api-key / MEMENTO_API_KEY",
     ]);
     err = [];
     expect(

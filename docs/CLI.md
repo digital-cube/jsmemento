@@ -5,8 +5,8 @@ pnpm memento --help                 # every command, examples, environment
 pnpm memento <command> --help       # options and examples of one command
 ```
 
-The admin commands talk to PostgreSQL directly (`DATABASE_URL`). `tail` talks to a running
-server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
+The admin commands talk to PostgreSQL directly (`DATABASE_URL`). `tail` and `cpu-monitor`
+talk to a running server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
 machine-readable output.
 
 | command | |
@@ -20,6 +20,7 @@ machine-readable output.
 | `create-template` / `list-templates` / `delete-template` | per-tenant Handlebars templates ([TEMPLATES.md](TEMPLATES.md)) |
 | `create-chat` / `send-message` | chats ([CHATS.md](CHATS.md)) |
 | `tail` | print new events as they are stored, like `tail -f` |
+| `cpu-monitor` | push this machine's CPU load averages as `CPU_LOAD` events, every `--interval` seconds |
 | `lookups validate` / `codegen` / `candidates` | the vocabulary in `lookups.yaml` |
 
 ## In a terminal
@@ -75,7 +76,32 @@ memento --json tail --instance-type ticket | jq .rendered
 - **Connection notices** go to stderr (`● live …`, `○ offline: … reconnecting in 1s`), so
   stdout is only events. The connection comes back by itself; Ctrl+C stops.
 - A wrong key or an unreachable server is reported before streaming starts. For example:
-  `error: invalid or expired API key` with `hint: check --api-key / MEMENTO_API_KEY`.
+  `error: invalid or expired API key` with `hint: check --key / --api-key / MEMENTO_API_KEY`.
+
+## `memento cpu-monitor`
+
+```bash
+memento cpu-monitor --interval 1 --tenant demo --key mk_…
+#   ● cpu-monitor: pushing CPU_LOAD for server/backend-01 every 1s to http://localhost:8000/memento (Ctrl+C to stop)
+#   [11:23:15]  server/backend-01  load 2.77 3.10 2.86  → 50f7b398-…
+memento cpu-monitor --instance-id backend-01 --count 10      # ten samples, then exit
+memento --json cpu-monitor | jq .payload                    # one stored event per line
+```
+
+- Every `--interval` seconds (default 1, fractions allowed) reads `os.loadavg()` and pushes
+  `POST /events` `{event_type: "CPU_LOAD", instance_type, instance_id, actor_id, payload:
+  {load_1min, load_5min, load_15min}}`, rounded to two decimals. The demo that shows them
+  live is [`apps/cpu-monitor`](../apps/cpu-monitor).
+- **Options:** `--instance-type` (default `server`), `--instance-id` (default the host name),
+  `--actor` (default `monitor`), `--locale` (of the stored `rendered`), `--count` (stop
+  after N samples).
+- **Key:** `--key` (or `--api-key`) / `MEMENTO_API_KEY`, scope `write`. `--tenant` checks once,
+  through `/describe`, that the key belongs to that tenant (skipped for a write-only key,
+  which cannot read `/describe`). **Server:** `--url` / `MEMENTO_URL`.
+- **Errors:** a network or server failure is logged on stderr (`✗ push failed: … — retrying`)
+  and the next sample is tried; `● reconnected after N failed push(es)` when it gets through.
+  A refused push (bad key, missing scope, invalid event: any 4xx) stops with exit code 1.
+  Ctrl+C stops and prints `cpu-monitor stopped: N pushed, M failed`.
 
 ## Errors
 

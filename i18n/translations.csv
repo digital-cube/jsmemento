@@ -9,9 +9,11 @@ EventTypes,CHAT_MESSAGE_SENT,Message sent,Poslata poruka
 EventTypes,CHAT_MESSAGE_SEEN,Message seen,Viđena poruka
 EventTypes,CHAT_PARTICIPANT_ADDED,Participant added,Dodat učesnik
 EventTypes,NOTE,Note,Beleška
+EventTypes,CPU_LOAD,CPU load,Opterećenje procesora
 InstanceTypes,USER,User,Korisnik
 InstanceTypes,TICKET,Ticket,Tiket
 InstanceTypes,CHAT,Chat,Čet
+InstanceTypes,SERVER,Server,Server
 ActorTypes,USER,User,Korisnik
 ActorTypes,BOT,Bot,Bot
 ActorTypes,SYSTEM,System,Sistem

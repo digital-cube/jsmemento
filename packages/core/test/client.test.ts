@@ -57,6 +57,20 @@ describe("MementoClient", () => {
     expect(chat.fetch.mock.calls[0]?.[0]).toBe("http://h/memento/chats/chat-1?user_id=igor");
   });
 
+  it("pushes an event and reads the describe document", async () => {
+    const event = { event_type: "CPU_LOAD", instance_type: "server", instance_id: "b1" };
+    const pushing = client(json(201, { ok: true, data: { id: "e1", ...event } }));
+    expect(await pushing.client.pushEvent(event, { locale: "sr" })).toMatchObject({ id: "e1" });
+    expect(pushing.fetch).toHaveBeenCalledWith("http://h/memento/events?locale=sr", {
+      method: "POST",
+      headers: { authorization: "Bearer mk_k", "content-type": "application/json" },
+      body: JSON.stringify(event),
+    });
+    const describing = client(json(200, { ok: true, data: { tenant: { slug: "demo" } } }));
+    expect((await describing.client.describe()).tenant.slug).toBe("demo");
+    expect(describing.fetch.mock.calls[0]?.[0]).toBe("http://h/memento/describe");
+  });
+
   it("turns error envelopes into MementoApiError", async () => {
     const { client: c } = client(
       json(403, {
