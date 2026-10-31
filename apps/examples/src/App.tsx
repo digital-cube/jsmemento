@@ -21,6 +21,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router"
 import { connectionOf, SettingsProvider, useDemoKey } from "./connection.js";
 import { ActivityPage } from "./examples/activity/Activity.js";
 import { CpuMonitorPage } from "./examples/cpu-monitor/CpuMonitor.js";
+import { EntityPickerPage, EntityTimelinePage } from "./examples/entity/Entity.js";
 import { PlannedExamplePage } from "./examples/planned/PlannedExample.js";
 import { EXAMPLES_MESSAGES } from "./i18n/messages.js";
 import { defaultSettings, loadSettings, type Settings, saveSettings } from "./settings.js";
@@ -125,6 +126,11 @@ export function App() {
                         <Route index element={<Navigate to={FIRST_EXAMPLE} replace />} />
                         <Route path="examples/cpu-monitor" element={<CpuMonitorPage />} />
                         <Route path="examples/activity" element={<ActivityPage />} />
+                        <Route path="examples/entity" element={<EntityPickerPage />} />
+                        <Route
+                          path="examples/entity/:instance_type/:instance_id"
+                          element={<EntityTimelinePage />}
+                        />
                         {/* Every example of menu.yaml not built yet: a "planned" page. */}
                         <Route path="examples/:slug" element={<PlannedExamplePage />} />
                         <Route path="udc/:collection" element={<CollectionPage />} />

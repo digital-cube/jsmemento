@@ -22,6 +22,10 @@ export interface FeedItem {
   eventType: string;
   /** `ticket/T-17` */
   instance: string;
+  /** `ticket`, or null when the event names no type. */
+  instanceType: string | null;
+  /** `T-17`, or null. */
+  instanceId: string | null;
   actor: string | null;
   /** The sentence memento rendered for the page's language. */
   text: string;
@@ -38,6 +42,8 @@ export function feedItem(row: Row): FeedItem {
     at: str(row.occurred_at) ?? "",
     eventType: str(row.event_type) ?? "",
     instance: type && id ? `${type}/${id}` : (id ?? type ?? ""),
+    instanceType: type,
+    instanceId: id,
     actor: str(row.actor_id),
     text: str(row.rendered) ?? "",
   };

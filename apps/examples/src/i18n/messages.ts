@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -36,7 +36,7 @@ export const EXAMPLES_MESSAGES: Messages = {
     EXAMPLES: { en: "Examples", sr: "Primeri" },
     CPU_MONITOR: { en: "CPU monitor", sr: "CPU monitor" },
     ACTIVITY: { en: "Activity feed", sr: "Tok aktivnosti" },
-    ENTITY: { en: "Entity history", sr: "Istorija entiteta" },
+    ENTITY: { en: "Entity timeline", sr: "Istorija entiteta" },
     CHAT: { en: "Chat", sr: "Čet" },
     TAIL: { en: "Live tail", sr: "Uživo praćenje" },
     SEARCH: { en: "Search", sr: "Pretraga" },
@@ -59,6 +59,40 @@ export const EXAMPLES_MESSAGES: Messages = {
     EMPTY: {
       en: "No activity yet: these events are pushed by memento simulate, a ticket desk story — start it with",
       sr: "Još nema aktivnosti: ove događaje šalje memento simulate, priča o službi za tikete — pokrenite ga sa",
+    },
+  },
+  ENTITY: {
+    TITLE: { en: "Entity timeline", sr: "Istorija entiteta" },
+    SUBTITLE: {
+      en: "What happened to this object? Pick an instance of the tenant's events",
+      sr: "Šta se desilo ovom objektu? Izaberite instancu iz događaja tenanta",
+    },
+    TIMELINE_SUB: {
+      en: "UDC events of one instance · newest on top · live",
+      sr: "UDC događaji jedne instance · najnoviji na vrhu · uživo",
+    },
+    TYPES: { en: "Instance types", sr: "Tipovi instanci" },
+    RECENT: { en: "Recently active {type} instances", sr: "Nedavno aktivne instance tipa {type}" },
+    COUNT: { en: "{count} events", sr: "događaja: {count}" },
+    COUNT_ONE: { en: "1 event", sr: "događaja: 1" },
+    BY_HAND: { en: "Or type one", sr: "Ili ukucajte" },
+    TYPE: { en: "Instance type", sr: "Tip instance" },
+    ID: { en: "Instance id", sr: "ID instance" },
+    OPEN: { en: "Open timeline", sr: "Otvori istoriju" },
+    ALL: { en: "← All instances", sr: "← Sve instance" },
+    SUMMARY: {
+      en: "First seen {first} · last seen {last} · {count} events · {actors} actors",
+      sr: "Prvi put {first} · poslednji put {last} · događaja: {count} · aktera: {actors}",
+    },
+    MORE: { en: "Older events", sr: "Stariji događaji" },
+    EMPTY: {
+      en: "Nothing has happened to {instance} yet: memento has no events for it.",
+      sr: "Instanci {instance} se još ništa nije desilo: memento nema događaja za nju.",
+    },
+    PICK: { en: "Pick another instance", sr: "Izaberite drugu instancu" },
+    NONE: {
+      en: "No instances yet: the tenant has no events. memento simulate pushes a ticket desk story — start it with",
+      sr: "Još nema instanci: tenant nema događaja. memento simulate šalje priču o službi za tikete — pokrenite ga sa",
     },
   },
   PLANNED: {

@@ -2,10 +2,12 @@ import { intlLocaleOf, useI18n, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
 import { hue, initials } from "@memento/react";
 import { type CSSProperties, useEffect, useRef } from "react";
+import { Link } from "react-router";
 import { useSettings } from "../../connection.js";
 import { type Health, useLive } from "../../live.js";
 import { useThrottledRefresh } from "../../refresh.js";
 import { Connected } from "../../shell/AppShell.js";
+import { entityPath } from "../entity/entity.js";
 import {
   FEED_COLLECTION,
   FEED_EXCLUDED_TYPE,
@@ -127,7 +129,7 @@ function FeedLine({ item, intl, fresh }: { item: FeedItem; intl: string; fresh: 
         </p>
         <div className="feed__meta">
           <span className="feed__actor">{actor}</span>
-          {item.instance ? <span className="feed__chip">{item.instance}</span> : null}
+          <InstanceChip item={item} />
           <span className="feed__type">{item.eventType}</span>
         </div>
       </div>
@@ -135,8 +137,25 @@ function FeedLine({ item, intl, fresh }: { item: FeedItem; intl: string; fresh: 
   );
 }
 
+/** The instance of a line: a link to its timeline when the event names both type and id. */
+function InstanceChip({ item }: { item: FeedItem }) {
+  if (!item.instance) return null;
+  if (!item.instanceType || !item.instanceId) {
+    return <span className="feed__chip">{item.instance}</span>;
+  }
+  return (
+    <Link
+      className="feed__chip feed__chip--link"
+      to={entityPath(item.instanceType, item.instanceId)}
+      data-testid="feed-instance"
+    >
+      {item.instance}
+    </Link>
+  );
+}
+
 /** The next page: as soon as the end of the list scrolls into view, or on a click. */
-function MoreRows({
+export function MoreRows({
   loading,
   onMore,
   children,
@@ -174,7 +193,7 @@ function EmptyFeed() {
   );
 }
 
-function FeedStatus({
+export function FeedStatus({
   health,
   lastEventAt,
   total,

@@ -665,3 +665,205 @@ body {
 .planned__back:hover {
   text-decoration: underline;
 }
+
+/* --- feed: an instance chip that leads to its timeline --------------------------------- */
+
+a.feed__chip--link,
+.feed__chip--link {
+  text-decoration: none;
+}
+
+a.feed__chip--link:hover {
+  text-decoration: underline;
+}
+
+/* --- entity picker ----------------------------------------------------------------------- */
+
+.entity {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px 28px;
+}
+
+.entity > * {
+  max-width: 920px;
+}
+
+.entity__heading {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cm-muted);
+}
+
+.entity__heading:first-child {
+  margin-top: 0;
+}
+
+.entity__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.entity__type {
+  padding: 4px 12px;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--cm-ink);
+  background: var(--cm-panel);
+  border: 1px solid var(--cm-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.entity__type.is-on {
+  color: #fff;
+  background: var(--cm-accent);
+  border-color: var(--cm-accent);
+}
+
+.entity__ids {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entity__id {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  color: var(--cm-ink);
+  text-decoration: none;
+  background: var(--cm-panel);
+  border: 1px solid var(--cm-line);
+  border-radius: 10px;
+}
+
+.entity__id:hover {
+  border-color: var(--cm-accent);
+}
+
+.entity__name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cm-accent);
+  overflow-wrap: anywhere;
+}
+
+.entity__count {
+  grid-row: span 2;
+  align-self: center;
+  font-size: 12px;
+  color: var(--cm-muted);
+  white-space: nowrap;
+}
+
+.entity__when {
+  font-size: 11.5px;
+  color: var(--cm-muted);
+}
+
+.entity__form {
+  margin-top: 24px;
+}
+
+.entity__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.entity__fields input {
+  min-width: 140px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--cm-ink);
+  background: var(--cm-panel);
+  border: 1px solid var(--cm-line);
+  border-radius: 8px;
+}
+
+.entity__back {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cm-accent);
+  text-decoration: none;
+}
+
+.entity__back:hover {
+  text-decoration: underline;
+}
+
+/* --- entity timeline --------------------------------------------------------------------- */
+
+.entity__summary {
+  max-width: 920px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--cm-muted);
+}
+
+.timeline {
+  position: relative;
+  max-width: 920px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The line the entries hang on, through the middle of their avatars. */
+.timeline::before {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 15px;
+  width: 2px;
+  content: "";
+  background: var(--cm-line);
+}
+
+.timeline__entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 0 0 18px;
+}
+
+.timeline__dot {
+  position: relative;
+  box-shadow: 0 0 0 3px var(--cm-bg);
+}
+
+.timeline__entry .feed__body {
+  padding: 8px 12px;
+  background: var(--cm-panel);
+  border: 1px solid var(--cm-line);
+  border-radius: 10px;
+}
+
+.timeline__entry.is-new .feed__body {
+  animation: feed-in 1.4s ease-out;
+}
+
+.timeline__head {
+  margin: 0 0 4px;
+}
+
+.timeline__head a.feed__actor {
+  color: var(--cm-accent);
+}

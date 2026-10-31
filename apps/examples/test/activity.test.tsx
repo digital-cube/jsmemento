@@ -192,6 +192,8 @@ describe("feed helpers", () => {
       at: "2026-10-31T10:00:00Z",
       eventType: "NOTE",
       instance: "ticket/T-1",
+      instanceType: "ticket",
+      instanceId: "T-1",
       actor: "ana",
       text: "Fix is in review.",
     });

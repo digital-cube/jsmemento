@@ -1,4 +1,4 @@
-import type { Row } from "@jsudc/core";
+import { evaluateFilter, type Row, type SortKey } from "@jsudc/core";
 import { expect, vi } from "vitest";
 
 export const caps = {
@@ -129,8 +129,9 @@ export interface ServerOptions {
   /** Serve the `menu` collection. Default true. */
   menu?: boolean;
   /**
-   * Serve these as the `events` collection (newest last; the stub sorts by `occurred_at` desc,
-   * applies `event_type neq`, pages by offset and renders in `X-Memento-Locale`). Tests may
+   * Serve these as the `events` collection (newest last; the stub applies the request's
+   * filter and sort — `occurred_at` desc by default — pages by offset and renders in
+   * `X-Memento-Locale`). Tests may
    * push to the array while the app runs. Default: one new CPU row per list, like `cpu_load`.
    */
   feed?: FeedEvent[];
@@ -183,10 +184,20 @@ export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: Serv
       locales.push(new Headers(init?.headers).get("x-memento-locale"));
       if (feed && body.collection === "events") {
         const sr = new Headers(init?.headers).get("x-memento-locale") === "sr";
-        const excluded = body.filter?.op === "neq" ? body.filter.value : null;
+        const sort: SortKey[] = body.sort?.length
+          ? body.sort
+          : [{ field: "occurred_at", dir: "desc" }];
         const all = feed
-          .filter((e) => e.event_type !== excluded)
-          .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+          .filter((e) => evaluateFilter(body.filter, e as unknown as Record<string, unknown>))
+          .sort((a, b) => {
+            for (const { field, dir } of sort) {
+              const x = String((a as unknown as Record<string, unknown>)[field] ?? "");
+              const y = String((b as unknown as Record<string, unknown>)[field] ?? "");
+              const c = x < y ? -1 : x > y ? 1 : 0;
+              if (c !== 0) return dir === "desc" ? -c : c;
+            }
+            return 0;
+          });
         const offset = body.page?.offset ?? 0;
         const limit = body.page?.limit ?? 50;
         return ok({

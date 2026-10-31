@@ -14,13 +14,6 @@ export interface PlannedExample {
  * (`/examples/<slug>`). Each follow-up ticket replaces one row with a page of its own.
  */
 export const PLANNED_EXAMPLES: Readonly<Record<string, PlannedExample>> = {
-  entity: {
-    title: { en: "Entity history", sr: "Istorija entiteta" },
-    summary: {
-      en: "The history of one instance — a ticket like ticket/T-17 or a user like user/ana — from GET /entities/:type/:id/events: everything that happened to it, oldest to newest.",
-      sr: "Istorija jedne instance — tiketa kao što je ticket/T-17 ili korisnika kao user/ana — iz GET /entities/:type/:id/events: sve što joj se desilo, od najstarijeg do najnovijeg.",
-    },
-  },
   chat: {
     title: { en: "Chat", sr: "Čet" },
     summary: {

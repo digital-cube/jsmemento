@@ -12,7 +12,9 @@ each example is a route, and every list on every page comes from UDC.
 | `/` | redirect to the first example, `/examples/cpu-monitor` |
 | `/examples/cpu-monitor` | [CPU monitor](#cpu-monitor) |
 | `/examples/activity` | [Activity feed](#activity-feed) |
-| `/examples/entity`, `chat`, `tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
+| `/examples/entity` | [Entity timeline](#entity-timeline): the picker |
+| `/examples/entity/:instance_type/:instance_id` | the timeline of one instance (`ticket/T-17`, `user/ana`) |
+| `/examples/chat`, `tail`, `search`, `rendering`, `chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
 | `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
 | anything else | redirect to `/` |
 
@@ -91,7 +93,6 @@ Activity feed. An unknown slug leads to `/`.
 
 | slug | will show |
 |---|---|
-| `entity` | the history of one instance (`ticket/T-17`, `user/ana`) from `GET /entities/:type/:id/events` |
 | `chat` | a simulated room shown with `MementoChat`, seen markers |
 | `tail` | the WebSocket stream raw, with filters, like `memento tail` in the browser |
 | `search` | `MementoSearch` with the Filter DSL JSON it sends to `POST /events/query` |
@@ -114,7 +115,8 @@ memento simulate ──POST /events──▶ memento ──POST /udc/list {colle
   `event_type neq CPU_LOAD`, sorted `occurred_at desc`, infinite paging by offset (30 a page; the
   next page loads when the end of the list scrolls into view, or on **Older events**). Each line:
   time, the actor's initials avatar (`initials` / `hue` of `@memento/react`) and id, the
-  **rendered** text, the instance as a chip (`ticket/T-17`), the event type as a muted tag.
+  **rendered** text, the instance as a chip (`ticket/T-17`) that links to its
+  [timeline](#entity-timeline), the event type as a muted tag.
 - **The language is the header's.** The app's `UdcClient` sends `X-Memento-Locale: <en|sr>` with
   every request; memento renders `rendered` in it (docs/TEMPLATES.md, "When it happens"). Switching
   EN / SR invalidates every UDC list, so the feed comes back in the other language without a
@@ -123,6 +125,44 @@ memento simulate ──POST /events──▶ memento ──POST /udc/list {colle
   `CPU_LOAD` refetches the feed (at most once per 250 ms, `src/refresh.ts`). New lines fade in.
 - **Empty** (no simulator running): one sentence on what pushes these events and the compose
   command, `docker compose -f docker-compose.yaml --profile demo up -d simulator`.
+
+## Entity timeline
+
+memento's central question — *what happened to this object?* (docs/PHILOSOPHY.md) — for one
+instance: pick `ticket/T-3`, read its create → modify → note → close story, newest on top, live.
+
+```
+/examples/entity                      picker: the tenant's instance types, the latest instances
+        │ click / type an id                    of the chosen one, with their event counts
+        ▼
+/examples/entity/ticket/T-3  ──POST /udc/list {collection: events,──▶ memento
+                                filter: instance_type = ticket AND instance_id = T-3}
+                             ◀──ws /memento/ws?instance_type=ticket&instance_id=T-3── refetch
+```
+
+- **The same events as `GET /memento/entities/:instance_type/:instance_id/events`**, read
+  through UDC like every list of the site: the `events` collection with an exact `and` of
+  `instance_type eq` and `instance_id eq` (`entityFilter`, `src/examples/entity/entity.ts`),
+  sorted `occurred_at desc`, infinite offset paging (50 a page, **Older events**). No new
+  endpoint, no hand-written fetch.
+- **Picker** (`/examples/entity`, `?type=` keeps the chosen type). The types are not a fixed
+  list: UDC has no `distinct`, so `scanInstanceTypes` walks them one 1-row list each
+  (`instance_type gt <previous>`, sorted ascending) — exact, a handful of requests for the few
+  types a tenant has, at most 50. It opens on `ticket` when there is one. For the chosen type,
+  the latest 200 events give the 12 most recently active ids (`recentInstances`), each with its
+  last activity and its event count — the exact `total` of a 1-row list of its events. **Or
+  type one**: any type / id by hand.
+- **Timeline**: a vertical line of entries, each with date and time, the actor's avatar, the
+  event type tag and the text memento rendered in the header's language (EN / SR, as in the
+  feed). On top, the summary: first seen, last seen, event count (the list's `total`) and
+  distinct actors (`actors+` while older pages are not loaded; the first event then comes from
+  its own 1-row ascending list).
+- **Links**: every actor of an entry is another instance, `user/<actor>`, and links to its own
+  timeline — except on that user's own timeline. The routes are react-router's, so browser back
+  walks the way back to the feed.
+- **Live**: `useLive` subscribes to the stream filtered by `instance_type` + `instance_id`;
+  every event refetches the timeline (at most once per 250 ms). New entries fade in.
+- **Empty** (an instance with no events): says so and links back to the picker on its type.
 
 ## CPU monitor
 
@@ -161,7 +201,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

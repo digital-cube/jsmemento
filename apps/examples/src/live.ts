@@ -1,4 +1,9 @@
-import { type MementoEvent, MementoStream, type StreamStatus } from "@memento/core";
+import {
+  type MementoEvent,
+  MementoStream,
+  type StreamFilter,
+  type StreamStatus,
+} from "@memento/core";
 import { useEffect, useRef, useState } from "react";
 
 /** The dot in the header: green while both the stream and the server are up. */
@@ -19,7 +24,8 @@ export function rateOf(stamps: readonly number[], now: number, windowMs = 10_000
 export interface LiveOptions {
   baseUrl: string;
   apiKey: string;
-  filter: { event_type?: string; instance_type?: string };
+  /** The stream's query-string filter (exact match, ANDed). */
+  filter: StreamFilter;
   /** Called for every event the stream delivers (throttle what it triggers yourself). */
   onEvent: (event: MementoEvent) => void;
   /** How often `/api/health` is polled. Default 5000. */
