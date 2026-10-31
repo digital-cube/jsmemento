@@ -13,7 +13,8 @@ RUN corepack enable
 WORKDIR /src
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm turbo run build --filter=@memento/cli...
+RUN pnpm turbo run build --filter=@memento/cli... --filter=@memento/cpu-monitor
+
 # The CPU monitor web UI (Vite build), served by the server at / and /en/ (MEMENTO_UI_DIR).
 RUN pnpm --filter @memento/cpu-monitor build
 # Standalone copies of @memento/server and @memento/cli with their production dependencies;
