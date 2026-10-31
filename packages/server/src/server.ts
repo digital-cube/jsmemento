@@ -55,12 +55,14 @@ const app = await buildApp({
     heartbeatIntervalMs: config.stream.heartbeatIntervalMs,
     maxBufferedMessages: config.stream.maxBufferedMessages,
   },
+  ...(config.uiDir ? { ui: { root: config.uiDir } } : {}),
 });
 app.log.info(
   { path: config.lookups.path, sections: lookups.registry.sectionNames(), strict: lookups.strict },
   "lookups loaded",
 );
 for (const warning of lookupWarnings) app.log.warn(warning);
+if (config.uiDir) app.log.info({ root: config.uiDir }, "serving the web UI at / and /en/");
 
 app.addHook("onClose", async () => {
   await publisher.close();

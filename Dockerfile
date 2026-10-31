@@ -14,6 +14,8 @@ WORKDIR /src
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@memento/cli...
+# The CPU monitor web UI (Vite build), served by the server at / and /en/ (MEMENTO_UI_DIR).
+RUN pnpm --filter @memento/cpu-monitor build
 # Standalone copies of @memento/server and @memento/cli with their production dependencies;
 # the workspace packages they use (@memento/core, @memento/lookups, …) are copied in, not
 # symlinked.
@@ -21,6 +23,7 @@ RUN pnpm --config.inject-workspace-packages=true --filter @memento/server deploy
  && pnpm --config.inject-workspace-packages=true --filter @memento/cli deploy --prod /out/cli \
  && mkdir -p /out/app/config \
  && cp -r lookups.yaml i18n /out/app/config/ \
+ && cp -r apps/cpu-monitor/dist /out/app/ui \
  && printf '#!/bin/sh\nexec node /opt/memento-cli/dist/main.js "$@"\n' > /out/memento \
  && chmod 755 /out/memento
 
@@ -38,7 +41,8 @@ ENV NODE_ENV=production \
     LOG_LEVEL=info \
     MEMENTO_API_PREFIX=/memento \
     MEMENTO_LOOKUPS_PATH=/app/config/lookups.yaml \
-    MEMENTO_CANDIDATES_DIR=/data/candidates
+    MEMENTO_CANDIDATES_DIR=/data/candidates \
+    MEMENTO_UI_DIR=/app/ui
 WORKDIR /app
 COPY --from=build --chown=node:node /out/app /app
 # `memento` CLI (tenants, API keys, templates…): `docker compose exec memento memento --help`

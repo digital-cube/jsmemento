@@ -84,6 +84,7 @@ docker run -d -p 3000:3000 \
 | `PORT` | `3000` | Listen port (the code default outside the image is 8000). |
 | `LOG_LEVEL` | `info` | pino: `fatal` `error` `warn` `info` `debug` `trace` `silent`. Logs are JSON on stdout. |
 | `MEMENTO_API_PREFIX` | `/memento` | Path every route is mounted under. |
+| `MEMENTO_UI_DIR` | `/app/ui` (image) · unset | Built web UI (the CPU monitor) served at `/` and `/en/`; unset → API only. |
 | `MEMENTO_DEFAULT_LOCALE` | `en` | Locale events are rendered in when a request names none. |
 | `MEMENTO_LOOKUPS_PATH` | `/app/config/lookups.yaml` | Vocabulary file. Missing → lookups disabled (warning). |
 | `MEMENTO_TRANSLATIONS_PATH` | `<dir of lookups>/i18n/translations.csv` | Label sheet. |

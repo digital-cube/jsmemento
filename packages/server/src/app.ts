@@ -31,6 +31,7 @@ import { StreamHub } from "./stream/hub.js";
 import { EventRenderer } from "./templates/renderer.js";
 import { eventCollections } from "./udc/collections.js";
 import { udcRoutes } from "./udc/plugin.js";
+import { type UiOptions, uiRoutes } from "./ui.js";
 
 export interface StreamOptions {
   /** Where stored events come from: a `RedisFeed`, or the `LocalBus` that is also the publisher. */
@@ -190,6 +191,11 @@ export interface BuildAppOptions extends MementoPluginOptions {
   prefix?: string;
   /** pino options, `false` to silence, `true` for defaults. */
   logger?: FastifyServerOptions["logger"];
+  /**
+   * A built web UI (the CPU monitor) served at `/` and `/en/` next to the API (`uiRoutes`).
+   * Default: none — only the API answers.
+   */
+  ui?: Omit<UiOptions, "apiPrefix">;
 }
 
 /** Standalone server: a Fastify instance with the memento plugin mounted. */
@@ -199,7 +205,8 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     genReqId: (request) => requestId(request.headers["x-request-id"]),
     logController: new LogController({ requestIdLogLabel: "request_id" }),
   });
-  const { prefix, logger: _logger, ...plugin } = options;
+  const { prefix, logger: _logger, ui, ...plugin } = options;
   await app.register(mementoPlugin, { ...plugin, prefix: prefix ?? "/memento" });
+  if (ui) await app.register(uiRoutes, { ...ui, apiPrefix: prefix ?? "/memento" });
   return app;
 }
