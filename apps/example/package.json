@@ -1,6 +1,6 @@
 {
   "name": "@memento/example",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "JSMemento demo: a Vite + React app on @memento/react, proxied to a local memento server.",
   "type": "module",

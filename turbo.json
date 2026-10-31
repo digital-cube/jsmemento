@@ -1,6 +1,12 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["DATABASE_URL", "TEST_DATABASE_URL", "REDIS_URL"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "TEST_DATABASE_URL",
+    "REDIS_URL",
+    "MEMENTO_E2E_URL",
+    "MEMENTO_E2E_DATABASE_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -31,6 +37,11 @@
     "@memento/cli#test:cov": {
       "dependsOn": ["^build", "@memento/server#test:cov"],
       "outputs": ["coverage/**"],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "outputs": [],
       "cache": false
     }
   }

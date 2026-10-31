@@ -1,8 +1,18 @@
 {
   "name": "@memento/server",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "JSMemento server: Fastify app, Drizzle/PostgreSQL storage, tenant isolation, API key auth.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/digital-cube/jsmemento.git",
+    "directory": "packages/server"
+  },
+  "homepage": "https://github.com/digital-cube/jsmemento#readme",
+  "bugs": "https://github.com/digital-cube/jsmemento/issues",
+  "engines": {
+    "node": ">=24"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -19,8 +29,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsx watch --conditions=@memento/source src/main.ts",
-    "start": "node dist/main.js",
+    "dev": "tsx watch --conditions=@memento/source src/server.ts",
+    "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --conditions=@memento/source src/migrate-cli.ts",
     "db:migrate:test": "MIGRATE_TARGET=test tsx --conditions=@memento/source src/migrate-cli.ts",
@@ -43,5 +53,8 @@
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.2",
     "drizzle-kit": "^0.31.11"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

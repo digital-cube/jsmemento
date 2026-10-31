@@ -20,7 +20,8 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // Process entry points are thin wrappers over tested functions; the schema module is
       // declarative (its FK/index callbacks only run inside drizzle-kit).
-      exclude: ["src/main.ts", "src/migrate-cli.ts", "src/db/schema.ts"],
+      exclude: ["src/server.ts", "src/migrate-cli.ts", "src/db/schema.ts"],
+      reporter: ["text", "html", "json-summary"],
       thresholds: { lines: 80, statements: 80, functions: 80, branches: 80 },
     },
   },

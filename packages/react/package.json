@@ -1,8 +1,15 @@
 {
   "name": "@memento/react",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "JSMemento React UI: provider, live event table, chat and search components.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/digital-cube/jsmemento.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/digital-cube/jsmemento#readme",
+  "bugs": "https://github.com/digital-cube/jsmemento/issues",
   "type": "module",
   "sideEffects": [
     "*.css"
@@ -43,5 +50,8 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "ws": "^8.22.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

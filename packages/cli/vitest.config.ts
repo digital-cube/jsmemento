@@ -22,6 +22,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // Process entry point: a thin wrapper over runCli.
       exclude: ["src/main.ts"],
+      reporter: ["text", "html", "json-summary"],
       thresholds: { lines: 80, statements: 80, functions: 80, branches: 80 },
     },
   },

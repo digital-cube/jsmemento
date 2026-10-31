@@ -1,8 +1,18 @@
 {
   "name": "@memento/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "JSMemento CLI: setup, tenants, API keys, templates, chats, lookups and a live tail.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/digital-cube/jsmemento.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/digital-cube/jsmemento#readme",
+  "bugs": "https://github.com/digital-cube/jsmemento/issues",
+  "engines": {
+    "node": ">=24"
+  },
   "type": "module",
   "bin": {
     "memento": "./dist/main.js"
@@ -32,5 +42,8 @@
     "chalk": "^6.0.1",
     "commander": "^15.0.0",
     "ora": "^9.4.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

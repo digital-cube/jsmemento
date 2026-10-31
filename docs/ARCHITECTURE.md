@@ -176,7 +176,7 @@ src/
 ├── db/               schema.ts, client.ts (connect, runMigrations), filter.ts (DSL → SQL)
 ├── services/         tenants.ts, apikeys.ts, events.ts, templates.ts — all business logic
 ├── routes/           health, events, entities, chats, describe, stream (/ws) — thin adapters
-├── main.ts           standalone entry (migrates, listens, graceful shutdown)
+├── server.ts         standalone entry (migrates, listens, graceful shutdown)
 └── migrate-cli.ts    `pnpm db:migrate`
 ```
 

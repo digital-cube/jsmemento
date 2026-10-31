@@ -1,8 +1,15 @@
 {
   "name": "@memento/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "JSMemento protocol: Zod schemas, inferred types and helpers shared by server, CLI and clients.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/digital-cube/jsmemento.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/digital-cube/jsmemento#readme",
+  "bugs": "https://github.com/digital-cube/jsmemento/issues",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -27,5 +34,8 @@
   "devDependencies": {
     "@types/ws": "^8.18.2",
     "ws": "^8.22.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

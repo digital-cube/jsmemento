@@ -14,6 +14,7 @@ export default defineConfig({
     setupFiles: ["test/setup.ts"],
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
+      reporter: ["text", "html", "json-summary"],
       thresholds: { lines: 80, statements: 80, functions: 80, branches: 80 },
     },
   },

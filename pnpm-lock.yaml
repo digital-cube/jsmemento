@@ -92,6 +92,22 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
 
+  packages/e2e:
+    dependencies:
+      '@memento/core':
+        specifier: workspace:*
+        version: link:../core
+      '@memento/server':
+        specifier: workspace:*
+        version: link:../server
+    devDependencies:
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
+      ws:
+        specifier: ^8.22.0
+        version: 8.22.0
+
   packages/lookups:
     dependencies:
       yaml:

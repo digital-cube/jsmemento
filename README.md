@@ -1,5 +1,8 @@
 # jsmemento
 
+[![CI](https://github.com/digital-cube/jsmemento/actions/workflows/ci.yml/badge.svg)](https://github.com/digital-cube/jsmemento/actions/workflows/ci.yml)
+[![Release](https://github.com/digital-cube/jsmemento/actions/workflows/release.yml/badge.svg)](https://github.com/digital-cube/jsmemento/actions/workflows/release.yml)
+
 Self-hosted activity ledger: applications push machine events, memento keeps them as an
 immutable, tenant-isolated audit trail and serves them back per entity, per actor, as a feed.
 TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
@@ -12,10 +15,24 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 | [`@memento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail` |
 | [`@memento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
 | [`apps/example`](apps/example) | Vite + React demo of `@memento/react`: paste a key, watch the live table |
+| [`packages/e2e`](packages/e2e) | end-to-end suite: the built server ×2 against PostgreSQL + Redis (not published) |
 
-## Quick start
+## Run it with Docker
 
-Requires Node 24+ and pnpm.
+```bash
+docker compose -f docker-compose.yaml up -d --wait      # memento :3000 + PostgreSQL + Redis
+docker compose -f docker-compose.yaml exec memento memento create-tenant acme --name "Acme Inc"
+docker compose -f docker-compose.yaml exec memento memento create-key --tenant acme --scopes read,write
+curl localhost:3000/memento/health
+```
+
+Image: `ghcr.io/digital-cube/jsmemento:<version>` (`latest`, `main`). Environment variables,
+volumes, reverse proxy and scaling: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Quick start (development)
+
+Requires Node 24+ and pnpm. Details, tests and the release process:
+[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ```bash
 cp .env.example .env            # adjust if needed; the server/CLI read the environment
@@ -56,13 +73,17 @@ on the defaults, which match `compose.yaml`.
 | | |
 |---|---|
 | `pnpm build` / `pnpm typecheck` | Turbo over all packages |
-| `pnpm test` / `pnpm test:cov` | Vitest (server + CLI need PostgreSQL at `TEST_DATABASE_URL`) |
+| `pnpm test` / `pnpm test:coverage` | Vitest (server + CLI need PostgreSQL at `TEST_DATABASE_URL`); coverage ≥ 80 % per package, HTML in `packages/*/coverage/` |
+| `pnpm test:e2e` | builds the server, runs two processes against PostgreSQL + Redis, tests HTTP + WebSocket |
 | `pnpm lint` / `pnpm format` | Biome |
 | `pnpm db:generate` | new Drizzle migration after editing `packages/server/src/db/schema.ts` |
 | `pnpm memento lookups codegen` | regenerate typed lookups after editing `lookups.yaml` |
 
 ## Docs
 
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Docker image, `docker-compose.yaml`, environment variables
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, running tests, coverage, E2E, releasing
+- [CHANGELOG.md](CHANGELOG.md) — releases
 - [docs/API.md](docs/API.md) — endpoints with examples
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — packages, database schema, request lifecycle
 - [docs/TEMPLATES.md](docs/TEMPLATES.md) — rendering, locale fallback, tenant templates, lookups
