@@ -7,9 +7,9 @@ subprotocols `memento.v1` and `bearer.<key>`. No SDK: `@memento/core` stays unpu
 programs use the language's ordinary HTTP client (`fetch`, `urllib`, `curl`, `HttpClient`,
 `ureq`, `net/http`, `libcurl`).
 
-The service site serves them on its `/clients` page: a person downloads one, sets
-`MEMENTO_API_KEY` (and optionally `MEMENTO_URL`) and runs it. The site copies the files from
-`clients/` when it is built.
+The service site serves them on its `/clients` page (below): a person downloads one, sets
+`MEMENTO_API_KEY` (and optionally `MEMENTO_URL`) and runs it. The site reads `clients/` when it
+is built; nothing is copied into the app by hand.
 
 ## What each program does
 
@@ -48,6 +48,48 @@ used up), `0` otherwise.
 
 The table of languages, files and run commands is in [`clients/README.md`](../clients/README.md);
 each directory has its own README (install, the two variables, run).
+
+## The `/clients` page of the service site
+
+`apps/service` shows the programs at `/clients/<lang>` — public, logged in or not (the sidebar
+has it for a signed-in user, the header for a visitor). One tab per language (JavaScript,
+TypeScript, Python, PHP, Java, Rust, Go, C++); the choice is the URL and is remembered in
+localStorage (`memento.service.clients.lang`), so a bare `/clients` opens the language seen last.
+Per language:
+
+- **Environment** — `MEMENTO_URL=<this origin>/memento` and `MEMENTO_API_KEY=mk_…` with a Copy
+  button that copies exactly those two lines. The hint links to `/keys` when signed in, to
+  `/register` otherwise. **No key is ever on the page or in a download** — the plaintext exists
+  once, in the response that created it.
+- The README's **Install**, **Set the two variables** and **Run** sections, as text.
+- The **source** — the main file, plus the manifest (`package.json`, `Cargo.toml`, `go.mod`,
+  `CMakeLists.txt`) as a second tab — with line numbers and Copy, highlighted by shiki at build
+  time (the browser ships HTML, no grammars).
+- **Download `<lang>.zip`** and the list of what is in it.
+
+### Built from `clients/`: `apps/service/vite-plugin-clients.ts`
+
+At `vite build` (and in `vite dev`) the plugin reads `clients/<lang>/` from the repository root:
+
+- `virtual:clients` — per language `{id, label, run, readme: {install, variables, run},
+  files: [{name, source, html}], zip}`. The README is split at its `## Install`,
+  `## Set the two variables` and `## Run` headings; the run line is the first line of the Run
+  section's code block. The page is its own chunk (`React.lazy`), so the other pages do not
+  carry the sources.
+- `dist/clients/<lang>.zip` — the directory under `<lang>/`, without `node_modules`, `target`,
+  `build` and the names the directory's own `.gitignore` lists (the Go binary). Fixed entry
+  times: the same `clients/` gives the same bytes. In dev the zip is answered at
+  `/clients/<lang>.zip` and the page reloads when a file of `clients/` changes.
+
+A missing `clients/`, README section, run line or shown file fails the build with the path in
+the message. The order, labels and shown files are the plugin's `CLIENT_LANGUAGES`; a ninth
+language is a directory plus one line there. `apps/service/turbo.json` adds `clients/**` to the
+build's inputs, so a change of a program rebuilds the site. The image copies
+`apps/service/dist` whole, zips included; `@memento/server` serves them as static files.
+
+Tests: `apps/service/test/clients-plugin.test.ts` (README parsing and every zip's file list,
+against the real `clients/`) and `clients-page.test.tsx` (tabs, URL and localStorage, the
+environment block, Go's files and zip link).
 
 ## CI
 

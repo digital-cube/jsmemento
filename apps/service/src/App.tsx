@@ -10,10 +10,19 @@ import {
 import { chartRenderer } from "@jsudc/react/chart";
 import { UdcReactRouterUrlState } from "@jsudc/react/react-router";
 import { tableRenderer } from "@jsudc/react/table";
-import { Toaster, TooltipProvider } from "@jsudc/react/ui";
+import { Spinner, Toaster, TooltipProvider } from "@jsudc/react/ui";
 import { routerBasename, storedLocale, storeLocale } from "@memento/ui-shell";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AccountPage } from "./account/Account.js";
 import { AdminUserPage } from "./admin/AdminUser.js";
@@ -22,13 +31,18 @@ import { SERVICE_MESSAGES } from "./i18n/messages.js";
 import { KeyPage } from "./keys/KeyPage.js";
 import { KeysPage } from "./keys/KeysPage.js";
 import { serviceUdcClient } from "./lib/udc.js";
-import { ClientsPage } from "./pages/Clients.js";
 import { ForgotPage, LoginPage, ResetPage } from "./pages/Login.js";
 import { HomePage, TermsPage } from "./pages/Public.js";
 import { RegisterPage } from "./pages/Register.js";
 import { VerifyPage } from "./pages/Verify.js";
 import { RequireSession, SessionWatch } from "./session.js";
 import { ServiceShell } from "./shell/ServiceShell.js";
+
+// /clients carries every client program's source and highlighted HTML: its own chunk, loaded
+// when the page is opened.
+const ClientsPage = lazy(() =>
+  import("./pages/clients/ClientsPage.js").then((m) => ({ default: m.ClientsPage })),
+);
 
 // Module constant: the registry must not change between renders.
 const renderers = createRendererRegistry(tableRenderer, chartRenderer);
@@ -81,7 +95,8 @@ export function ServiceRoutes() {
         <Route path="keys" element={signedIn(<KeysPage />)} />
         <Route path="keys/:id" element={signedIn(<KeyPage />)} />
         <Route path="keys/:id/:tab" element={signedIn(<KeyPage />)} />
-        <Route path="clients" element={signedIn(<ClientsPage />)} />
+        <Route path="clients" element={clients} />
+        <Route path="clients/:lang" element={clients} />
         <Route path="account" element={signedIn(<AccountPage />)} />
         <Route path="admin" element={<Navigate to="/admin/users" replace />} />
         <Route path="admin/users" element={signedIn(<AdminUsersPage />, true)} />
@@ -91,6 +106,18 @@ export function ServiceRoutes() {
     </Routes>
   );
 }
+
+const clients = (
+  <Suspense
+    fallback={
+      <div className="page__center">
+        <Spinner />
+      </div>
+    }
+  >
+    <ClientsPage />
+  </Suspense>
+);
 
 function signedIn(page: ReactNode, admin = false) {
   return <RequireSession admin={admin}>{page}</RequireSession>;

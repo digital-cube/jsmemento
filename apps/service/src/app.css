@@ -544,3 +544,219 @@ a.btn {
 .copy {
   flex: none;
 }
+
+/* --- /clients: the client programs ------------------------------------------------------- */
+
+.clients {
+  max-width: 980px;
+  padding: 24px 28px 40px;
+}
+
+.clients h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.clients h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.clients__intro {
+  margin: 0 0 20px;
+  max-width: 70ch;
+  line-height: 1.55;
+  color: var(--cm-muted);
+}
+
+.clients__langs,
+.clients__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  border-bottom: 1px solid var(--cm-line);
+}
+
+.clients__lang,
+.clients__file {
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cm-muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.clients__file {
+  padding: 7px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.clients__lang:hover,
+.clients__file:hover {
+  color: var(--cm-ink);
+}
+
+.clients__lang[data-state="active"],
+.clients__file[data-state="active"] {
+  color: var(--cm-ink);
+  border-bottom-color: var(--cm-accent);
+}
+
+.clients__lang:focus-visible,
+.clients__file:focus-visible {
+  outline: 2px solid var(--cm-accent);
+  outline-offset: -2px;
+}
+
+.clients__program {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding-top: 20px;
+}
+
+.clients__envrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.clients__envlines,
+.clients__snippet {
+  margin: 0;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #f4f5f7;
+  border: 1px solid var(--cm-line);
+  border-radius: 6px;
+}
+
+.clients__envlines {
+  flex: 1;
+}
+
+.clients__hint {
+  color: var(--cm-muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.clients__note {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--cm-muted);
+}
+
+.clients__readme {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.clients__section h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cm-muted);
+}
+
+.clients__section p {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.clients__section code {
+  padding: 1px 4px;
+  font-size: 12.5px;
+  background: #f4f5f7;
+  border-radius: 4px;
+}
+
+.clients__download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.clients__zip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--cm-muted);
+}
+
+/* A source file: the head (name, Copy), then shiki's <pre> with line numbers from a counter. */
+.code {
+  border: 1px solid var(--cm-line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.clients__files + * .code,
+.clients__files ~ * .code {
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+}
+
+.code__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 4px 12px;
+  font-size: 12.5px;
+  background: #f4f5f7;
+  border-bottom: 1px solid var(--cm-line);
+}
+
+.code__body {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.code__body pre {
+  tab-size: 4;
+  margin: 0;
+  padding: 10px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  /* github-light's own background, white, comes inline from shiki. */
+  background: #fff;
+}
+
+.code__body code {
+  counter-reset: line;
+  display: block;
+  min-width: max-content;
+}
+
+.code__body .line {
+  display: inline-block;
+  padding-right: 16px;
+}
+
+/* The gutter is exactly 8ch wide (6 + 2), a multiple of the tab size: Go's tabs line up. */
+.code__body .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  box-sizing: border-box;
+  width: 6ch;
+  margin-right: 2ch;
+  padding-right: 1ch;
+  text-align: right;
+  color: #a0a7b1;
+  box-shadow: inset -1px 0 0 var(--cm-line);
+  user-select: none;
+}

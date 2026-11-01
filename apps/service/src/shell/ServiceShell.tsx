@@ -35,10 +35,16 @@ function Who({ me }: { me: Me | null | undefined }) {
   const logOut = useLogOut();
   if (me === undefined) return null;
   if (me === null) {
+    // No sidebar logged out: the public pages are in the header.
     return (
-      <Link className="btn btn--ghost" to="/login" data-testid="header-login">
-        {t("APP", "LOG_IN")}
-      </Link>
+      <span className="who">
+        <Link className="btn btn--ghost" to="/clients" data-testid="header-clients">
+          {t("MENU", "CLIENTS")}
+        </Link>
+        <Link className="btn btn--ghost" to="/login" data-testid="header-login">
+          {t("APP", "LOG_IN")}
+        </Link>
+      </span>
     );
   }
   return (

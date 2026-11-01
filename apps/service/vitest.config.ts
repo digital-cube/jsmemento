@@ -1,9 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { clientsPlugin } from "./vite-plugin-clients.js";
 
 const src = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
+  // `virtual:clients` from the real clients/ directory (plain text: no shiki in tests).
+  plugins: [clientsPlugin({ highlight: false })],
   // Test workspace packages from source, without a build step.
   resolve: {
     alias: [

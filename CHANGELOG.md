@@ -9,6 +9,15 @@ share one version.
 
 ### Added
 
+- **The `/clients` page of the service site** (`apps/service`, [docs/CLIENTS.md](docs/CLIENTS.md#the-clients-page-of-the-service-site)):
+  public, a tab per language at `/clients/<lang>` (remembered in localStorage), the two
+  environment lines with this origin and a `mk_…` placeholder (Copy; the hint links to `/keys`),
+  the README's install / variables / run, the source with line numbers, Copy and the manifest as
+  a second tab, and **Download `<lang>.zip`**. Built by `vite-plugin-clients.ts` from
+  `clients/` at build time: `virtual:clients` (shiki-highlighted HTML, no grammars in the
+  browser) and `dist/clients/<lang>.zip` (fflate; without `node_modules`, `target`, `build`).
+  Logged out, the header links to it. No key is ever embedded.
+
 - **Client programs** (`clients/<lang>`, [docs/CLIENTS.md](docs/CLIENTS.md)): one complete
   program each in JavaScript, TypeScript, Python, PHP, Java, Rust, Go and C++ — push a
   `USER_LOGIN` event, query the last ten of `user/<you>`, tail the stream for 10 s (not in PHP

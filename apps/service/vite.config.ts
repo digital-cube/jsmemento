@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defaultClientConditions, defineConfig, loadEnv } from "vite";
+import { clientsPlugin } from "./vite-plugin-clients.js";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -8,7 +9,8 @@ export default defineConfig(({ mode }) => {
   const target = env.MEMENTO_SERVER || "http://localhost:8000";
   const proxy = { "/memento": { target, changeOrigin: true } };
   return {
-    plugins: [react()],
+    // clientsPlugin: the /clients page (`virtual:clients`) and dist/clients/<lang>.zip.
+    plugins: [react(), clientsPlugin()],
     // Use the workspace packages' TypeScript sources: no build step before `pnpm dev`.
     resolve: { conditions: ["@memento/source", ...defaultClientConditions] },
     // Production bundle (served by @memento/server from MEMENTO_UI_DIR): no source maps.

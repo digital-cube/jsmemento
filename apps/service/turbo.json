@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/clients/**",
+        "!$TURBO_ROOT$/clients/**/node_modules/**",
+        "!$TURBO_ROOT$/clients/**/target/**",
+        "!$TURBO_ROOT$/clients/**/build/**",
+        "!$TURBO_ROOT$/clients/golang/memento-client"
+      ]
+    }
+  }
+}

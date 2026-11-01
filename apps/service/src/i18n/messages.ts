@@ -288,13 +288,31 @@ export const SERVICE_MESSAGES: Messages = {
     NOT_FOUND: { en: "No such user.", sr: "Nema takvog korisnika." },
     BACK: { en: "All users", sr: "Svi korisnici" },
   },
-  PLANNED: {
-    BADGE: { en: "Planned", sr: "U planu" },
-    CLIENTS_TITLE: { en: "Clients", sr: "Klijenti" },
-    CLIENTS_TEXT: {
-      en: "The client programs that push events to memento with your keys — how to install and configure them — come here next.",
-      sr: "Klijentski programi koji vašim ključevima šalju događaje u memento — kako se instaliraju i podešavaju — dolaze ovde uskoro.",
+  CLIENTS: {
+    TITLE: { en: "Client programs", sr: "Klijentski programi" },
+    INTRO: {
+      en: "Each program pushes one event, queries the last ten and tails the live stream for ten seconds — in the language you pick. Put your key into the environment: nothing is embedded in the code or the download.",
+      sr: "Svaki program šalje jedan događaj, čita poslednjih deset i deset sekundi prati tok uživo — na jeziku koji izaberete. Ključ stavite u okruženje: ništa nije ugrađeno ni u kod ni u preuzimanje.",
     },
+    LANGUAGES: { en: "Language", sr: "Jezik" },
+    ENV_TITLE: { en: "Environment", sr: "Okruženje" },
+    HINT_KEY: { en: "your key", sr: "vaš ključ" },
+    HINT_KEYS: { en: "your key from API keys", sr: "vaš ključ sa stranice API ključevi" },
+    HINT_REGISTER_BEFORE: { en: "your key —", sr: "vaš ključ —" },
+    HINT_REGISTER_LINK: {
+      en: "register and create one",
+      sr: "registrujte se i napravite ga",
+    },
+    ENV_NOTE: {
+      en: "The key is shown once, when you create it; this page never knows it.",
+      sr: "Ključ se prikazuje jednom, kada ga napravite; ova stranica ga nikad ne zna.",
+    },
+    INSTALL: { en: "Install", sr: "Instalacija" },
+    VARIABLES: { en: "Set the two variables", sr: "Postavite dve promenljive" },
+    RUN: { en: "Run", sr: "Pokretanje" },
+    SOURCE: { en: "Source", sr: "Izvorni kod" },
+    FILES: { en: "Files", sr: "Fajlovi" },
+    DOWNLOAD: { en: "Download", sr: "Preuzmi" },
   },
   // The titles `<UdcDataView>` gives each collection (`t("COLLECTIONS", <name>)`).
   COLLECTIONS: {
