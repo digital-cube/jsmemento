@@ -13,6 +13,7 @@ import type { TenantContext } from "../context.js";
 import type { PublishedEvent } from "../publisher.js";
 import { localizeEvents } from "../services/events.js";
 import type { EventRenderer } from "../templates/renderer.js";
+import type { UsageMeter } from "../usage.js";
 import type { EventFeed } from "./feed.js";
 
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -158,7 +159,15 @@ export interface StreamHubOptions {
   maxBufferedMessages?: number;
   /** Renders events for connections that asked for a `?locale`. */
   renderer?: EventRenderer;
+  /** Counts `stream_seconds` of API-key connections: every minute while open, and on close. */
+  usage?: UsageMeter | null;
+  /** How often open connections are metered. Default 60 000. */
+  usageIntervalMs?: number;
+  /** The meter's clock (tests pin it). */
+  now?: () => number;
 }
+
+export const STREAM_USAGE_INTERVAL_MS = 60_000;
 
 interface TenantGroup {
   connections: Set<StreamConnection>;
@@ -179,6 +188,11 @@ export class StreamHub {
   private readonly renderer: EventRenderer | undefined;
   private readonly groups = new Map<string, TenantGroup>();
   private readonly timer: NodeJS.Timeout;
+  private readonly usage: UsageMeter | null;
+  private readonly usageTimer: NodeJS.Timeout | null = null;
+  private readonly now: () => number;
+  /** When each metered connection's seconds were last counted (ms). */
+  private readonly meteredSince = new Map<StreamConnection, number>();
   /** Events are dispatched one after another, so every client sees them in publish order. */
   private queue: Promise<void> = Promise.resolve();
 
@@ -195,6 +209,34 @@ export class StreamHub {
     });
     this.timer = setInterval(() => this.heartbeat(), this.heartbeatIntervalMs);
     this.timer.unref();
+    this.usage = options.usage ?? null;
+    this.now = options.now ?? Date.now;
+    if (this.usage) {
+      this.usageTimer = setInterval(
+        () => this.meterAll(),
+        options.usageIntervalMs ?? STREAM_USAGE_INTERVAL_MS,
+      );
+      this.usageTimer.unref();
+    }
+  }
+
+  /** Adds the seconds `connection` was open since it was last counted (API keys only). */
+  private meter(connection: StreamConnection, final: boolean): void {
+    const since = this.meteredSince.get(connection);
+    const { apiKeyId, tenantId } = connection.tenant;
+    if (since === undefined || !this.usage || !apiKeyId) return;
+    const now = this.now();
+    const seconds = Math.floor((now - since) / 1000);
+    if (seconds > 0 || final) {
+      if (seconds > 0) this.usage.add(apiKeyId, tenantId, { stream_seconds: seconds });
+      // Whole seconds only: the remainder carries into the next count.
+      this.meteredSince.set(connection, since + seconds * 1000);
+    }
+    if (final) this.meteredSince.delete(connection);
+  }
+
+  private meterAll(): void {
+    for (const connection of this.meteredSince.keys()) this.meter(connection, false);
   }
 
   /** Registers a connected socket; resolves once it is subscribed and welcomed. */
@@ -207,6 +249,7 @@ export class StreamHub {
       this.groups.set(slug, group);
     }
     group.connections.add(connection);
+    if (this.usage && info.tenant.apiKeyId) this.meteredSince.set(connection, this.now());
     socket.on("close", () => this.remove(connection));
     try {
       await group.subscribed;
@@ -232,6 +275,7 @@ export class StreamHub {
   /** Forgets a closed connection; the last one of a tenant ends its feed subscription. */
   remove(connection: StreamConnection): void {
     connection.closed = true;
+    this.meter(connection, true);
     const slug = connection.tenant.tenantSlug;
     const group = this.groups.get(slug);
     if (!group?.connections.delete(connection)) return;
@@ -287,6 +331,9 @@ export class StreamHub {
   /** Closes every connection (1001) and stops the heartbeat. The feed is the caller's. */
   close(): void {
     clearInterval(this.timer);
+    if (this.usageTimer) clearInterval(this.usageTimer);
+    // Count every connection's time now: the meter flushes right after the hub closes.
+    for (const connection of [...this.meteredSince.keys()]) this.meter(connection, true);
     for (const group of this.groups.values()) {
       for (const connection of group.connections) {
         connection.close(STREAM_CLOSE_CODES.going_away, "server shutting down");

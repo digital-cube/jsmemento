@@ -3,7 +3,7 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import { ok } from "@memento/core";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
-import { clearSessionCookie, sessionCookie, setSessionCookie } from "../auth.js";
+import { acceptEmptyJson, clearSessionCookie, sessionCookie, setSessionCookie } from "../auth.js";
 import type { LimitsConfig } from "../config.js";
 import type { Database } from "../db/client.js";
 import type { TenantRow, UserRow } from "../db/schema.js";
@@ -53,14 +53,8 @@ const SESSION = { auth: "session" } as const;
 export const accountRoutes: FastifyPluginAsync<AccountRoutesOptions> = async (app, options) => {
   const { db, mails, sessionDays, limits } = options;
 
-  // `POST /auth/logout` and `/auth/resend` carry no body, but must name application/json
-  // (the CSRF guard): accept an empty JSON body as `{}` here — and only here.
-  const defaultJson = app.getDefaultJsonParser("error", "error");
-  app.removeContentTypeParser("application/json");
-  app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
-    if (body === "" || (typeof body === "string" && body.trim() === "")) done(null, {});
-    else defaultJson(request, body as string, done);
-  });
+  // `POST /auth/logout` and `/auth/resend` carry no body, but must name application/json.
+  acceptEmptyJson(app);
 
   await app.register(fastifyRateLimit, {
     global: false,

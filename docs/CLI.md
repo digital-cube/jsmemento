@@ -123,6 +123,26 @@ memento --json list-users                 # [{"email":…,"tenant":…,"verified
 
 An unknown email: `error: no user "x@example.com"`, exit code 1.
 
+## Retention
+
+```bash
+memento retention                          # every tenant with retention_days
+#   acme: archived 1520 events older than 30 days (before 2026-10-02T08:00:00.000Z)
+memento retention --tenant acme --dry-run  # count only, change nothing
+memento --json retention                   # [{"tenant":"acme","retention_days":30,"cutoff":…,"archived":1520}]
+```
+
+Archives (sets `archived_at`) the live events that happened before `now − retention_days`, in
+batches of 10 000; tenants whose `retention_days` is NULL keep everything (`no tenant has
+retention_days: nothing archived`). An unknown `--tenant` is an error, exit code 1.
+
+## API keys and the service
+
+`create-key` / `revoke-key` keep working next to the self-service `/keys` routes and write no
+lifecycle events (there is no user). A CLI key has no `created_by`, so its quota mails go to the
+tenant's owner, if it has one. `send-message` writes with no key: its events carry
+`api_key_id: null` and no daily limit applies.
+
 ## Errors
 
 Errors are one line plus, when there is something to do, a hint. There are no stack traces:

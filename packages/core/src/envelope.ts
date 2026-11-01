@@ -10,6 +10,10 @@ export const ERROR_CODES = {
   conflict: 409,
   unsupported_media_type: 415,
   rate_limited: 429,
+  /** An API key wrote its daily limit of events (`details: { limit, used, resets_at }`). */
+  quota_exceeded: 429,
+  /** The tenant holds as many live keys as it may (`details: { max_keys }`). */
+  limit_reached: 409,
   internal_error: 500,
 } as const;
 export type ErrorCode = keyof typeof ERROR_CODES;

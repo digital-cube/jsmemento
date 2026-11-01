@@ -50,20 +50,23 @@ if (config.redisUrl) {
 }
 
 // Self-service accounts (MEMENTO_ACCOUNTS): Brevo when a key is set, otherwise mails are
-// logged; rate limit counters in Redis when there is one, so every process shares them.
+// logged; rate limit and quota counters in Redis when there is one, so every process shares
+// them.
 let accounts: AccountsOptions | undefined;
 let rateLimitRedis: Redis | null = null;
 if (config.accounts) {
   const { brevoApiKey, mailFrom } = config.accounts;
   if (config.redisUrl) {
     rateLimitRedis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
-    rateLimitRedis.on("error", (error) => app.log.warn({ err: error }, "rate limit redis error"));
+    rateLimitRedis.on("error", (error) => app.log.warn({ err: error }, "accounts redis error"));
   }
   accounts = {
     serviceUrl: config.accounts.serviceUrl,
     sessionDays: config.accounts.sessionDays,
     limits: config.limits,
     rateLimit: { redis: rateLimitRedis },
+    // Today's per-key event counters (memento:quota:<key>:<day>), shared by every process.
+    redis: rateLimitRedis,
     ...(brevoApiKey && mailFrom
       ? {
           mailer: new BrevoMailer({
@@ -114,6 +117,8 @@ if (config.accounts) {
       service_url: config.accounts.serviceUrl,
       mail: config.accounts.brevoApiKey ? "brevo" : "log",
       rate_limit_store: rateLimitRedis ? "redis" : "memory",
+      quota_store: rateLimitRedis ? "redis" : "usage table",
+      default_daily_limit: config.limits.defaultDailyLimit,
     },
     "self-service accounts on: /auth/* and the session cookie",
   );

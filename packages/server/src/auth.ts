@@ -10,6 +10,7 @@ import {
   authenticateSession,
   SESSION_COOKIE,
 } from "./services/sessions.js";
+import type { UsageMeter } from "./usage.js";
 
 /** The credential a route takes instead of an API key: a signed-in user (`admin`: an admin). */
 export type SessionAuth = "session" | "admin";
@@ -40,6 +41,14 @@ export interface SessionOptions {
 export interface InstallAuthOptions {
   /** Enables the session credential (`config.auth`); `null`/absent: such routes answer 401. */
   sessions?: SessionOptions | null;
+  /** Counts `requests` and `bytes_in` of every API-key request; absent → not metered. */
+  usage?: UsageMeter | null;
+}
+
+/** The request's `Content-Length`, 0 when absent or not a number. */
+export function contentLength(request: FastifyRequest): number {
+  const value = Number(request.headers["content-length"] ?? 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 /** The key of a WebSocket upgrade offered as subprotocol `bearer.<key>` (browsers). */
@@ -66,6 +75,20 @@ export function requireJson(request: FastifyRequest): void {
     "unsupported_media_type",
     "this request needs Content-Type: application/json",
   );
+}
+
+/**
+ * Session writes with nothing to send (`POST /auth/logout`, `/keys/:id/disable`, `DELETE`)
+ * must still name `application/json` (the CSRF guard): in the plugin `app` this parses an
+ * empty JSON body as `{}` — and only there.
+ */
+export function acceptEmptyJson(app: FastifyInstance): void {
+  const defaultJson = app.getDefaultJsonParser("error", "error");
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    if (body === "" || (typeof body === "string" && body.trim() === "")) done(null, {});
+    else defaultJson(request, body as string, done);
+  });
 }
 
 /** The value of the session cookie, if any (needs `@fastify/cookie`). */
@@ -165,6 +188,12 @@ export function installAuth(
     }
     request.tenant = tenant;
     request.log = request.log.child({ tenant: tenant.tenantSlug, api_key: tenant.apiKeyId });
+    if (tenant.apiKeyId) {
+      options.usage?.add(tenant.apiKeyId, tenant.tenantId, {
+        requests: 1,
+        bytes_in: contentLength(request),
+      });
+    }
   });
 
   app.addHook("preHandler", (request, _reply, done) => {

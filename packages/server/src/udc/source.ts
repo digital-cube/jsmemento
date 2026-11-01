@@ -39,7 +39,7 @@ import {
 import { requireTenant } from "../context.js";
 import type { Database } from "../db/client.js";
 import { escapeLike } from "../db/filter.js";
-import { type EventRow, events } from "../db/schema.js";
+import { apiKeys, type EventRow, events } from "../db/schema.js";
 import { localizeEvents, serializeEvent } from "../services/events.js";
 import type { EventRenderer } from "../templates/renderer.js";
 
@@ -56,9 +56,12 @@ export interface SqlField {
   sortable?: boolean;
 }
 
+/** An event as the fields read it: with the prefix of the key that wrote it. */
+export type EventRowView = MementoEvent & { api_key: string | null };
+
 /** One field of an event collection: its UDC definition, its SQL and its value. */
 export interface EventField extends SqlField {
-  value: (event: MementoEvent) => unknown;
+  value: (event: EventRowView) => unknown;
 }
 
 /** A collection of the current tenant's events, narrowed by `where` and shaped by `fields`. */
@@ -68,6 +71,11 @@ export interface EventCollectionSpec {
   where?: SQL;
   /** Default `[{ field: "occurred_at", dir: "desc" }]`: newest first. */
   defaultSort?: SortKey[];
+  /**
+   * A field every `list` must filter on with a top-level `eq` / `in` condition (e.g.
+   * `api_key` in `api_key_events`); a request without one is a `validation_error`.
+   */
+  requiredFilter?: string;
 }
 
 export const EVENT_SOURCE_CAPABILITIES: Capabilities = {
@@ -121,11 +129,15 @@ export class EventCollectionSource implements Source {
     }
     const limit = Math.min(req.page?.limit ?? 50, MAX_PAGE_LIMIT);
     const offset = req.page?.offset ?? 0;
+    const required = this.spec.requiredFilter;
+    if (required && !(req.filter && topLevel(req.filter).some((c) => namesValue(c, required)))) {
+      throw new UdcError("validation_error", `this collection needs a filter on ${required}`, {
+        field: required,
+      });
+    }
     const where = this.where(req.filter);
     const [rows, totals] = await Promise.all([
-      this.db
-        .select()
-        .from(events)
+      this.select()
         .where(where)
         .orderBy(
           ...this.compiler.orderBy(req.sort?.length ? req.sort : this.defaultSort, (dir) => [
@@ -134,7 +146,11 @@ export class EventCollectionSource implements Source {
         )
         .limit(limit)
         .offset(offset),
-      this.db.select({ total: count() }).from(events).where(where),
+      this.db
+        .select({ total: count() })
+        .from(events)
+        .leftJoin(apiKeys, eq(apiKeys.id, events.apiKeyId))
+        .where(where),
     ]);
     return {
       rows: await this.toRows(rows),
@@ -146,15 +162,22 @@ export class EventCollectionSource implements Source {
   async read(id: string): Promise<Row> {
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const rows = uuid.test(id)
-      ? await this.db
-          .select()
-          .from(events)
+      ? await this.select()
           .where(and(this.where(undefined), eq(events.id, id)))
           .limit(1)
       : [];
     const [row] = await this.toRows(rows);
     if (!row) throw new UdcError("not_found", `no event ${id}`);
     return row;
+  }
+
+  /** The events with the prefix of the key that wrote them (a left join: most have none). */
+  private select() {
+    return this.db
+      .select({ event: events, apiKey: apiKeys.prefix })
+      .from(events)
+      .leftJoin(apiKeys, eq(apiKeys.id, events.apiKeyId))
+      .$dynamic();
   }
 
   mutate(): Promise<Row> {
@@ -187,15 +210,16 @@ export class EventCollectionSource implements Source {
     return and(...parts) as SQL;
   }
 
-  private async toRows(rows: EventRow[]): Promise<Row[]> {
-    let list = rows.map(serializeEvent);
+  private async toRows(rows: { event: EventRow; apiKey: string | null }[]): Promise<Row[]> {
+    let list = rows.map((r) => serializeEvent(r.event));
     if (this.renderer && list.length > 0) {
       const { tenantId, locale } = requireTenant();
       list = await localizeEvents(this.renderer, tenantId, list, locale);
     }
-    return list.map((event) => {
+    return list.map((event, i) => {
+      const view: EventRowView = { ...event, api_key: rows[i]?.apiKey ?? null };
       const row: Row = { __meta: { id: event.id, version: 1 } };
-      for (const [name, field] of Object.entries(this.spec.fields)) row[name] = field.value(event);
+      for (const [name, field] of Object.entries(this.spec.fields)) row[name] = field.value(view);
       return row;
     });
   }
@@ -204,6 +228,20 @@ export class EventCollectionSource implements Source {
   compile(node: FilterNode): SQL {
     return this.compiler.compile(node);
   }
+}
+
+/** The conditions ANDed at the top of a filter tree. */
+export function topLevel(node: FilterNode): Condition[] {
+  if (isCondition(node)) return [node];
+  if ("and" in node) return node.and.flatMap(topLevel);
+  return [];
+}
+
+/** Whether `c` pins `field` to one value or a list of them (`eq` / `in`). */
+function namesValue(c: Condition, field: string): boolean {
+  if (c.field !== field) return false;
+  if (c.op === "eq") return c.value !== null && c.value !== undefined && c.value !== "";
+  return c.op === "in" && Array.isArray(c.value) && c.value.length > 0;
 }
 
 /** The UDC schema of a field map: every field, in declaration order. */

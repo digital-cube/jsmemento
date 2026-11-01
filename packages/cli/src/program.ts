@@ -15,6 +15,7 @@ import {
   validateTranslationsCsv,
 } from "@memento/lookups";
 import {
+  applyRetention,
   createApiKey,
   createChat,
   createTenant,
@@ -405,6 +406,41 @@ Environment:
       print(apiKey, `revoked key ${apiKey.prefix} (${apiKey.name})`);
     });
 
+  program
+    .command("retention")
+    .description(
+      "archive the events older than each tenant's retention_days (tenants without one keep all)",
+    )
+    .option("--tenant <slug>", "only this tenant")
+    .option("--dry-run", "count what would be archived, change nothing")
+    .addHelpText(
+      "after",
+      examples(
+        ["memento retention", "archive expired events of every tenant with retention_days"],
+        ["memento retention --tenant acme --dry-run", "how many events of acme would go"],
+      ),
+    )
+    .action(async (options: { tenant?: string; dryRun?: boolean }) => {
+      const results = await applyRetention(db(), {
+        ...(options.tenant ? { tenant: options.tenant } : {}),
+        dryRun: options.dryRun === true,
+      });
+      const verb = options.dryRun ? "would archive" : "archived";
+      print(
+        results,
+        results.length === 0
+          ? options.tenant
+            ? `tenant ${options.tenant} has no retention_days: nothing archived`
+            : "no tenant has retention_days: nothing archived"
+          : results
+              .map(
+                (r) =>
+                  `${r.tenant}: ${verb} ${r.archived} events older than ${r.retention_days} days (before ${r.cutoff})`,
+              )
+              .join("\n"),
+      );
+    });
+
   // --- Self-service users (MEMENTO_ACCOUNTS) ----------------------------------------------
   program
     .command("list-users")
@@ -579,7 +615,8 @@ Environment:
         tenantId: tenant.id,
         tenantSlug: tenant.slug,
         tenantName: tenant.name,
-        apiKeyId: "cli",
+        // The CLI writes with no key: its events carry no api_key_id (and no quota applies).
+        apiKeyId: null,
         scopes: ["admin"],
       },
       fn,

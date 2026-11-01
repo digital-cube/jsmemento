@@ -10,10 +10,16 @@ EventTypes,CHAT_MESSAGE_SEEN,Message seen,Viđena poruka
 EventTypes,CHAT_PARTICIPANT_ADDED,Participant added,Dodat učesnik
 EventTypes,NOTE,Note,Beleška
 EventTypes,CPU_LOAD,CPU load,Opterećenje procesora
+EventTypes,APIKEY_CREATED,API key created,Kreiran API ključ
+EventTypes,APIKEY_DISABLED,API key paused,Pauziran API ključ
+EventTypes,APIKEY_ENABLED,API key resumed,Nastavljen API ključ
+EventTypes,APIKEY_DELETED,API key deleted,Obrisan API ključ
+EventTypes,APIKEY_LIMIT_CHANGED,API key limit changed,Promenjen limit API ključa
 InstanceTypes,USER,User,Korisnik
 InstanceTypes,TICKET,Ticket,Tiket
 InstanceTypes,CHAT,Chat,Čet
 InstanceTypes,SERVER,Server,Server
+InstanceTypes,API_KEY,API key,API ključ
 ActorTypes,USER,User,Korisnik
 ActorTypes,BOT,Bot,Bot
 ActorTypes,SYSTEM,System,Sistem

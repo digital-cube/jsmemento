@@ -13,15 +13,37 @@ export const ApiKeySchema = z.object({
   last_used_at: TimestampSchema.nullable(),
   expires_at: TimestampSchema.nullable(),
   revoked_at: TimestampSchema.nullable(),
+  /** `revoked` (CLI) wins over `expired`, which wins over `disabled` (paused by its owner). */
+  status: z.enum(["active", "disabled", "revoked", "expired"]),
+  /** Events the key may write per UTC day (its own limit, else the server default). */
+  daily_limit: z.number().int().nullable(),
+  /** Events it wrote today (UTC). */
+  used_today: z.number().int().min(0),
+  /** The user who created it on the service site; `null` for CLI keys. */
+  created_by: IdSchema.nullable(),
 });
 export type ApiKey = z.infer<typeof ApiKeySchema>;
+export type ApiKeyStatus = ApiKey["status"];
 
-export const ApiKeyCreateSchema = z.object({
+/** The scopes a user may give a key on the service site (`admin` is CLI-only). */
+export const USER_KEY_SCOPES = ["read", "write"] as const;
+
+/** `POST /keys` (session): a key the signed-in user creates for their tenant. */
+export const ApiKeyCreateSchema = z.strictObject({
   name: z.string().trim().min(1).max(200),
-  scopes: z.array(ScopeSchema).min(1),
+  scopes: z.array(z.enum(USER_KEY_SCOPES)).min(1),
   expires_at: TimestampSchema.optional(),
+  /** `null`/absent → the server default (`MEMENTO_DEFAULT_DAILY_LIMIT`). */
+  daily_limit: z.number().int().min(1).nullish(),
 });
 export type ApiKeyCreate = z.infer<typeof ApiKeyCreateSchema>;
+
+/** `PATCH /keys/:id`: rename, or change the daily limit (`null` → the server default). */
+export const ApiKeyUpdateSchema = z.strictObject({
+  name: z.string().trim().min(1).max(200).optional(),
+  daily_limit: z.number().int().min(1).nullable().optional(),
+});
+export type ApiKeyUpdate = z.infer<typeof ApiKeyUpdateSchema>;
 
 const KEY_RE = /^mk_([a-z0-9]{8})_([A-Za-z0-9]{32})$/;
 const PREFIX_ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";

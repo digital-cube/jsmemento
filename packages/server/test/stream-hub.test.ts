@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "../src/context.js";
 import { LocalBus } from "../src/stream/feed.js";
 import { type ConnectionInfo, StreamHub, type StreamSocket } from "../src/stream/hub.js";
+import type { UsageMeter } from "../src/usage.js";
 
 /** A `ws` look-alike: records what is sent; `flush` decides whether writes ever complete. */
 class FakeSocket extends EventEmitter implements StreamSocket {
@@ -313,5 +314,38 @@ describe("StreamHub", () => {
     expect(a.socket.closedWith).toEqual({ code: 1001, reason: "server shutting down" });
     expect(b.socket.closedWith?.code).toBe(1001);
     expect(a.connection.send({ kind: "memento.pong" })).toBe(false);
+  });
+});
+
+describe("StreamHub usage", () => {
+  it("meters stream_seconds of API-key connections every interval and on close", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval"] });
+    let now = 1_000_000;
+    const added: { key: string; seconds: number | undefined }[] = [];
+    const usage = {
+      add: (key: string, _tenant: string, counters: { stream_seconds?: number }) =>
+        added.push({ key, seconds: counters.stream_seconds }),
+    } as unknown as UsageMeter;
+    hub = new StreamHub({
+      feed: bus,
+      log: fakeLogger(logs),
+      usage,
+      usageIntervalMs: 60_000,
+      // No heartbeat in the window: a missed pong would close the connection first.
+      heartbeatIntervalMs: 3_600_000,
+      now: () => now,
+    });
+    const { socket } = await connect();
+    // A session connection (no key) is never metered.
+    await connect({ tenant: { ...tenant("acme"), apiKeyId: null } });
+    now += 61_500;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(added).toEqual([{ key: "k", seconds: 61 }]);
+    now += 9_700; // 0.5 s carried over + 9.7 s
+    socket.close(1000, "bye");
+    expect(added).toEqual([
+      { key: "k", seconds: 61 },
+      { key: "k", seconds: 10 },
+    ]);
   });
 });

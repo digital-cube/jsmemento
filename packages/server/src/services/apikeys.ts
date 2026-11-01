@@ -1,5 +1,6 @@
 import {
   type ApiKey,
+  type ApiKeyStatus,
   generateApiKey,
   hashApiKey,
   parseApiKey,
@@ -14,7 +15,23 @@ import { type ApiKeyRow, apiKeys, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { getTenantBySlug } from "./tenants.js";
 
-export function serializeApiKey(row: ApiKeyRow): ApiKey {
+/** Where a key stands: `revoked` (CLI) > `expired` > `disabled` (paused) > `active`. */
+export function keyStatus(row: ApiKeyRow, now: Date = new Date()): ApiKeyStatus {
+  if (row.revokedAt) return "revoked";
+  if (row.expiresAt && row.expiresAt <= now) return "expired";
+  if (row.disabledAt) return "disabled";
+  return "active";
+}
+
+export interface SerializeApiKeyOptions {
+  /** Events the key wrote today (UTC); default 0. */
+  usedToday?: number;
+  /** The limit of a key without its own (`MEMENTO_DEFAULT_DAILY_LIMIT`); default none. */
+  defaultDailyLimit?: number;
+  now?: Date;
+}
+
+export function serializeApiKey(row: ApiKeyRow, options: SerializeApiKeyOptions = {}): ApiKey {
   return {
     id: row.id,
     tenant_id: row.tenantId,
@@ -25,6 +42,10 @@ export function serializeApiKey(row: ApiKeyRow): ApiKey {
     last_used_at: row.lastUsedAt?.toISOString() ?? null,
     expires_at: row.expiresAt?.toISOString() ?? null,
     revoked_at: row.revokedAt?.toISOString() ?? null,
+    status: keyStatus(row, options.now),
+    daily_limit: row.dailyLimit ?? options.defaultDailyLimit ?? null,
+    used_today: options.usedToday ?? 0,
+    created_by: row.createdBy ?? null,
   };
 }
 
@@ -33,6 +54,10 @@ export interface CreateApiKeyInput {
   name: string;
   scopes: string | readonly string[];
   expiresAt?: Date;
+  /** Events per UTC day; absent → the server default. */
+  dailyLimit?: number | null;
+  /** The service-site user creating it; absent for CLI keys. */
+  createdBy?: string | null;
 }
 
 /**
@@ -62,6 +87,8 @@ export async function createApiKey(
       keyHash: await hashApiKey(key),
       scopes,
       expiresAt: input.expiresAt ?? null,
+      dailyLimit: input.dailyLimit ?? null,
+      createdBy: input.createdBy ?? null,
     })
     .returning();
   return { apiKey: serializeApiKey(row as ApiKeyRow), key };
@@ -101,6 +128,8 @@ export async function authenticateApiKey(
     !found ||
     !timingSafeEqual(found.key.keyHash, hash) ||
     found.key.revokedAt ||
+    found.key.disabledAt ||
+    found.key.deletedAt ||
     (found.key.expiresAt && found.key.expiresAt <= now) ||
     !found.tenant.isActive
   ) {

@@ -23,6 +23,7 @@ import { type EventRow, events } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { type Lookups, recordCandidates, unknownLookups } from "../lookups.js";
 import type { EventPublisher } from "../publisher.js";
+import type { QuotaGuard } from "../quota.js";
 import type { EventRenderer } from "../templates/renderer.js";
 
 export function serializeEvent(row: EventRow): MementoEvent {
@@ -38,6 +39,7 @@ export function serializeEvent(row: EventRow): MementoEvent {
     rendered: row.rendered,
     rendered_locale: row.renderedLocale,
     archived_at: row.archivedAt?.toISOString() ?? null,
+    api_key_id: row.apiKeyId ?? null,
   };
 }
 
@@ -51,6 +53,11 @@ export interface PushOptions {
   locale?: string;
   /** Vocabulary: strict mode rejects unknown values, otherwise they become candidates. */
   lookups?: Lookups;
+  /**
+   * The daily limit of API keys: checked before the insert (`quota_exceeded`), the stored
+   * event counted after it. Absent → unlimited and unmetered.
+   */
+  quota?: QuotaGuard | null;
 }
 
 /** Validates, renders, stores and announces one event for the current tenant. */
@@ -89,6 +96,7 @@ export async function pushEvent(
       );
     }
   }
+  await options.quota?.check(tenant, 1);
   const occurredAt = data.occurred_at ? new Date(data.occurred_at) : new Date();
   let rendered: string | null = data.rendered ?? null;
   let renderedLocale: string | null = null;
@@ -120,9 +128,11 @@ export async function pushEvent(
       payload: data.payload,
       rendered,
       renderedLocale,
+      apiKeyId: tenant.apiKeyId,
     })
     .returning();
   const event = serializeEvent(row as EventRow);
+  await options.quota?.recorded(tenant, 1);
   try {
     await options.publisher.publish({ tenant: tenant.tenantSlug, event });
   } catch (error) {

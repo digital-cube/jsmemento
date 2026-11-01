@@ -1,0 +1,11 @@
+Your memento API key "{{key_name}}" reached its daily limit
+Hello {{name}},
+
+your API key "{{key_name}}" ({{prefix}}) has written {{used}} events today and reached its daily limit of {{limit}}.
+
+memento now answers its new events with HTTP 429 (quota_exceeded). The events are not stored. The limit resets at {{resets_at}} (midnight UTC); you can raise it for this key here:
+
+{{link}}
+
+— memento
+{{service_url}}

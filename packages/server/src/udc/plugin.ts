@@ -5,6 +5,7 @@ import { extractApiKey, hasScope, LocaleSchema, type Scope } from "@memento/core
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import {
   authenticateSessionRequest,
+  contentLength,
   isJsonRequest,
   type SessionAuth,
   type SessionOptions,
@@ -13,6 +14,7 @@ import type { TenantContext } from "../context.js";
 import type { Database } from "../db/client.js";
 import { MementoError } from "../errors.js";
 import { authenticateApiKey } from "../services/apikeys.js";
+import type { UsageMeter } from "../usage.js";
 import { collectionAuth } from "./registry.js";
 
 export interface UdcRoutesOptions {
@@ -23,6 +25,8 @@ export interface UdcRoutesOptions {
    * `auth: "session" | "admin"` (`MementoRegistry`); `null`/absent: those refuse everyone.
    */
   sessions?: SessionOptions | null;
+  /** Counts `requests`, `bytes_in` and the `rows_read` of `list` for API-key requests. */
+  usage?: UsageMeter | null;
 }
 
 /** The `collection` a UDC request body names, if any. */
@@ -86,7 +90,7 @@ function refuse(
  */
 export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
   app,
-  { db, registry, sessions },
+  { db, registry, sessions, usage },
 ) => {
   /** The API key's tenant with the action's scope checked; throws `MementoError`. */
   async function byKey(request: FastifyRequest, action: string): Promise<TenantContext> {
@@ -98,6 +102,12 @@ export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
       throw new MementoError("forbidden", `this API key lacks the "${required}" scope`);
     }
     request.log = request.log.child({ tenant: tenant.tenantSlug, api_key: tenant.apiKeyId });
+    if (tenant.apiKeyId) {
+      usage?.add(tenant.apiKeyId, tenant.tenantId, {
+        requests: 1,
+        bytes_in: contentLength(request),
+      });
+    }
     return tenant;
   }
 
@@ -145,6 +155,19 @@ export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
       throw error;
     }
   });
+
+  // The rows a key's `list` returned, read off the envelope before it is serialized.
+  if (usage) {
+    app.addHook("preSerialization", async (request, _reply, payload: unknown) => {
+      const tenant = request.tenant;
+      if (!tenant?.apiKeyId || actionOf(request.url) !== "list") return payload;
+      const rows = (payload as { payload?: { rows?: unknown } } | null)?.payload?.rows;
+      if (Array.isArray(rows)) {
+        usage.add(tenant.apiKeyId, tenant.tenantId, { rows_read: rows.length });
+      }
+      return payload;
+    });
+  }
 
   await app.register(udcPlugin, {
     dispatcher: createDispatcher(registry, { log: app.log }),

@@ -27,13 +27,16 @@ import { AccountMails } from "./mail/account-mails.js";
 import { LogMailer, type Mailer } from "./mail/mailer.js";
 import { MailTemplates } from "./mail/templates.js";
 import { type EventPublisher, NoopPublisher } from "./publisher.js";
+import { QuotaGuard } from "./quota.js";
 import { accountRoutes } from "./routes/accounts.js";
+import { adminRoutes } from "./routes/admin.js";
 import { chatRoutes } from "./routes/chats.js";
 import { demoRoutes } from "./routes/demo.js";
 import { describeRoutes } from "./routes/describe.js";
 import { entityRoutes } from "./routes/entities.js";
 import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
+import { keyRoutes } from "./routes/keys.js";
 import { streamRoutes } from "./routes/stream.js";
 import type { EventFeed } from "./stream/feed.js";
 import { StreamHub } from "./stream/hub.js";
@@ -42,6 +45,7 @@ import { eventCollections } from "./udc/collections.js";
 import { menuCollection } from "./udc/menu.js";
 import { udcRoutes } from "./udc/plugin.js";
 import { type UiOptions, uiRoutes } from "./ui.js";
+import { UsageMeter } from "./usage.js";
 
 export interface StreamOptions {
   /** Where stored events come from: a `RedisFeed`, or the `LocalBus` that is also the publisher. */
@@ -66,6 +70,15 @@ export interface AccountsOptions {
   limits?: LimitsConfig;
   /** Auth rate limits: `max` requests per `timeWindowMs` (default 10 per 15 min). */
   rateLimit?: { max?: number; timeWindowMs?: number; redis?: Redis | null };
+  /**
+   * Where today's per-key event counters live (`memento:quota:<key>:<day>`); `null`/absent →
+   * summed from `memento_apikey_usage` and this process's unflushed counters.
+   */
+  redis?: Redis | null;
+  /** Default: a `UsageMeter` over `memento_apikey_usage`, flushed every 5 s and on close. */
+  usage?: UsageMeter;
+  /** The clock of the daily limits (tests pin it). */
+  now?: () => Date;
 }
 
 export const DEFAULT_LIMITS: LimitsConfig = {
@@ -121,6 +134,10 @@ export interface RouteDeps {
   capabilities: Partial<Capabilities>;
   lookups: Lookups;
   renderer: EventRenderer;
+  /** Per-key usage counters (`MEMENTO_ACCOUNTS`); `null` → not metered. */
+  usage: UsageMeter | null;
+  /** Daily event limits of keys (`MEMENTO_ACCOUNTS`); `null` → unlimited. */
+  quota: QuotaGuard | null;
 }
 
 /** The error code of a framework error (bad JSON, wrong content type, …) by HTTP status. */
@@ -143,7 +160,30 @@ export function requestId(header: string | string[] | undefined): string {
  */
 export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (app, options) => {
   const lookups = options.lookups ?? emptyLookups();
+  const accounts = options.accounts;
+  const limits = accounts?.limits ?? DEFAULT_LIMITS;
+  // Self-service mode meters every API key and holds it to its daily limit.
+  const usage = accounts
+    ? (accounts.usage ?? new UsageMeter({ db: options.db, log: app.log }))
+    : null;
+  const mailer = accounts ? (accounts.mailer ?? new LogMailer(app.log)) : null;
+  const mailTemplates = accounts ? (accounts.mailTemplates ?? new MailTemplates()) : null;
+  const serviceUrl = accounts?.serviceUrl.replace(/\/+$/, "") ?? "";
+  const quota =
+    accounts && usage && mailer && mailTemplates
+      ? new QuotaGuard({
+          db: options.db,
+          usage,
+          redis: accounts.redis ?? null,
+          defaultDailyLimit: limits.defaultDailyLimit,
+          mail: { mailer, templates: mailTemplates, serviceUrl },
+          log: app.log,
+          ...(accounts.now ? { now: accounts.now } : {}),
+        })
+      : null;
   const deps: RouteDeps = {
+    usage,
+    quota,
     db: options.db,
     publisher: options.publisher ?? new NoopPublisher(),
     capabilities: { ...(options.stream ? { realtime: true } : {}), ...options.capabilities },
@@ -208,6 +248,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
       ...(stream.maxBufferedMessages !== undefined
         ? { maxBufferedMessages: stream.maxBufferedMessages }
         : {}),
+      usage,
     });
     const closing = hub;
     app.addHook("preClose", async () => closing.close());
@@ -218,10 +259,11 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
     }
   }
 
-  const accounts = options.accounts;
+  // After the hub's: its connections add their last stream seconds as they close.
+  if (usage) app.addHook("preClose", async () => usage.close());
   const sessions = accounts ? { days: accounts.sessionDays ?? 30 } : null;
   if (accounts && !app.hasRequestDecorator("cookies")) await app.register(fastifyCookie);
-  installAuth(app, deps.db, { sessions });
+  installAuth(app, deps.db, { sessions, usage });
   if (hub) await app.register(streamRoutes, { hub });
   await app.register(healthRoutes, deps);
   await app.register(eventRoutes, deps);
@@ -230,28 +272,31 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(describeRoutes, deps);
   const demo = options.demoApiKey ? await resolveDemoKey(deps.db, options.demoApiKey) : null;
   await app.register(demoRoutes, { demo });
-  if (accounts && sessions) {
+  if (accounts && sessions && mailer && mailTemplates && quota) {
     await app.register(accountRoutes, {
       db: deps.db,
-      mails: new AccountMails({
-        mailer: accounts.mailer ?? new LogMailer(app.log),
-        templates: accounts.mailTemplates ?? new MailTemplates(),
-        serviceUrl: accounts.serviceUrl.replace(/\/+$/, ""),
-        log: app.log,
-      }),
+      mails: new AccountMails({ mailer, templates: mailTemplates, serviceUrl, log: app.log }),
       sessionDays: sessions.days,
-      limits: accounts.limits ?? DEFAULT_LIMITS,
+      limits,
       rateLimit: {
         max: accounts.rateLimit?.max ?? 10,
         timeWindowMs: accounts.rateLimit?.timeWindowMs ?? 15 * 60_000,
         redis: accounts.rateLimit?.redis ?? null,
       },
     });
+    await app.register(keyRoutes, { ...deps, quota, limits });
+    await app.register(adminRoutes, { ...deps, quota, limits });
   }
   if (options.udc !== false) {
-    const registry = options.udc ?? eventCollections({ db: deps.db, renderer: deps.renderer });
+    const registry =
+      options.udc ??
+      eventCollections({
+        db: deps.db,
+        renderer: deps.renderer,
+        ...(quota ? { accounts: { quota } } : {}),
+      });
     if (options.menu) registry.register(menuCollection({ file: options.menu, registry }));
-    await app.register(udcRoutes, { db: deps.db, registry, sessions });
+    await app.register(udcRoutes, { db: deps.db, registry, sessions, usage });
   }
 };
 

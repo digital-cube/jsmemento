@@ -42,6 +42,8 @@ export const EventSchema = z.object({
   /** Locale `rendered` is in; `null` when it is verbatim text (pre-rendered or a `NOTE`). */
   rendered_locale: z.string().nullable(),
   archived_at: TimestampSchema.nullable(),
+  /** The API key that wrote it; `null` for events written by a signed-in user (or before 1.1). */
+  api_key_id: IdSchema.nullable().optional(),
 });
 export type MementoEvent = z.infer<typeof EventSchema>;
 

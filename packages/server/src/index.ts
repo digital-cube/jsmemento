@@ -11,6 +11,8 @@ export {
   selectSubprotocol,
 } from "./app.js";
 export {
+  acceptEmptyJson,
+  contentLength,
   type InstallAuthOptions,
   installAuth,
   type SessionAuth,
@@ -57,6 +59,16 @@ export {
   RedisPublisher,
 } from "./publisher.js";
 export {
+  QUOTA_COUNTER_TTL_SECONDS,
+  QUOTA_WARNING_RATIO,
+  QuotaGuard,
+  type QuotaGuardOptions,
+  type QuotaMailKind,
+  type QuotaMailOptions,
+  quotaKey,
+  recipientOf,
+} from "./quota.js";
+export {
   type AccountTenantView,
   checkLogin,
   getUserByEmail,
@@ -82,7 +94,9 @@ export {
   authenticateApiKey,
   type CreateApiKeyInput,
   createApiKey,
+  keyStatus,
   revokeApiKey,
+  type SerializeApiKeyOptions,
   serializeApiKey,
 } from "./services/apikeys.js";
 export {
@@ -108,6 +122,18 @@ export {
   serializeEvent,
 } from "./services/events.js";
 export {
+  APIKEY_EVENT_TYPES,
+  APIKEY_INSTANCE_TYPE,
+  KeyService,
+  type KeyServiceOptions,
+} from "./services/keys.js";
+export {
+  applyRetention,
+  RETENTION_BATCH_SIZE,
+  type RetentionOptions,
+  type RetentionResult,
+} from "./services/retention.js";
+export {
   type AuthenticatedSession,
   authenticateSession,
   createSession,
@@ -130,6 +156,7 @@ export {
   type ConnectionInfo,
   DEFAULT_HEARTBEAT_INTERVAL_MS,
   DEFAULT_MAX_BUFFERED_MESSAGES,
+  STREAM_USAGE_INTERVAL_MS,
   StreamConnection,
   StreamHub,
   type StreamHubOptions,
@@ -153,6 +180,19 @@ export {
   ULTIMATE_FALLBACK,
 } from "./templates/renderer.js";
 export {
+  type AccountCollectionsOptions,
+  ADMIN_API_KEYS_VIEW,
+  ADMIN_USERS_VIEW,
+  API_KEY_EVENT_FIELD,
+  API_KEY_USAGE_VIEW,
+  API_KEYS_VIEW,
+  adminUsersSource,
+  apiKeysSource,
+  apiKeyUsageSource,
+  registerAccountCollections,
+} from "./udc/accounts.js";
+export {
+  ACTIVITY_API_KEY_FIELD,
   ACTIVITY_DEFAULT_WINDOW_MINUTES,
   ACTIVITY_FIELDS,
   ActivityCollectionSource,
@@ -191,6 +231,20 @@ export {
   EventCollectionSource,
   type EventCollectionSpec,
   type EventField,
+  type EventRowView,
   type FieldKind,
   payloadNumber,
+  topLevel,
 } from "./udc/source.js";
+export { isoOf, TableCollectionSource, type TableField, type TableSpec } from "./udc/table.js";
+export {
+  dayStartOf,
+  hourOf,
+  USAGE_FLUSH_INTERVAL_MS,
+  type UsageCounters,
+  UsageMeter,
+  type UsageMeterOptions,
+  type UsageRow,
+  utcDay,
+  writeUsage,
+} from "./usage.js";

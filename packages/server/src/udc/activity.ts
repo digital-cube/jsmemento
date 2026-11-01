@@ -14,13 +14,14 @@ import { EVENT_TYPES } from "@memento/core";
 import { and, count, eq, gte, isNull, lt, type SQL, sql } from "drizzle-orm";
 import { requireTenant } from "../context.js";
 import type { Database } from "../db/client.js";
-import { events } from "../db/schema.js";
+import { apiKeys, events } from "../db/schema.js";
 import {
   coerce,
   EVENT_SOURCE_CAPABILITIES,
   type SqlField,
   SqlFilterCompiler,
   schemaOf,
+  topLevel,
 } from "./source.js";
 
 /** How far back the collection looks when the filter says nothing about `minute`. */
@@ -78,11 +79,23 @@ export const ACTIVITY_FIELDS: Record<string, SqlField> = {
   ),
 };
 
+/** `api_key_activity`'s extra field: the prefix of the key that wrote the bucket's events. */
+export const ACTIVITY_API_KEY_FIELD: SqlField = {
+  def: { type: "string", index: true, description: "The prefix of the API key (mk_<prefix>_…)" },
+  kind: "text",
+  expr: column("api_key"),
+};
+
 export interface ActivitySourceOptions {
   /** Minutes the collection covers when the filter names no `minute`. Default 60. */
   windowMinutes?: number;
   /** The clock the default window ends at (tests pin it). */
   now?: () => Date;
+  /**
+   * Count per API key too (`api_key_activity`): only events a key wrote, bucketed by
+   * minute, type and the key's prefix, with an `api_key` field to filter on.
+   */
+  byApiKey?: boolean;
 }
 
 /**
@@ -93,8 +106,10 @@ export interface ActivitySourceOptions {
  */
 export class ActivityCollectionSource implements Source {
   readonly capabilities = EVENT_SOURCE_CAPABILITIES;
-  private readonly schema: SchemaDoc = schemaOf(ACTIVITY_FIELDS);
-  private readonly compiler = new SqlFilterCompiler(ACTIVITY_FIELDS);
+  private readonly fields: Record<string, SqlField>;
+  private readonly schema: SchemaDoc;
+  private readonly compiler: SqlFilterCompiler;
+  private readonly byApiKey: boolean;
   private readonly defaultSort: SortKey[] = [
     { field: "minute", dir: "desc" },
     { field: "event_type", dir: "asc" },
@@ -108,6 +123,12 @@ export class ActivityCollectionSource implements Source {
   ) {
     this.windowMinutes = options.windowMinutes ?? ACTIVITY_DEFAULT_WINDOW_MINUTES;
     this.now = options.now ?? (() => new Date());
+    this.byApiKey = options.byApiKey ?? false;
+    this.fields = this.byApiKey
+      ? { ...ACTIVITY_FIELDS, api_key: ACTIVITY_API_KEY_FIELD }
+      : ACTIVITY_FIELDS;
+    this.schema = schemaOf(this.fields);
+    this.compiler = new SqlFilterCompiler(this.fields);
   }
 
   async describe(): Promise<SchemaDoc> {
@@ -138,20 +159,27 @@ export class ActivityCollectionSource implements Source {
         .offset(offset),
       this.db.select({ total: count() }).from(buckets).where(where),
     ]);
-    return { rows: rows.map(toRow), next_cursor: null, total: totals[0]?.total ?? 0 };
+    return {
+      rows: rows.map((bucket) => toRow(bucket, this.fields)),
+      next_cursor: null,
+      total: totals[0]?.total ?? 0,
+    };
   }
 
-  /** One bucket by its id, `<minute ISO>|<event_type>`. */
+  /** One bucket by its id, `<minute ISO>|<event_type>` (`|<api key prefix>` by key). */
   async read(id: string): Promise<Row> {
-    const bar = id.indexOf("|");
-    const minute = new Date(id.slice(0, bar));
-    if (bar < 0 || Number.isNaN(minute.getTime())) {
+    const parts = id.split("|");
+    const minute = new Date(parts[0] as string);
+    if (parts.length !== (this.byApiKey ? 3 : 2) || Number.isNaN(minute.getTime())) {
       throw new UdcError("not_found", `no activity bucket ${id}`);
     }
     const filter: FilterNode = {
       and: [
         { field: "minute", op: "eq", value: minute.toISOString() },
-        { field: "event_type", op: "eq", value: id.slice(bar + 1) },
+        { field: "event_type", op: "eq", value: parts[1] as string },
+        ...(this.byApiKey
+          ? [{ field: "api_key", op: "eq" as const, value: parts[2] as string }]
+          : []),
       ],
     };
     const { rows } = await this.list({ filter, page: { limit: 1 } });
@@ -186,8 +214,9 @@ export class ActivityCollectionSource implements Source {
       EVENT_TYPES.map((type) => sql`${type}`),
       sql`, `,
     );
-    return this.db
+    const query = this.db
       .select({
+        ...(this.byApiKey ? { api_key: sql<string>`${apiKeys.prefix}`.as("api_key") } : {}),
         minute: sql<Date>`${minuteOf}`.as("minute"),
         event_type: sql<string>`${events.eventType}`.as("event_type"),
         count: sql<number>`count(*)::int`.as("count"),
@@ -205,15 +234,20 @@ export class ActivityCollectionSource implements Source {
           ),
       })
       .from(events)
-      .where(
-        and(
-          eq(events.tenantId, tenantId),
-          isNull(events.archivedAt),
-          ...this.occurredBounds(filter),
-        ),
-      )
-      .groupBy(minuteOf, events.eventType)
-      .as(ALIAS);
+      .$dynamic();
+    const where = and(
+      eq(events.tenantId, tenantId),
+      isNull(events.archivedAt),
+      ...this.occurredBounds(filter),
+    );
+    if (this.byApiKey) {
+      return query
+        .innerJoin(apiKeys, eq(apiKeys.id, events.apiKeyId))
+        .where(where)
+        .groupBy(minuteOf, events.eventType, apiKeys.prefix)
+        .as(ALIAS);
+    }
+    return query.where(where).groupBy(minuteOf, events.eventType).as(ALIAS);
   }
 
   /**
@@ -232,13 +266,6 @@ export class ActivityCollectionSource implements Source {
       .filter((c) => c.field === "minute")
       .flatMap(minuteBounds);
   }
-}
-
-/** The conditions ANDed at the top of a filter tree. */
-function topLevel(node: FilterNode): Condition[] {
-  if (isCondition(node)) return [node];
-  if ("and" in node) return node.and.flatMap(topLevel);
-  return [];
 }
 
 /** Whether any condition of the tree names `field`. */
@@ -288,10 +315,13 @@ function minuteBounds(c: Condition): SQL[] {
   }
 }
 
-function toRow(bucket: Record<string, unknown>): Row {
+function toRow(bucket: Record<string, unknown>, fields: Record<string, SqlField>): Row {
   const minute = new Date(bucket.minute as string | Date).toISOString();
-  const row: Row = { __meta: { id: `${minute}|${bucket.event_type}`, version: 1 } };
-  for (const name of Object.keys(ACTIVITY_FIELDS)) {
+  const id = [minute, bucket.event_type, ...("api_key" in fields ? [bucket.api_key] : [])].join(
+    "|",
+  );
+  const row: Row = { __meta: { id, version: 1 } };
+  for (const name of Object.keys(fields)) {
     row[name] = name === "minute" ? minute : (bucket[name] ?? null);
   }
   return row;

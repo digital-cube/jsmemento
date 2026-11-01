@@ -1,5 +1,5 @@
 import { FilterSchema, LocaleSchema, ok } from "@memento/core";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { RouteDeps } from "../app.js";
 import { MementoError } from "../errors.js";
@@ -10,8 +10,14 @@ const PushQuerySchema = z.looseObject({ locale: LocaleSchema.optional() });
 
 export const eventRoutes: FastifyPluginAsync<RouteDeps> = async (
   app,
-  { db, publisher, renderer, lookups },
+  { db, publisher, renderer, lookups, quota, usage },
 ) => {
+  /** `rows_read` of an API-key read (session reads are not metered). */
+  const read = (request: FastifyRequest, rows: number) => {
+    const tenant = request.tenant;
+    if (usage && tenant?.apiKeyId) usage.add(tenant.apiKeyId, tenant.tenantId, { rows_read: rows });
+  };
+
   /** Push one event; `?locale=sr` picks the locale `rendered` is stored in. */
   app.post("/events", { config: { scope: "write" } }, async (request, reply) => {
     const query = PushQuerySchema.safeParse(request.query ?? {});
@@ -22,6 +28,7 @@ export const eventRoutes: FastifyPluginAsync<RouteDeps> = async (
       publisher,
       renderer,
       lookups,
+      quota,
       ...(query.data.locale ? { locale: query.data.locale } : {}),
       onPublishError: (error) =>
         request.log.warn({ err: error }, "event stored but publishing to Redis failed"),
@@ -35,6 +42,7 @@ export const eventRoutes: FastifyPluginAsync<RouteDeps> = async (
     const page = await listEvents(db, request.query as Record<string, string>, null, {
       renderer,
     });
+    read(request, page.events.length);
     return ok(page.events, page.meta);
   });
 
@@ -46,6 +54,7 @@ export const eventRoutes: FastifyPluginAsync<RouteDeps> = async (
     }
     const { filter, ...query } = parsed.data;
     const page = await listEvents(db, query, filter ?? null, { renderer });
+    read(request, page.events.length);
     return ok(page.events, page.meta);
   });
 };

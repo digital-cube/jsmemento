@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 /** `EventTypes` from the vocabulary, as sent on the wire. */
-export const EVENT_TYPES = ["USER_LOGIN", "USER_LOGOUT", "USER_CREATED", "TICKET_CREATED", "TICKET_MODIFIED", "TICKET_CLOSED", "CHAT_MESSAGE_SENT", "CHAT_MESSAGE_SEEN", "CHAT_PARTICIPANT_ADDED", "NOTE", "CPU_LOAD"] as const;
+export const EVENT_TYPES = ["USER_LOGIN", "USER_LOGOUT", "USER_CREATED", "TICKET_CREATED", "TICKET_MODIFIED", "TICKET_CLOSED", "CHAT_MESSAGE_SENT", "CHAT_MESSAGE_SEEN", "CHAT_PARTICIPANT_ADDED", "NOTE", "CPU_LOAD", "APIKEY_CREATED", "APIKEY_DISABLED", "APIKEY_ENABLED", "APIKEY_DELETED", "APIKEY_LIMIT_CHANGED"] as const;
 export enum EventType {
   USER_LOGIN = "USER_LOGIN",
   USER_LOGOUT = "USER_LOGOUT",
@@ -16,16 +16,22 @@ export enum EventType {
   CHAT_PARTICIPANT_ADDED = "CHAT_PARTICIPANT_ADDED",
   NOTE = "NOTE",
   CPU_LOAD = "CPU_LOAD",
+  APIKEY_CREATED = "APIKEY_CREATED",
+  APIKEY_DISABLED = "APIKEY_DISABLED",
+  APIKEY_ENABLED = "APIKEY_ENABLED",
+  APIKEY_DELETED = "APIKEY_DELETED",
+  APIKEY_LIMIT_CHANGED = "APIKEY_LIMIT_CHANGED",
 }
 export const KnownEventTypeSchema = z.enum(EVENT_TYPES);
 
 /** `InstanceTypes` from the vocabulary, as sent on the wire. */
-export const INSTANCE_TYPES = ["user", "ticket", "chat", "server"] as const;
+export const INSTANCE_TYPES = ["user", "ticket", "chat", "server", "api_key"] as const;
 export enum InstanceType {
   USER = "user",
   TICKET = "ticket",
   CHAT = "chat",
   SERVER = "server",
+  API_KEY = "api_key",
 }
 export const KnownInstanceTypeSchema = z.enum(INSTANCE_TYPES);
 

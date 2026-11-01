@@ -1,5 +1,5 @@
 import { LocaleSchema, ok } from "@memento/core";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { RouteDeps } from "../app.js";
 import { MementoError } from "../errors.js";
@@ -25,8 +25,16 @@ const ViewerQuerySchema = z.looseObject({ user_id: z.string().trim().min(1).max(
  */
 export const chatRoutes: FastifyPluginAsync<RouteDeps> = async (
   app,
-  { db, publisher, renderer, lookups },
+  { db, publisher, renderer, lookups, quota },
 ) => {
+  /**
+   * Seen markers and joins change chat rows before their event is pushed: check the key's
+   * daily limit first, so a refused write leaves nothing half done.
+   */
+  const checkQuota = async (request: FastifyRequest) => {
+    if (quota && request.tenant) await quota.check(request.tenant, 1);
+  };
+
   const pushOptions = (request: {
     query: unknown;
     log: { warn: (o: object, m: string) => void };
@@ -39,6 +47,7 @@ export const chatRoutes: FastifyPluginAsync<RouteDeps> = async (
       publisher,
       renderer,
       lookups,
+      quota,
       onPublishError: (error) =>
         request.log.warn({ err: error }, "event stored but publishing to Redis failed"),
     };
@@ -102,14 +111,17 @@ export const chatRoutes: FastifyPluginAsync<RouteDeps> = async (
   );
 
   /** Mark as seen: `{ user_id, up_to_event_id? }` → CHAT_MESSAGE_SEEN (when it advances). */
-  app.post<ChatParams>("/chats/:chat_id/seen", { config: { scope: "write" } }, async (request) =>
-    ok(await markSeen(db, request.params.chat_id, request.body as never, pushOptions(request))),
+  app.post<ChatParams>(
+    "/chats/:chat_id/seen",
+    { config: { scope: "write" }, preHandler: checkQuota },
+    async (request) =>
+      ok(await markSeen(db, request.params.chat_id, request.body as never, pushOptions(request))),
   );
 
   /** Add a room member: `{ user_id, added_by? }` → CHAT_PARTICIPANT_ADDED. */
   app.post<ChatParams>(
     "/chats/:chat_id/participants",
-    { config: { scope: "write" } },
+    { config: { scope: "write" }, preHandler: checkQuota },
     async (request, reply) => {
       const result = await addParticipant(
         db,

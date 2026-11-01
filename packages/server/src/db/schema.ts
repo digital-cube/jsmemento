@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
+  bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -47,6 +50,20 @@ export const apiKeys = pgTable(
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** Paused by its owner (`POST /keys/:id/disable`); resume clears it. Fails auth while set. */
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    /** Soft delete: hidden from lists, fails auth; the row stays because events point at it. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    /** Events the key may write per UTC day; NULL → `MEMENTO_DEFAULT_DAILY_LIMIT`. */
+    dailyLimit: integer("daily_limit"),
+    /** The user who created it on the service site; NULL for CLI keys. */
+    createdBy: uuid("created_by").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    /** The UTC day the 80 % quota warning went out (once per day). */
+    quotaWarnedOn: date("quota_warned_on", { mode: "string" }),
+    /** The UTC day the quota-exceeded mail went out (once per day). */
+    quotaExceededOn: date("quota_exceeded_on", { mode: "string" }),
   },
   (t) => [index("memento_apikey_tenant_idx").on(t.tenantId)],
 );
@@ -75,8 +92,13 @@ export const events = pgTable(
     /** Locale of `rendered`; NULL when it is verbatim text (pre-rendered by the producer, NOTE). */
     renderedLocale: varchar("rendered_locale", { length: 35 }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** The API key that wrote it; NULL for session writes and events from before 0005. */
+    apiKeyId: uuid("api_key_id").references(() => apiKeys.id, { onDelete: "restrict" }),
   },
   (t) => [
+    index("memento_event_apikey_idx")
+      .on(t.tenantId, t.apiKeyId, t.occurredAt.desc())
+      .where(sql`${t.apiKeyId} is not null`),
     index("memento_event_tenant_time_idx").on(t.tenantId, t.occurredAt.desc(), t.id.desc()),
     index("memento_event_entity_idx").on(
       t.tenantId,
@@ -278,8 +300,36 @@ export const userTokens = pgTable(
   ],
 );
 
+const counter = (name: string) => bigint(name, { mode: "number" }).notNull().default(0);
+
+/**
+ * What a key did per hour (UTC): the usage meter's counters, flushed every few seconds with
+ * `INSERT … ON CONFLICT DO UPDATE SET col = col + excluded.col`.
+ */
+export const apiKeyUsage = pgTable(
+  "memento_apikey_usage",
+  {
+    apiKeyId: uuid("api_key_id")
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").notNull(),
+    /** Truncated to the hour, UTC. */
+    hour: timestamp("hour", { withTimezone: true }).notNull(),
+    requests: counter("requests"),
+    eventsWritten: counter("events_written"),
+    rowsRead: counter("rows_read"),
+    streamSeconds: counter("stream_seconds"),
+    bytesIn: counter("bytes_in"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.apiKeyId, t.hour] }),
+    index("memento_apikey_usage_tenant_idx").on(t.tenantId, t.hour),
+  ],
+);
+
 export type TenantRow = typeof tenants.$inferSelect;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
+export type ApiKeyUsageRow = typeof apiKeyUsage.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;

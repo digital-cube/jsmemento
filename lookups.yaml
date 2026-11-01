@@ -20,12 +20,23 @@ EventTypes:
   - CHAT_PARTICIPANT_ADDED
   - NOTE
   - CPU_LOAD
+  # API key lifecycle (self-service, MEMENTO_ACCOUNTS): written by the server into the key
+  # owner's tenant when a signed-in user creates, pauses, resumes, deletes a key or changes
+  # its daily limit — instance_type api_key, instance_id the key's prefix, actor_id the
+  # user's email. The CLI's create-key / revoke-key write none (there is no user).
+  - APIKEY_CREATED
+  - APIKEY_DISABLED
+  - APIKEY_ENABLED
+  - APIKEY_DELETED
+  - APIKEY_LIMIT_CHANGED
 
 InstanceTypes:
   - USER
   - TICKET
   - CHAT
   - SERVER
+  # An API key of the tenant (its prefix is the instance_id): see the APIKEY_* events.
+  - API_KEY
 
 ActorTypes:
   - USER

@@ -5,6 +5,11 @@ import type { Database } from "../db/client.js";
 import { events } from "../db/schema.js";
 import type { EventRenderer } from "../templates/renderer.js";
 import {
+  type AccountCollectionsOptions,
+  API_KEY_EVENT_FIELD,
+  registerAccountCollections,
+} from "./accounts.js";
+import {
   ActivityCollectionSource,
   type ActivitySourceOptions,
   OTHER_SERIES_FIELD,
@@ -58,6 +63,7 @@ export const EVENTS_FIELDS: Record<string, EventField> = {
     expr: events.receivedAt,
     value: (e) => e.received_at,
   },
+  api_key: API_KEY_EVENT_FIELD,
 };
 
 const load = (key: string, description: string): EventField => ({
@@ -141,12 +147,17 @@ export const CPU_LOAD_VIEW: ViewConfigInput = {
 
 /**
  * Colours past the palette's eight `--chart-N` slots, for the series of the event types the
- * demo pushes least often (lookups.yaml has eleven types, plus `other`).
+ * demo pushes least often (lookups.yaml has sixteen types, plus `other`).
  */
 const EXTRA_SERIES_COLORS: Record<string, string> = {
   USER_LOGOUT: "#0e9fb0",
   USER_CREATED: "#9c6b3c",
   CHAT_PARTICIPANT_ADDED: "#8a9a1b",
+  APIKEY_CREATED: "#2f8f5b",
+  APIKEY_DISABLED: "#c2731b",
+  APIKEY_ENABLED: "#3b6fd1",
+  APIKEY_DELETED: "#b3364a",
+  APIKEY_LIMIT_CHANGED: "#7a52b3",
   [OTHER_SERIES_FIELD]: "#6b7787",
 };
 
@@ -220,13 +231,22 @@ export interface EventCollectionsOptions {
   renderer?: EventRenderer;
   /** The `activity` collection's default window and clock. */
   activity?: ActivitySourceOptions;
+  /**
+   * Self-service accounts (`MEMENTO_ACCOUNTS`): also serve the session collections
+   * (`api_keys`, `api_key_events`, `api_key_activity`, `api_key_usage`) and the admin ones.
+   */
+  accounts?: AccountCollectionsOptions;
 }
 
-/** The registry memento serves under `/udc`: `events`, `cpu_load` and `activity`. */
+/**
+ * The registry memento serves under `/udc`: `events`, `cpu_load` and `activity` — plus the
+ * self-service collections with `accounts` (see `registerAccountCollections`).
+ */
 export function eventCollections({
   db,
   renderer,
   activity,
+  accounts,
 }: EventCollectionsOptions): MementoRegistry {
   const registry = new MementoRegistry();
   registry.register({
@@ -251,5 +271,16 @@ export function eventCollections({
     source: new ActivityCollectionSource(db, activity),
     view: ViewConfigSchema.parse(ACTIVITY_VIEW),
   });
+  if (accounts) {
+    registerAccountCollections(registry, {
+      ...accounts,
+      db,
+      renderer,
+      eventFields: EVENTS_FIELDS,
+      eventsView: EVENTS_VIEW,
+      activityView: ACTIVITY_VIEW,
+      activity,
+    });
+  }
   return registry;
 }

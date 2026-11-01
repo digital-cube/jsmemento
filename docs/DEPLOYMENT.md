@@ -189,14 +189,14 @@ docker run -d -p 3000:3000 \
 | `MEMENTO_MAIL_FROM` | *(unset)* | `Name <address>`, required with the Brevo key; the address must be a **sender verified in Brevo**. Compose: `MAIL_FROM`. |
 | `MEMENTO_TRUST_PROXY` | `false` | Fastify `trustProxy`: client IP from `X-Forwarded-For` (rate limits), https from `X-Forwarded-Proto` (`Secure` cookie). `true` only behind a proxy that sets them. Compose: `TRUST_PROXY`. |
 | `MEMENTO_SESSION_DAYS` | `30` | Sliding lifetime of a session (and the cookie's `Max-Age`). |
-| `MEMENTO_DEFAULT_MAX_KEYS` | `10` | Active API keys a tenant without its own `max_keys` may hold. |
-| `MEMENTO_DEFAULT_DAILY_LIMIT` | `100000` | Events per day of a tenant without its own limit. |
-| `MEMENTO_MAX_DAILY_LIMIT` | *(unset)* | Ceiling no tenant's daily limit may exceed; unset → none. |
+| `MEMENTO_DEFAULT_MAX_KEYS` | `10` | Live (not deleted, not revoked) API keys a tenant without its own `max_keys` may hold; `POST /keys` past it is `409 limit_reached`. Compose: `DEFAULT_MAX_KEYS`. |
+| `MEMENTO_DEFAULT_DAILY_LIMIT` | `100000` | Events per UTC day of an API key without its own `daily_limit` (accounts on): 80 % mails a warning, past 100 % the key's writes are `429 quota_exceeded` until midnight UTC. Compose: `DEFAULT_DAILY_LIMIT`. |
+| `MEMENTO_MAX_DAILY_LIMIT` | *(unset)* | Highest `daily_limit` a user may give a key; unset → none. Compose: `MAX_DAILY_LIMIT`. |
 
 `docker-compose.yaml` additionally reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`,
 `MEMENTO_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_BIND`, `REDIS_BIND` and
 `MEMENTO_IMAGE`, and passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
-`TRUST_PROXY` to the server as the `MEMENTO_*` variables above (empty by default); the `demo` profile adds the `CPU_MONITOR_*` variables
+`TRUST_PROXY`, `DEFAULT_MAX_KEYS`, `DEFAULT_DAILY_LIMIT`, `MAX_DAILY_LIMIT` to the server as the `MEMENTO_*` variables above (empty by default); the `demo` profile adds the `CPU_MONITOR_*` variables
 ([Demo pusher](#demo-pusher-profile-demo)).
 
 ## Self-service accounts
@@ -228,6 +228,44 @@ TRUST_PROXY=true                 # behind nginx
 - Migration `0004_accounts` (applied at startup) adds `memento_user`, `memento_tenant_user`,
   `memento_session`, `memento_user_token` and the `plan` / `max_keys` / `retention_days`
   columns of `memento_tenant`.
+- Migration `0005_apikey_lifecycle` (applied at startup) adds `disabled_at`, `deleted_at`,
+  `daily_limit`, `created_by`, `quota_warned_on`, `quota_exceeded_on` to `memento_apikey`,
+  `api_key_id` (+ index `memento_event_apikey_idx`) to `memento_event`, and the hourly
+  counters table `memento_apikey_usage`. Existing events get `api_key_id = NULL`.
+
+### Quotas
+
+With accounts on, every API key — CLI keys included — is held to its daily event limit
+(`daily_limit`, else `DEFAULT_DAILY_LIMIT`, 100 000): at 80 % the key's creator (or the
+tenant's owner) gets a warning mail, past 100 % the key's writes answer `429 quota_exceeded`
+until midnight UTC, and one more mail goes out. A producer pushing one event a second writes
+86 400 a day; raise `DEFAULT_DAILY_LIMIT` (or the key's limit with `PATCH /keys/:id`) for
+heavier ones. Without accounts there are no limits and no metering.
+
+- **Redis** (`REDIS_URL`) holds today's counters (`memento:quota:<key>:<day>`, expire after
+  2 days), shared by every process. Without it the count is the sum of today's
+  `memento_apikey_usage` rows plus each process's unflushed buffer — exact with one process,
+  up to 5 s behind per process with several.
+- The **usage meter** writes `memento_apikey_usage` (requests, events written, rows read,
+  stream seconds, bytes in, per key and hour) every 5 s and on shutdown. The table grows by at
+  most one row per active key per hour.
+
+## Retention
+
+`memento retention` archives (sets `archived_at`, the one change the immutability trigger
+allows) the events older than each tenant's `retention_days`, 10 000 per statement; a tenant
+with `retention_days` NULL — every tenant, until you set it — keeps everything. Archived events
+disappear from every list, query, UDC collection and the stream at once.
+
+```bash
+docker compose -f docker-compose.yaml exec memento memento retention --dry-run
+#   acme: would archive 1520 events older than 30 days (before 2026-10-02T08:00:00.000Z)
+psql … -c "update memento_tenant set retention_days = 30 where slug = 'acme'"
+```
+
+The `retention` service of `docker-compose.yaml` (profile `demo`, same image) runs it once a
+day: `sh -c 'while true; do memento retention; sleep 86400; done'`. Harmless while no tenant has
+`retention_days`.
 
 ## Behind a reverse proxy
 

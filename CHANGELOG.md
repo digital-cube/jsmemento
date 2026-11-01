@@ -9,6 +9,34 @@ share one version.
 
 ### Added
 
+- **API keys users manage** (`@memento/server`, `MEMENTO_ACCOUNTS`): session routes
+  `POST /keys` (`{name, scopes: read|write, expires_at?, daily_limit?}` → the plaintext once;
+  `409 limit_reached` past `max_keys`), `PATCH /keys/:id` (name, `daily_limit`),
+  `POST /keys/:id/disable|enable` (pause / resume), `DELETE /keys/:id` (soft delete). Disabled
+  and deleted keys fail auth like revoked ones; `revoke-key` (CLI) unchanged. Admin routes
+  `POST /admin/users/:id/disable|enable` (disabling deletes the user's sessions) and
+  `POST /admin/keys/:id/disable|enable`.
+- **Lifecycle events**: `APIKEY_CREATED`, `APIKEY_DISABLED`, `APIKEY_ENABLED`,
+  `APIKEY_DELETED`, `APIKEY_LIMIT_CHANGED` (instance type `api_key`, instance id the prefix,
+  actor the user's email) in `lookups.yaml`, `translations.csv` and EN + SR templates.
+- **`api_key_id` on events**: every event stored with a key records it (`EventSchema` gains an
+  optional `api_key_id`); the `events` UDC collection gains `api_key` (the prefix, filterable).
+- **Daily limits** per key (`daily_limit ?? MEMENTO_DEFAULT_DAILY_LIMIT` events per UTC day):
+  `429 quota_exceeded` with `{limit, used, resets_at}`, `quota_warning` (80 %) and
+  `quota_exceeded` mails once a day each (EN + SR, via the mailer); counters in Redis
+  (`memento:quota:<key>:<day>`) or summed from the usage table.
+- **Usage meter** (`UsageMeter`): requests, bytes in, events written, rows read and stream
+  seconds per key and hour, flushed to `memento_apikey_usage` every 5 s and on close.
+- **Self-service UDC collections**: `api_keys`, `api_key_events`, `api_key_activity`,
+  `api_key_usage` (session) and `admin_users`, `admin_api_keys` (admin), on the new
+  `TableCollectionSource` (a read-only UDC source over any SQL query).
+- **Retention**: `memento retention [--tenant slug] [--dry-run]` archives events older than a
+  tenant's `retention_days` in batches of 10 000; a `retention` service (profile `demo`) in
+  `docker-compose.yaml` runs it daily.
+- Migration `0005_apikey_lifecycle`; error codes `quota_exceeded` (429), `limit_reached` (409);
+  `ApiKey` gains `status`, `daily_limit`, `used_today`, `created_by`; compose passes
+  `DEFAULT_MAX_KEYS`, `DEFAULT_DAILY_LIMIT`, `MAX_DAILY_LIMIT`.
+
 - **Self-service accounts, server side** (`@memento/server`, behind `MEMENTO_ACCOUNTS`, off by
   default): `POST /auth/register` (a user, a tenant of their own `t-xxxxxxxx`, the `owner`
   membership, a verify mail, a session), `/auth/verify`, `/auth/resend`, `/auth/login`,
@@ -109,6 +137,9 @@ share one version.
   (`Server {{instance_id}} — CPU: …`).
 
 ### Changed
+
+- The CLI's `send-message` writes with `apiKeyId: null` (was the placeholder `"cli"`): events
+  now reference `memento_apikey`, and the CLI uses no key.
 
 - A framework `415` (unsupported content type) now answers with the code
   `unsupported_media_type` instead of `bad_request`; `429` with `rate_limited`.

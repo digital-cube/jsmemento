@@ -55,9 +55,11 @@ Error:
 | `forbidden` | 403 |
 | `not_found` | 404 |
 | `conflict` | 409 |
+| `limit_reached` | 409 — `POST /keys` when the tenant holds `max_keys` live keys (`details: {max_keys}`) |
 | `unsupported_media_type` | 415 — a cookie-authenticated write without `Content-Type: application/json` |
 | `validation_error` | 422 — `details` lists the Zod issues (`path`, `message`, …) |
 | `rate_limited` | 429 — `/auth/*` rate limits |
+| `quota_exceeded` | 429 — the API key wrote its daily limit of events (`details: {limit, used, resets_at}`), [below](#daily-limits-and-usage) |
 | `internal_error` | 500 |
 
 Every response carries `X-Request-Id`. Send your own (`[A-Za-z0-9_.:-]{1,128}`) to correlate
@@ -109,10 +111,17 @@ curl -X POST http://localhost:8000/memento/events \
     "payload": { "ip": "10.0.0.1" },
     "rendered": "User igor logged in from 10.0.0.1.",
     "rendered_locale": "en",
-    "archived_at": null
+    "archived_at": null,
+    "api_key_id": "6f1c0e2a-…"
   }
 }
 ```
+
+`api_key_id` is the id of the API key that wrote the event — `null` for events written by a
+signed-in user (the `APIKEY_*` lifecycle events) or by the CLI, and for events stored before
+1.1. It is set on insert and never changes. The UDC `events` collection shows it as `api_key`:
+the key's **prefix** (`mk_<prefix>_…`), which is what a person recognizes, filterable
+(`{"field":"api_key","op":"eq","value":"ab12cd34"}`), not sortable.
 
 After storing, the event is published (same JSON as `data`) on the Redis channel
 `memento:events:<tenant_slug>` when `REDIS_URL` is configured, and streamed to the tenant's
@@ -370,6 +379,103 @@ everyone.
 const registry = eventCollections({ db });
 registry.register({ name: "my_keys", source, view, auth: "session" });
 ```
+
+### API keys (`/keys`, session)
+
+The signed-in user's keys, always of the session's tenant; an API key as credential is `401`,
+a key of another tenant (or a deleted one) `404`. Listing is the `api_keys` collection below.
+Writes need `Content-Type: application/json` (an empty body is `{}`).
+
+| route | body | answer |
+|---|---|---|
+| `POST /keys` | `{name, scopes: ("read"\|"write")[] (non-empty), expires_at?, daily_limit?}` | `201 {api_key, key}` — `key` is the plaintext `mk_…`, returned **this once** and never logged; `409 limit_reached` with `{max_keys}` when the tenant holds `max_keys ?? MEMENTO_DEFAULT_MAX_KEYS` live (not deleted, not revoked) keys |
+| `PATCH /keys/:id` | `{name?, daily_limit?}` | `200 {api_key}`; `daily_limit` ≥ 1 and ≤ `MEMENTO_MAX_DAILY_LIMIT` when set (else `422`), `null` → the default |
+| `POST /keys/:id/disable` | — | `200 {api_key}` with `status: "disabled"`: paused, fails auth like a revoked key |
+| `POST /keys/:id/enable` | — | `200 {api_key}`: resumed |
+| `DELETE /keys/:id` | — | `204`: soft delete — fails auth, hidden from every list; the row stays because events point at it |
+
+`admin` is not a scope a user can give a key (the CLI still can). The key as these routes
+return it (`ApiKey` in `@memento/core`):
+
+```json
+{
+  "id": "6f1c0e2a-…", "tenant_id": "…", "name": "backend", "prefix": "ab12cd34",
+  "scopes": ["read", "write"], "created_at": "…", "last_used_at": null, "expires_at": null,
+  "revoked_at": null, "status": "active", "daily_limit": 100000, "used_today": 0,
+  "created_by": "<user id>"
+}
+```
+
+`status`: `revoked` (CLI `revoke-key`) > `expired` > `disabled` > `active`. `daily_limit` is
+the key's own limit, else `MEMENTO_DEFAULT_DAILY_LIMIT`. `created_by` is `null` for CLI keys.
+
+**Lifecycle events.** Each change writes an event into the key's tenant (through the same path
+as `POST /events`, so it is rendered, published and streamed): `event_type`
+`APIKEY_CREATED` · `APIKEY_DISABLED` · `APIKEY_ENABLED` · `APIKEY_DELETED` ·
+`APIKEY_LIMIT_CHANGED`, `instance_type: "api_key"`, `instance_id` the key's prefix, `actor_id`
+the user's email, `payload: {name, scopes}` (plus `{daily_limit, previous}` for the limit;
+`null` = the default), `api_key_id: null`. Disabling an already disabled key writes nothing.
+The CLI's `create-key` / `revoke-key` write none.
+
+### Daily limits and usage
+
+With accounts on, every API key is held to a number of **events per UTC day**: its
+`daily_limit`, else `MEMENTO_DEFAULT_DAILY_LIMIT`. Every route that stores an event with a key
+— `POST /events`, `POST /chats/:id/messages`, `/seen`, `/participants` — checks it first:
+
+- `used + 1 > limit` → `429 quota_exceeded`, nothing stored:
+  ```json
+  {"ok":false,"error":{"code":"quota_exceeded","message":"this API key wrote its daily limit of 5 events; it resets at 2026-11-02T00:00:00.000Z","details":{"limit":5,"used":5,"resets_at":"2026-11-02T00:00:00.000Z"}},"request_id":"…"}
+  ```
+  The first refusal of the day mails `quota_exceeded`;
+- `used + 1 ≥ 80 % of limit` → stored, and the first time that day the `quota_warning` mail.
+
+The mails (`packages/server/mail/quota_{warning,exceeded}.{en,sr}.hbs`) go to the user who
+created the key, else the tenant's owner, in their locale, with a link to
+`${MEMENTO_SERVICE_URL}/keys/<id>`; sending never delays or fails the request. "Once a day" is
+claimed atomically on `memento_apikey.quota_warned_on` / `quota_exceeded_on`, so several
+processes do not send it twice.
+
+Today's count lives in Redis (`memento:quota:<key id>:<YYYY-MM-DD>`, `INCRBY` per stored event,
+`EXPIRE 172800`) when `REDIS_URL` is set; without Redis it is the sum of today's
+`memento_apikey_usage.events_written` plus what this process has not flushed yet.
+
+**Usage meter.** Per key and hour (UTC) the server counts `requests` and `bytes_in` (every
+API-key request, `Content-Length`), `events_written`, `rows_read` (rows returned by
+`GET /events`, `POST /events/query` and UDC `list`) and `stream_seconds` (open `/ws`
+connections, every 60 s and on close) — in memory, written to `memento_apikey_usage` every
+5 s and on shutdown with one upsert per batch. A failed write is logged and dropped. Session
+(cookie) requests are not metered.
+
+### Self-service collections
+
+Registered by memento when accounts are on (`eventCollections({ accounts: { quota } })`), read
+with the session cookie and refusing a key (in-protocol `forbidden`):
+
+| collection | auth | rows |
+|---|---|---|
+| `api_keys` | session | the tenant's keys (not deleted): `name`, `prefix`, `scopes`, `status`, `daily_limit`, `used_today` (Redis or usage), `events_24h` (events in the last 24 h), `created_at`, `last_used_at`, `expires_at`; newest first; row id = key id |
+| `api_key_events` | session | the `events` collection (same fields, sort, paging) over events written with a key; **needs** a top-level `eq` / `in` filter on `api_key` (the prefix), else `validation_error` |
+| `api_key_activity` | session | the `activity` collection (per minute and type) over events written with a key, bucketed per key too: extra field `api_key` to filter on; row id `<minute>\|<type>\|<prefix>` |
+| `api_key_usage` | session | the tenant's `memento_apikey_usage` rows: `api_key` (prefix), `hour`, `requests`, `events_written`, `rows_read`, `stream_seconds`, `bytes_in`; newest hour first |
+| `admin_users` | admin | every user: `email`, `name`, `tenant` (slug of the tenant they own), `tenant_name`, `email_verified`, `is_admin`, `disabled`, `keys` (live keys of their tenant), `created_at` |
+| `admin_api_keys` | admin | every key of every tenant: `user` (creator's email, empty for CLI keys), `tenant`, and the `api_keys` fields |
+
+```bash
+curl -s localhost:8000/memento/udc/list -b jar.txt -H 'content-type: application/json' \
+  -d '{"collection":"api_key_events","filter":{"field":"api_key","op":"eq","value":"ab12cd34"}}'
+```
+
+### Administration (`/admin`, admin session)
+
+| route | answer |
+|---|---|
+| `POST /admin/users/:id/disable` | `200 {user}` (with `disabled: true`); the user cannot sign in and **every session of theirs is deleted**; an admin cannot disable themselves (`409`) |
+| `POST /admin/users/:id/enable` | `200 {user}` |
+| `POST /admin/keys/:id/disable` | `200 {api_key}`: pauses any tenant's key; writes `APIKEY_DISABLED` into the key's tenant with the admin's email as `actor_id` |
+| `POST /admin/keys/:id/enable` | `200 {api_key}`; `APIKEY_ENABLED` likewise |
+
+A signed-in non-admin gets `403 forbidden`, no session `401`.
 
 ## `GET /memento/api/demo`
 
