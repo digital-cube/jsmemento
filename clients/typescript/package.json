@@ -1,0 +1,12 @@
+{
+  "name": "memento-client-typescript",
+  "private": true,
+  "type": "module",
+  "description": "JSMemento sample client: push an event, query the last ten, tail the stream for 10 s",
+  "scripts": {
+    "start": "tsx memento.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.20.0"
+  }
+}

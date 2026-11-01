@@ -1,0 +1,129 @@
+# The client programs in clients/<lang> (the ones the service site offers for download) run
+# against a local server, one job per language: PostgreSQL + the built server, a tenant and a
+# read,write key from the CLI, then clients/check.sh runs the program without a key (exit 2),
+# with a wrong key (exit 1, 401) and with the key — the query must list the pushed event, and
+# tail (where the language has it) must print an event pushed while it was live.
+name: Client programs
+
+on:
+  pull_request:
+    paths:
+      - clients/**
+      - packages/server/**
+      - packages/core/**
+      - packages/cli/**
+      - .github/workflows/clients.yml
+  push:
+    branches: [main]
+    paths:
+      - clients/**
+      - packages/server/**
+      - packages/core/**
+      - packages/cli/**
+      - .github/workflows/clients.yml
+  workflow_dispatch:
+
+concurrency:
+  group: clients-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: ${{ matrix.lang }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [javascript, typescript, python, php, java, rust, golang, cpp]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: jsmemento
+          POSTGRES_PASSWORD: jsmemento
+          POSTGRES_DB: jsmemento
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U jsmemento -d jsmemento"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jsmemento:jsmemento@localhost:5432/jsmemento
+      PORT: 8000
+      CLIENTS_STATE_DIR: ${{ github.workspace }}/../memento-clients
+    steps:
+      - uses: actions/checkout@v5
+
+      # The server and the CLI (Node 24, like the main CI).
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the server and the CLI
+        run: pnpm turbo run build --filter=@memento/server --filter=@memento/cli
+      - name: Start the server, create a tenant and a key
+        # appends MEMENTO_URL=http://127.0.0.1:8000/memento and MEMENTO_API_KEY to $GITHUB_ENV
+        run: clients/check.sh stack
+
+      # The language's toolchain. The programs promise Node ≥ 22, so JS/TS run on 22.
+      - if: matrix.lang == 'javascript' || matrix.lang == 'typescript'
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - if: matrix.lang == 'typescript'
+        working-directory: clients/typescript
+        run: npm install --no-package-lock
+      - if: matrix.lang == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - if: matrix.lang == 'python'
+        run: python -m pip install websockets
+      - if: matrix.lang == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: curl
+          coverage: none
+      - if: matrix.lang == 'java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - if: matrix.lang == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+      - if: matrix.lang == 'rust'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/rust
+      - if: matrix.lang == 'rust'
+        working-directory: clients/rust
+        run: cargo build --locked
+      - if: matrix.lang == 'golang'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: clients/golang/go.mod
+          cache-dependency-path: clients/golang/go.sum
+      - if: matrix.lang == 'golang'
+        working-directory: clients/golang
+        run: go vet .
+      - if: matrix.lang == 'cpp'
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+      - if: matrix.lang == 'cpp'
+        working-directory: clients/cpp
+        run: cmake -B build && cmake --build build
+
+      - name: Run clients/${{ matrix.lang }}
+        timeout-minutes: 5
+        run: clients/check.sh run ${{ matrix.lang }}
+      - name: Server log
+        if: failure()
+        run: cat "$CLIENTS_STATE_DIR/server.log" || true
+      - name: Stop the server
+        if: always()
+        run: clients/check.sh stop

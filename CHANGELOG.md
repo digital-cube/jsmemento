@@ -9,6 +9,14 @@ share one version.
 
 ### Added
 
+- **Client programs** (`clients/<lang>`, [docs/CLIENTS.md](docs/CLIENTS.md)): one complete
+  program each in JavaScript, TypeScript, Python, PHP, Java, Rust, Go and C++ — push a
+  `USER_LOGIN` event, query the last ten of `user/<you>`, tail the stream for 10 s (not in PHP
+  and C++) — with `MEMENTO_API_KEY` / `MEMENTO_URL` from the environment, exit 2 without a key
+  and 1 on an HTTP error, and a README each; the service site serves them for download.
+  `clients/check.sh` runs one against a local server, and the `Client programs` workflow
+  (`.github/workflows/clients.yml`) runs all eight on every change.
+
 - **API keys users manage** (`@memento/server`, `MEMENTO_ACCOUNTS`): session routes
   `POST /keys` (`{name, scopes: read|write, expires_at?, daily_limit?}` → the plaintext once;
   `409 limit_reached` past `max_keys`), `PATCH /keys/:id` (name, `daily_limit`),

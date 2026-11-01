@@ -37,7 +37,7 @@
   },
   "overrides": [
     {
-      "includes": ["docker/**"],
+      "includes": ["docker/**", "clients/**"],
       "linter": {
         "rules": {
           "suspicious": {

@@ -120,4 +120,5 @@ and [Demo key](docs/DEPLOYMENT.md#demo-key-examples-site).
 - [docs/STREAMING.md](docs/STREAMING.md) — WebSocket `/memento/ws`: auth, filters, messages, slow consumers
 - [docs/REACT.md](docs/REACT.md) — `@memento/react` components and hooks, the example app
 - [docs/CLI.md](docs/CLI.md) — every `memento` command, prompts, `tail`, error messages
+- [docs/CLIENTS.md](docs/CLIENTS.md) — the client programs in `clients/` (eight languages: push, query, tail) and their CI
 - [docs/ANALYSIS.md](docs/ANALYSIS.md), [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) — background
