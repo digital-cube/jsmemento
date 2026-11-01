@@ -107,6 +107,15 @@ export {
   ULTIMATE_FALLBACK,
 } from "./templates/renderer.js";
 export {
+  ACTIVITY_DEFAULT_WINDOW_MINUTES,
+  ACTIVITY_FIELDS,
+  ActivityCollectionSource,
+  type ActivitySourceOptions,
+  OTHER_SERIES_FIELD,
+  seriesField,
+} from "./udc/activity.js";
+export {
+  ACTIVITY_VIEW,
   CPU_LOAD_EVENT_TYPE,
   CPU_LOAD_FIELDS,
   CPU_LOAD_VIEW,

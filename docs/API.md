@@ -248,6 +248,7 @@ without the scope, is answered in-protocol: `{"kind":"udc.list.err","payload":{"
 |---|---|
 | `events` | every live (not archived) event of the key's tenant: `occurred_at`, `event_type`, `instance_type`, `instance_id`, `actor_id`, `rendered`, `payload` (json), `received_at` |
 | `cpu_load` | `CPU_LOAD` events only, `payload.load_1min/5min/15min` as decimal columns; table + chart |
+| `activity` | the tenant's live events **counted per minute and per `event_type`**, computed per request (`date_trunc('minute', occurred_at)`, `GROUP BY`): `minute` (datetime), `event_type`, `count` (integer), then one integer per event type of `lookups.yaml` (`cpu_load`, `ticket_created`, …) and `other` for types outside it — the bucket's `count` under its own type, 0 elsewhere (the chart's series). Covers the last 60 minutes unless the filter names `minute` (`{"field":"minute","op":"gte","value":"…"}` widens or narrows it); `total` = number of buckets; row id `<minute ISO>\|<event_type>`. Chart (default, a line per type) + table |
 | `menu` | the examples site's sidebar: `menu.yaml` (`MEMENTO_MENU_PATH`) as flat tree rows (`code`, `translation_key`, `icon`, `url`, `parent_id`, `order`, `depth`, `ancestor_ids`, `children_count`, `is_dynamic`), `source_kind: yaml_menu`. Its `udc:collections` branch lists every collection served, this one included. Not tenant data: the same for every key. Only when the file exists. |
 
 Actions: `collections`, `describe`, `list` (filter DSL, sort, offset paging, exact `total`),
@@ -263,6 +264,19 @@ curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
 #   "occurred_at":"2026-10-31T11:23:22.328Z","instance_type":"server","instance_id":"backend-01",
 #   "load_1min":2.79,"load_5min":3.1,"load_15min":2.86,
 #   "rendered":"Server backend-01 — CPU: 2.79, 3.1, 2.86"}, …],"next_cursor":null,"total":8}}
+```
+
+Events per minute for the last 15 minutes, CPU samples left out:
+
+```bash
+curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
+  -H 'content-type: application/json' \
+  -d '{"collection":"activity","filter":{"and":[
+         {"field":"minute","op":"gte","value":"2026-10-31T11:10:00Z"},
+         {"field":"event_type","op":"neq","value":"CPU_LOAD"}]},"page":{"limit":2}}'
+# {"kind":"udc.list.ok","id":"","payload":{"rows":[{"__meta":{"id":"2026-10-31T11:24:00.000Z|TICKET_CREATED",
+#   "version":1},"minute":"2026-10-31T11:24:00.000Z","event_type":"TICKET_CREATED","count":3,
+#   "user_login":0,…,"ticket_created":3,…,"other":0}, …],"next_cursor":null,"total":41}}
 ```
 
 `GET /memento/healthz` (the UDC plugin's own liveness, no key) answers `{"ok":true}`.

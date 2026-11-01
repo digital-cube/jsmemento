@@ -18,8 +18,8 @@ each example is a route, and every list on every page comes from UDC.
 | `/examples/tail` | [Live tail](#live-tail): every frame of `/memento/ws` as it arrives, with the stream's filters in the URL (`?event_type=TICKET_CREATED`) |
 | `/examples/search` | [Search](#search): `MementoSearch` next to the Filter DSL JSON it sends to `POST /events/query`, the search in the URL (`?type=ticket&id=T-1`) |
 | `/examples/rendering` | [Rendering & translations](#rendering--translations): one event, its bundled EN and SR templates and the sentence memento renders from each (`?type=TICKET_CLOSED`) |
-| `/examples/chart` | [planned](#planned-examples): what the example will show, a link back to the feed |
-| `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `menu`) |
+| `/examples/chart` | [Activity chart](#activity-chart): events per minute by type, the `activity` collection drawn by the chart renderer, the window in the URL (`?w=6h`) |
+| `/udc/:collection` | a plain `UdcDataView` of any collection the server lists (`events`, `cpu_load`, `activity`, `menu`) |
 | anything else | redirect to `/` |
 
 The server serves the built site at `/` and at `/en/` (the router's base is `/en` when the page
@@ -68,7 +68,7 @@ at `http://localhost:3000/` (`MEMENTO_UI_DIR=/app/ui`), same origin as the API. 
   the leaf of the current route is highlighted and the way to it opened; what is open is kept in
   `localStorage` (`udc:menu:expanded`). Labels are `translation_key`s read through the site's
   messages (`src/i18n/messages.ts`, en + sr). The `Collections` branch is `udc:collections`,
-  resolved by the server: `events`, `cpu_load`, `menu`. Without a key, without a `menu`
+  resolved by the server: `events`, `cpu_load`, `activity`, `menu`. Without a key, without a `menu`
   collection, or when it cannot be read, the sidebar shows the built-in Home and
   Examples › CPU monitor entries (`BUILTIN_MENU_ROWS`).
 - **Header**: the wordmark, which key is in use (**demo key** · tenant, **your key**, **no
@@ -90,14 +90,54 @@ at `http://localhost:3000/` (`MEMENTO_UI_DIR=/app/ui`), same origin as the API. 
 
 ## Planned examples
 
-Every example of the series is in `menu.yaml` already. The ones not built yet route to
+Every example of the series is built: `PLANNED_EXAMPLES` is empty. The mechanism stays for the
+next series — an entry in `menu.yaml` whose page does not exist yet routes to
 `PlannedExamplePage` (`/examples/:slug`): a "Planned" badge, one paragraph on what the example
 will show (`PLANNED_EXAMPLES`, slug → title and summary in EN and SR) and a link back to the
 Activity feed. An unknown slug leads to `/`.
 
-| slug | will show |
-|---|---|
-| `chart` | events per minute by type as a UDC chart |
+## Activity chart
+
+How busy the tenant is, per event type: the server counts the events per minute and per
+`event_type` — a new UDC collection, **`activity`** — and the page draws it with
+`@jsudc/react`'s **chart renderer**, live.
+
+```
+memento simulate / cpu-monitor ──POST /events──▶ memento_event
+/examples/chart?w=1h&f=<minute gte …>
+  UdcDataView ──POST /udc/list {collection: activity, filter: minute gte T}──▶ memento
+              ◀── rows (minute, event_type, count, cpu_load, ticket_created, …) ── SELECT date_trunc('minute', occurred_at),
+                                                                                    event_type, count(*) … GROUP BY
+              ◀──ws /memento/ws (no filter) ── refetch, at most once per 5 s
+```
+
+- **The collection** (`packages/server/src/udc/activity.ts`, `ActivityCollectionSource`): one
+  row per (`minute`, `event_type`) bucket of the key's tenant, with its `count`, computed per
+  request — no materialised view, no migration. It covers the last 60 minutes unless the filter
+  names `minute`; a top-level `minute` condition also bounds the inner query on `occurred_at`,
+  so it reads the tenant/time index instead of every event. Filter DSL on any field, sort,
+  offset paging, `total` = number of buckets. `CPU_LOAD` is a series like the others (the
+  busiest: one a second, ~60/min per monitored server).
+- **Why the extra columns.** jsudc's chart takes its series as *fields*, not as the values of
+  one field. So each row also carries one integer per event type of `lookups.yaml`
+  (`cpu_load`, `ticket_created`, …, plus `other` for types outside it): the bucket's count
+  under its own type, 0 under the rest. The view's chart sums each per point, which is that
+  type's count in that minute — or in the wider bucket the chart picks when a long window
+  (24 h) has more minutes than pixels. The table shows them too, as a pivot next to
+  `minute` / `event_type` / `count`.
+- **The view**: chart tab first (a line per type, `y` from zero), then the table; an
+  `event_type` select filter. The same rows open as a plain table from the sidebar's
+  Collections branch (`/udc/activity`).
+- **Window selector** (15 min / 1 h / 6 h / 24 h, `src/examples/chart/chart.ts`): writes
+  `minute gte <start>` into the data view's `?f=` (it shows as a chip, like the CPU monitor's
+  `instance_type`) and the choice into `?w=`; chips the visitor added are kept. The start is
+  the last N whole minutes, the current one included, and **slides**: at every whole minute
+  the page rewrites it, unless the visitor removed the chip.
+- **The last point is the current minute**, still filling up: its counts grow with every
+  refetch, so the lines dip at the right edge (the page's note says so).
+- **Live**: `useLive` follows the whole stream; every event refetches the collection's lists,
+  at most once per 5 s (`CHART_REFRESH_MS`) — a bucket changes once a minute, there is no
+  need for the 250 ms of the other pages.
 
 ## Rendering & translations
 
@@ -376,7 +416,7 @@ How it is wired:
 ## Develop
 
 ```bash
-pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the search (the DSL pane is the sent body, curl and response panes, the UDC link's equivalent filter, URL state, locale), rendering (every bundled template globbed, the selector's types and counts, highlighted payload keys, one read per locale), the planned pages, the app against a stubbed server
+pnpm test          # Vitest + jsdom: menu, settings, demo key, the live hook, the feed (locale, live, paging), the entity picker and timeline (order, summary, links, live filter), the chat (viewer selector, seen markers, read-only composer, locale, live, empty room), the live tail (frames, 500 cap, pause, filter reconnect, close code), the search (the DSL pane is the sent body, curl and response panes, the UDC link's equivalent filter, URL state, locale), rendering (every bundled template globbed, the selector's types and counts, highlighted payload keys, one read per locale), the activity chart (window start, the selector writes `?f=` and keeps chips, the 5 s throttle, locale), the planned pages, the app against a stubbed server
 pnpm typecheck
 pnpm build         # dist/, served by `pnpm preview` with the same proxy
 ```

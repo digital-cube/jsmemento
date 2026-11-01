@@ -1,4 +1,4 @@
-import { evaluateFilter, type Row, type SortKey } from "@jsudc/core";
+import { ChartOptionsSchema, evaluateFilter, type Row, type SortKey } from "@jsudc/core";
 import { expect, vi } from "vitest";
 
 export const caps = {
@@ -47,6 +47,50 @@ export const describeCpu = {
         default_op: "contains",
         widget: "text",
       },
+    ],
+  },
+};
+
+/** The `activity` collection as memento describes it (its three own fields, chart first). */
+export const describeActivity = {
+  collection: "activity",
+  capabilities: { ...caps, supported_filter_ops: ["eq", "gte", "lte"] },
+  source_kind: "postgres_jsonb",
+  schema: {
+    version: "v1",
+    core_fields: [],
+    field_order: ["minute", "event_type", "count", "cpu_load"],
+    fields: {
+      minute: { type: "datetime", index: true },
+      event_type: { type: "string", index: true },
+      count: { type: "integer" },
+      cpu_load: { type: "integer" },
+    },
+  },
+  view: {
+    default_renderer: "chart",
+    available_renderers: ["chart", "table"],
+    columns: [{ field: "minute" }, { field: "event_type" }, { field: "count" }],
+    page_size_default: 50,
+    pagination: "pages",
+    default_column_width: 160,
+    row_actions: [],
+    chart_options: ChartOptionsSchema.parse({
+      type: "line",
+      x_field: "minute",
+      series: [{ field: "cpu_load", label: "CPU_LOAD", agg: "sum" }],
+    }),
+  },
+  filterable: {
+    fields: [
+      {
+        field: "minute",
+        type: "datetime",
+        ops: ["gte", "lte"],
+        default_op: "gte",
+        widget: "datetime",
+      },
+      { field: "event_type", type: "string", ops: ["eq"], default_op: "eq", widget: "text" },
     ],
   },
 };
@@ -179,7 +223,10 @@ export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: Serv
         ],
       });
     }
-    if (action === "describe") return ok({ ...describeCpu, collection: body.collection });
+    if (action === "describe") {
+      if (body.collection === "activity") return ok(describeActivity);
+      return ok({ ...describeCpu, collection: body.collection });
+    }
     if (action === "read" && feed && body.collection === "events") {
       const locale = new Headers(init?.headers).get("x-memento-locale");
       reads.push({ id: body.id, locale });
@@ -236,6 +283,18 @@ export function udcServer({ key = "mk_k", demo = null, menu = true, feed }: Serv
           next_cursor: null,
           total: all.length,
         });
+      }
+      if (body.collection === "activity") {
+        const row = (minute: string, event_type: string, count: number) => ({
+          __meta: { id: `${minute}|${event_type}`, version: 1 },
+          minute,
+          event_type,
+          count,
+          cpu_load: event_type === "CPU_LOAD" ? count : 0,
+        });
+        const minute = `${new Date().toISOString().slice(0, 16)}:00.000Z`;
+        const rows = [row(minute, "CPU_LOAD", 60), row(minute, "TICKET_CREATED", 2)];
+        return ok({ rows, next_cursor: null, total: rows.length });
       }
       n += 1;
       return ok({

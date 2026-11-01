@@ -1,9 +1,16 @@
 import { type ViewConfigInput, ViewConfigSchema } from "@jsudc/core";
 import { CollectionRegistry } from "@jsudc/server";
+import { EVENT_TYPES } from "@memento/core";
 import { eq } from "drizzle-orm";
 import type { Database } from "../db/client.js";
 import { events } from "../db/schema.js";
 import type { EventRenderer } from "../templates/renderer.js";
+import {
+  ActivityCollectionSource,
+  type ActivitySourceOptions,
+  OTHER_SERIES_FIELD,
+  seriesField,
+} from "./activity.js";
 import { EventCollectionSource, type EventField, payloadNumber } from "./source.js";
 
 /** The memento event types the CPU monitor demo pushes. */
@@ -132,14 +139,95 @@ export const CPU_LOAD_VIEW: ViewConfigInput = {
   },
 };
 
+/**
+ * Colours past the palette's eight `--chart-N` slots, for the series of the event types the
+ * demo pushes least often (lookups.yaml has eleven types, plus `other`).
+ */
+const EXTRA_SERIES_COLORS: Record<string, string> = {
+  USER_LOGOUT: "#0e9fb0",
+  USER_CREATED: "#9c6b3c",
+  CHAT_PARTICIPANT_ADDED: "#8a9a1b",
+  [OTHER_SERIES_FIELD]: "#6b7787",
+};
+
+/** The palette slot of every other series: the busy types of the demo get one each. */
+const SERIES_SLOTS = [
+  "CPU_LOAD",
+  "TICKET_CREATED",
+  "TICKET_MODIFIED",
+  "TICKET_CLOSED",
+  "CHAT_MESSAGE_SENT",
+  "CHAT_MESSAGE_SEEN",
+  "NOTE",
+  "USER_LOGIN",
+];
+
+const seriesColor = (key: string): string => {
+  const slot = SERIES_SLOTS.indexOf(key);
+  return slot >= 0 ? `var(--chart-${slot + 1})` : (EXTRA_SERIES_COLORS[key] ?? "#6b7787");
+};
+
+/**
+ * Events per minute by type: a line per event type of lookups.yaml (and one for the rest),
+ * each summed from its own column, so a point is that type's count in that minute — or in the
+ * wider bucket the chart draws when a long window has more minutes than it has pixels.
+ */
+export const ACTIVITY_VIEW: ViewConfigInput = {
+  default_renderer: "chart",
+  available_renderers: ["chart", "table"],
+  page_size_default: 50,
+  columns: [
+    { field: "minute", width: 170, transform: "date_format:YYYY-MM-DD HH:mm" },
+    { field: "event_type", width: 220 },
+    { field: "count", align: "right", width: 100, render: "number_format" },
+    // The series columns: jsudc's describe lists every field as a column, so they are styled
+    // as the pivot they are (the bucket's count under its own type, 0 elsewhere).
+    ...[...EVENT_TYPES.map(seriesField), OTHER_SERIES_FIELD].map((field) => ({
+      field,
+      align: "right" as const,
+      width: 120,
+      render: "number_format",
+    })),
+  ],
+  filters: [{ field: "event_type", kind: "select", options: [...EVENT_TYPES] }],
+  chart_options: {
+    type: "line",
+    x_field: "minute",
+    series: [
+      ...EVENT_TYPES.map((type) => ({
+        field: seriesField(type),
+        label: type,
+        agg: "sum" as const,
+        color: seriesColor(type),
+      })),
+      {
+        field: OTHER_SERIES_FIELD,
+        label: "other",
+        agg: "sum" as const,
+        color: seriesColor(OTHER_SERIES_FIELD),
+      },
+    ],
+    y_axis: { left: { baseline: "zero", format: "number_format" } },
+    // 24 hours of every type of the demo: 1440 minutes × up to 12 types.
+    max_rows: 20_000,
+    empty_label: "No events in this window",
+  },
+};
+
 export interface EventCollectionsOptions {
   db: Database;
   /** Fills `rendered` for events stored without it, as the REST list does. */
   renderer?: EventRenderer;
+  /** The `activity` collection's default window and clock. */
+  activity?: ActivitySourceOptions;
 }
 
-/** The registry memento serves under `/udc`: `events` and `cpu_load`. */
-export function eventCollections({ db, renderer }: EventCollectionsOptions): CollectionRegistry {
+/** The registry memento serves under `/udc`: `events`, `cpu_load` and `activity`. */
+export function eventCollections({
+  db,
+  renderer,
+  activity,
+}: EventCollectionsOptions): CollectionRegistry {
   const registry = new CollectionRegistry();
   registry.register({
     name: "events",
@@ -156,6 +244,12 @@ export function eventCollections({ db, renderer }: EventCollectionsOptions): Col
       renderer,
     ),
     view: ViewConfigSchema.parse(CPU_LOAD_VIEW),
+  });
+  registry.register({
+    name: "activity",
+    label: "Activity per minute",
+    source: new ActivityCollectionSource(db, activity),
+    view: ViewConfigSchema.parse(ACTIVITY_VIEW),
   });
   return registry;
 }

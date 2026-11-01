@@ -39,15 +39,16 @@ async function udc(action: string, payload: unknown, key: string): Promise<Recor
 }
 
 describe("the menu collection", () => {
-  it("is served from menu.yaml next to events and cpu_load, udc:collections resolved", async () => {
+  it("is served from menu.yaml next to events, cpu_load and activity, udc:collections resolved", async () => {
     fx = await setupApp(handle, { menu: DEFAULT_MENU_PATH });
     const { collections } = await udc("collections", {}, fx.keys.read);
     expect(collections.map((c: { name: string }) => c.name)).toEqual([
       "events",
       "cpu_load",
+      "activity",
       "menu",
     ]);
-    expect(collections[2]).toMatchObject({ source_kind: "yaml_menu", group: "files" });
+    expect(collections[3]).toMatchObject({ source_kind: "yaml_menu", group: "files" });
     const d = await udc("describe", { collection: "menu" }, fx.keys.read);
     expect(d.source_kind).toBe("yaml_menu");
 
@@ -67,6 +68,7 @@ describe("the menu collection", () => {
       "COLLECTIONS",
       "COLLECTION_EVENTS",
       "COLLECTION_CPU_LOAD",
+      "COLLECTION_ACTIVITY",
       "COLLECTION_MENU",
     ]);
     expect(byCode.CPU_MONITOR).toMatchObject({
@@ -86,6 +88,11 @@ describe("the menu collection", () => {
       icon: MENU_COLLECTION_ICONS.cpu_load,
       parent_id: byCode.COLLECTIONS.__meta.id,
       is_dynamic: true,
+    });
+    expect(byCode.COLLECTION_ACTIVITY).toMatchObject({
+      url: "/udc/activity",
+      translation_key: "COLLECTIONS_ACTIVITY",
+      icon: MENU_COLLECTION_ICONS.activity,
     });
   });
 

@@ -112,7 +112,11 @@ describe("UDC auth", () => {
 describe("UDC collections", () => {
   it("lists events and cpu_load, read-only, offset-paged", async () => {
     const { collections } = await ok("collections", {});
-    expect(collections.map((c: { name: string }) => c.name)).toEqual(["events", "cpu_load"]);
+    expect(collections.map((c: { name: string }) => c.name)).toEqual([
+      "events",
+      "cpu_load",
+      "activity",
+    ]);
     expect(collections[1]).toMatchObject({
       label: "CPU load",
       default_renderer: "table",

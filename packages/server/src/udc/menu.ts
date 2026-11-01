@@ -12,6 +12,7 @@ export const MENU_COLLECTION = "menu";
 export const MENU_COLLECTION_ICONS: Record<string, string> = {
   events: "lucide:database",
   cpu_load: "lucide:chart-line",
+  activity: "lucide:activity",
   menu: "lucide:list-tree",
 };
 

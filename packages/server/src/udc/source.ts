@@ -46,14 +46,18 @@ import type { EventRenderer } from "../templates/renderer.js";
 /** How a field's filter values are coerced before they reach SQL. */
 export type FieldKind = "text" | "time" | "number" | "json";
 
-/** One field of an event collection: its UDC definition, its SQL and its value. */
-export interface EventField {
+/** A field filters and sorts can name: its UDC definition and the SQL they compare. */
+export interface SqlField {
   def: FieldDef;
   kind: FieldKind;
   /** What filters and sorts compare; absent for a field that is neither (`payload`). */
   expr?: SQLWrapper;
   /** Default true; `false` for a field only null-checks make sense on (`payload`). */
   sortable?: boolean;
+}
+
+/** One field of an event collection: its UDC definition, its SQL and its value. */
+export interface EventField extends SqlField {
   value: (event: MementoEvent) => unknown;
 }
 
@@ -95,19 +99,15 @@ export class EventCollectionSource implements Source {
   readonly capabilities = EVENT_SOURCE_CAPABILITIES;
   private readonly schema: SchemaDoc;
   private readonly defaultSort: SortKey[];
+  private readonly compiler: SqlFilterCompiler;
 
   constructor(
     private readonly db: Database,
     private readonly spec: EventCollectionSpec,
     private readonly renderer?: EventRenderer,
   ) {
-    const fields = Object.fromEntries(Object.entries(spec.fields).map(([n, f]) => [n, f.def]));
-    this.schema = {
-      version: "v1",
-      core_fields: [],
-      fields,
-      field_order: Object.keys(fields),
-    };
+    this.schema = schemaOf(spec.fields);
+    this.compiler = new SqlFilterCompiler(spec.fields);
     this.defaultSort = spec.defaultSort ?? [{ field: "occurred_at", dir: "desc" }];
   }
 
@@ -127,7 +127,11 @@ export class EventCollectionSource implements Source {
         .select()
         .from(events)
         .where(where)
-        .orderBy(...this.orderBy(req.sort?.length ? req.sort : this.defaultSort))
+        .orderBy(
+          ...this.compiler.orderBy(req.sort?.length ? req.sort : this.defaultSort, (dir) => [
+            dir === "desc" ? sql`${events.id} desc` : sql`${events.id} asc`,
+          ]),
+        )
         .limit(limit)
         .offset(offset),
       this.db.select({ total: count() }).from(events).where(where),
@@ -179,7 +183,7 @@ export class EventCollectionSource implements Source {
       isNull(events.archivedAt),
       this.spec.where,
     ];
-    if (filter) parts.push(this.compile(filter));
+    if (filter) parts.push(this.compiler.compile(filter));
     return and(...parts) as SQL;
   }
 
@@ -196,17 +200,37 @@ export class EventCollectionSource implements Source {
     });
   }
 
-  private field(name: string): EventField & { expr: SQLWrapper } {
-    const field = this.spec.fields[name];
+  /** Compiles a UDC filter tree into a WHERE clause over this collection's fields. */
+  compile(node: FilterNode): SQL {
+    return this.compiler.compile(node);
+  }
+}
+
+/** The UDC schema of a field map: every field, in declaration order. */
+export function schemaOf(fields: Record<string, SqlField>): SchemaDoc {
+  const defs = Object.fromEntries(Object.entries(fields).map(([n, f]) => [n, f.def]));
+  return { version: "v1", core_fields: [], fields: defs, field_order: Object.keys(defs) };
+}
+
+/**
+ * Turns the UDC filter DSL and sort keys into Drizzle SQL over a map of fields, each with the
+ * expression it compares: columns of `memento_event` or of an aggregate's subquery alike.
+ */
+export class SqlFilterCompiler {
+  constructor(private readonly fields: Record<string, SqlField>) {}
+
+  private field(name: string): SqlField & { expr: SQLWrapper } {
+    const field = this.fields[name];
     if (!field?.expr) {
       throw new UdcError("validation_error", `field "${name}" cannot be filtered or sorted`, {
         field: name,
       });
     }
-    return field as EventField & { expr: SQLWrapper };
+    return field as SqlField & { expr: SQLWrapper };
   }
 
-  private orderBy(sort: SortKey[]): SQL[] {
+  /** ORDER BY for `sort`, nulls last, then `tiebreak` (given the last key's direction). */
+  orderBy(sort: SortKey[], tiebreak: (dir: "asc" | "desc") => SQL[]): SQL[] {
     const keys = sort.map(({ field, dir }) => {
       const { expr, sortable } = this.field(field);
       if (sortable === false) {
@@ -214,8 +238,7 @@ export class EventCollectionSource implements Source {
       }
       return dir === "desc" ? sql`${expr} desc nulls last` : sql`${expr} asc nulls last`;
     });
-    const last = sort.at(-1)?.dir === "desc" ? sql`${events.id} desc` : sql`${events.id} asc`;
-    return [...keys, last];
+    return [...keys, ...tiebreak(sort.at(-1)?.dir === "desc" ? "desc" : "asc")];
   }
 
   /** Compiles a UDC filter tree into a WHERE clause over this collection's fields. */
@@ -291,7 +314,7 @@ export class EventCollectionSource implements Source {
   }
 }
 
-function coerce(field: string, kind: FieldKind, value: unknown): unknown {
+export function coerce(field: string, kind: FieldKind, value: unknown): unknown {
   if (kind === "time") {
     const date =
       typeof value === "string" || typeof value === "number"

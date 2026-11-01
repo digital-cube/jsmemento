@@ -11,7 +11,8 @@ import { FakeSocket } from "./fake-socket.js";
 import { udcServer } from "./udc-server.js";
 
 const settings = { ...defaultSettings({} as ImportMetaEnv), apiKey: "mk_k" };
-const SLUGS = ["chart"];
+/** Every example of the series has a page now: no slug is planned. */
+const SLUGS: string[] = [];
 /** The examples with a page of their own. */
 const BUILT = [
   "/examples/cpu-monitor",
@@ -21,6 +22,7 @@ const BUILT = [
   "/examples/tail",
   "/examples/search",
   "/examples/rendering",
+  "/examples/chart",
 ];
 
 /** The EXAMPLES entries of the repository's menu.yaml: [code, translation_key, url]. */
@@ -76,36 +78,39 @@ describe("menu.yaml", () => {
 });
 
 describe("a planned example", () => {
-  it.each(SLUGS)(
-    "/examples/%s says it is planned, what it will show, and links back",
-    async (slug) => {
-      history.replaceState(null, "", `/examples/${slug}`);
+  it("is none: every example of menu.yaml has its own page", () => {
+    expect(SLUGS).toEqual([]);
+    expect(menuYamlExamples().map(([, , url]) => url)).toEqual(BUILT);
+  });
+
+  it("would say it is planned, what it will show, and link back", async () => {
+    const planned = PLANNED_EXAMPLES as Record<string, (typeof PLANNED_EXAMPLES)[string]>;
+    planned.soon = {
+      title: { en: "Soon", sr: "Uskoro" },
+      summary: { en: "Something next.", sr: "Nešto sledeće." },
+    };
+    try {
+      history.replaceState(null, "", "/examples/soon");
       render(<App />);
       const page = await screen.findByTestId("planned");
-      const planned = PLANNED_EXAMPLES[slug] as (typeof PLANNED_EXAMPLES)[string];
-      expect(page.dataset.slug).toBe(slug);
+      expect(page.dataset.slug).toBe("soon");
       expect(within(page).getByText("Planned")).toBeTruthy();
-      expect(within(page).getByRole("heading", { name: planned.title.en })).toBeTruthy();
-      expect(within(page).getByText(planned.summary.en)).toBeTruthy();
+      expect(within(page).getByRole("heading", { name: "Soon" })).toBeTruthy();
+      expect(within(page).getByText("Something next.")).toBeTruthy();
       const back = within(page).getByRole("link", { name: "← Back to the activity feed" });
       expect(back.getAttribute("href")).toBe("/examples/activity");
 
       fireEvent.click(screen.getByTestId("locale-sr"));
-      expect(await within(page).findByText(planned.summary.sr)).toBeTruthy();
+      expect(await within(page).findByText("Nešto sledeće.")).toBeTruthy();
       expect(within(page).getByText("Planirano")).toBeTruthy();
-      expect(within(page).getByRole("heading", { name: planned.title.sr })).toBeTruthy();
+      expect(localized(planned.soon.title, "sr")).toBe("Uskoro");
 
       fireEvent.click(within(page).getByRole("link", { name: "← Nazad na tok aktivnosti" }));
       await waitFor(() => expect(location.pathname).toBe("/examples/activity"));
       expect(await screen.findByTestId("feed-empty")).toBeTruthy();
-    },
-  );
-
-  it("names every summary of the series", () => {
-    expect(localized(PLANNED_EXAMPLES.chart?.summary ?? { en: "", sr: "" }, "sr")).toContain(
-      "UDC grafikon",
-    );
-    expect(PLANNED_EXAMPLES.chart?.summary.en).toContain("UDC chart");
+    } finally {
+      delete planned.soon;
+    }
   });
 
   it("leads an unknown example home", async () => {

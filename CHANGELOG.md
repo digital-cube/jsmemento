@@ -9,6 +9,17 @@ share one version.
 
 ### Added
 
+- **`activity` UDC collection** (`@memento/server`): the tenant's events counted per minute and
+  per `event_type`, computed per request with a `GROUP BY` over `memento_event` (no migration,
+  no new index: the inner query is bounded on `occurred_at` and reads the tenant/time index).
+  Fields `minute`, `event_type`, `count`, plus one integer column per event type of
+  `lookups.yaml` and `other` (the chart's series). Last 60 minutes unless the filter names
+  `minute`; Filter DSL, sort, offset paging, `total` = buckets. Chart (default) + table.
+  `EventCollectionSource`'s filter compiler is now `SqlFilterCompiler`, shared by both.
+- **Examples site: the Activity chart** (`/examples/chart`, replaces its planned page — the
+  last one): `UdcDataView` on `activity`, chart tab first, a window selector (15 min / 1 h /
+  6 h / 24 h) that writes the `minute` range into `?f=` and slides with the clock, refreshed
+  by the stream at most once per 5 s.
 - **Examples site: the Chat page** (`/examples/chat`, replaces its planned page): the
   simulator's demo room in `MementoChat`, read as one participant picked in a selector
   (`?as=`), with seen markers, "X was added" lines in the header's language, a disabled

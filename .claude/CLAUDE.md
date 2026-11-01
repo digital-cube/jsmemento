@@ -21,7 +21,8 @@ The code does not match the target yet. Do not assume otherwise:
 
 - `packages/server` serves UDC under `/memento/udc/<action>` (`@jsudc/server`, protocol:
   `POST /udc/list {collection: …}`): the collections `events` and `cpu_load`
-  (`src/udc/`, a SQL-backed `EventCollectionSource` over `memento_event`) and `menu`
+  (`src/udc/`, a SQL-backed `EventCollectionSource` over `memento_event`), `activity`
+  (events per minute by type, `ActivityCollectionSource`, a `GROUP BY` per request) and `menu`
   (`menu.yaml`, `yaml_menu` source). The REST list endpoints `/events`, `/events/query`,
   `/chats` still exist next to it.
 - `apps/examples` (the examples site: sidebar from the `menu` collection, the CPU monitor over

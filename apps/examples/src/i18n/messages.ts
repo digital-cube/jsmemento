@@ -4,7 +4,7 @@ import type { Messages } from "@jsudc/react";
  * The site's strings, layered over the library's dictionary through
  * `<UdcI18nProvider messages>`: the shell's own `APP` terms, `MENU` (the labels of
  * menu.yaml's `translation_key`s, `MENU_HOME` → `MENU.HOME`), the pages' own (`ACTIVITY`,
- * `ENTITY`, `CHAT`, `TAIL`, `SEARCH`, `RENDERING`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
+ * `ENTITY`, `CHAT`, `TAIL`, `SEARCH`, `RENDERING`, `CHART`, `PLANNED`) and `COLLECTIONS` (the `udc:collections` leaves, `COLLECTIONS_<NAME>`).
  */
 export const EXAMPLES_MESSAGES: Messages = {
   APP: {
@@ -41,7 +41,7 @@ export const EXAMPLES_MESSAGES: Messages = {
     TAIL: { en: "Live tail", sr: "Uživo praćenje" },
     SEARCH: { en: "Search", sr: "Pretraga" },
     RENDERING: { en: "Rendering & translations", sr: "Prikaz i prevodi" },
-    CHART: { en: "Events per minute", sr: "Događaji po minutu" },
+    CHART: { en: "Activity chart", sr: "Grafikon aktivnosti" },
     COLLECTIONS: { en: "Collections", sr: "Kolekcije" },
   },
   ACTIVITY: {
@@ -239,6 +239,22 @@ export const EXAMPLES_MESSAGES: Messages = {
       sr: "NOTE se uopšte ne renderuje: njegov tekst je payload.text, čuva se kako je napisan i vraća isti na svakom jeziku — ne koristi se ni sopstveni šablon ni _generic.",
     },
   },
+  CHART: {
+    TITLE: { en: "Activity chart", sr: "Grafikon aktivnosti" },
+    SUBTITLE: {
+      en: "UDC activity · events per minute by type, counted by the server · chart + table · live",
+      sr: "UDC activity · događaji po minutu po tipu, broji ih server · grafikon + tabela · uživo",
+    },
+    NOTE: {
+      en: "Every event of the tenant, counted per minute and per event_type by the server (the activity collection, a GROUP BY over memento_event on every request); one line per event type of lookups.yaml, plus other for types outside it. The last point is the current minute, still filling up.",
+      sr: "Svaki događaj tenanta, prebrojan po minutu i po event_type na serveru (kolekcija activity, GROUP BY nad memento_event pri svakom zahtevu); po jedna linija za svaki tip događaja iz lookups.yaml, plus other za tipove van njega. Poslednja tačka je tekući minut, koji se još puni.",
+    },
+    WINDOW: { en: "Window", sr: "Period" },
+    WINDOW_15M: { en: "15 min", sr: "15 min" },
+    WINDOW_1H: { en: "1 h", sr: "1 h" },
+    WINDOW_6H: { en: "6 h", sr: "6 h" },
+    WINDOW_24H: { en: "24 h", sr: "24 h" },
+  },
   PLANNED: {
     BADGE: { en: "Planned", sr: "Planirano" },
     LEAD: {
@@ -250,6 +266,7 @@ export const EXAMPLES_MESSAGES: Messages = {
   COLLECTIONS: {
     EVENTS: { en: "events", sr: "events" },
     CPU_LOAD: { en: "cpu_load", sr: "cpu_load" },
+    ACTIVITY: { en: "activity", sr: "activity" },
     MENU: { en: "menu", sr: "menu" },
   },
 };
