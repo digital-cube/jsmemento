@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
-import { buildApp } from "./app.js";
+import { Redis } from "ioredis";
+import { type AccountsOptions, buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { connect, runMigrations } from "./db/client.js";
 import { DemoKeyError } from "./demo.js";
 import { emptyLookups, initLookups, type Lookups } from "./lookups.js";
+import { BrevoMailer } from "./mail/mailer.js";
 import { type EventPublisher, RedisPublisher } from "./publisher.js";
 import { type EventFeed, LocalBus, RedisFeed } from "./stream/feed.js";
 
@@ -47,11 +49,41 @@ if (config.redisUrl) {
   feed = bus;
 }
 
+// Self-service accounts (MEMENTO_ACCOUNTS): Brevo when a key is set, otherwise mails are
+// logged; rate limit counters in Redis when there is one, so every process shares them.
+let accounts: AccountsOptions | undefined;
+let rateLimitRedis: Redis | null = null;
+if (config.accounts) {
+  const { brevoApiKey, mailFrom } = config.accounts;
+  if (config.redisUrl) {
+    rateLimitRedis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
+    rateLimitRedis.on("error", (error) => app.log.warn({ err: error }, "rate limit redis error"));
+  }
+  accounts = {
+    serviceUrl: config.accounts.serviceUrl,
+    sessionDays: config.accounts.sessionDays,
+    limits: config.limits,
+    rateLimit: { redis: rateLimitRedis },
+    ...(brevoApiKey && mailFrom
+      ? {
+          mailer: new BrevoMailer({
+            apiKey: brevoApiKey,
+            from: mailFrom,
+            // `app` exists by the time a mail is sent.
+            log: { info: (o, m) => app.log.info(o, m), error: (o, m) => app.log.error(o, m) },
+          }),
+        }
+      : {}),
+  };
+}
+
 const app = await buildApp({
   db: database.db,
   publisher,
   prefix: config.apiPrefix,
   logger: { level: config.logLevel },
+  trustProxy: config.trustProxy,
+  ...(accounts ? { accounts } : {}),
   lookups,
   defaultLocale: config.defaultLocale,
   stream: {
@@ -76,11 +108,22 @@ app.log.info(
 for (const warning of [...lookupWarnings, ...menuWarnings]) app.log.warn(warning);
 if (menu) app.log.info({ path: menu }, "serving the menu UDC collection");
 if (config.demoApiKey) app.log.info("GET /api/demo hands out the read-only demo key");
+if (config.accounts) {
+  app.log.info(
+    {
+      service_url: config.accounts.serviceUrl,
+      mail: config.accounts.brevoApiKey ? "brevo" : "log",
+      rate_limit_store: rateLimitRedis ? "redis" : "memory",
+    },
+    "self-service accounts on: /auth/* and the session cookie",
+  );
+}
 if (config.uiDir) app.log.info({ root: config.uiDir }, "serving the web UI at / and /en/");
 
 app.addHook("onClose", async () => {
   await publisher.close();
   await feed.close();
+  rateLimitRedis?.disconnect();
   await database.close();
 });
 

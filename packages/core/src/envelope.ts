@@ -8,6 +8,8 @@ export const ERROR_CODES = {
   forbidden: 403,
   not_found: 404,
   conflict: 409,
+  unsupported_media_type: 415,
+  rate_limited: 429,
   internal_error: 500,
 } as const;
 export type ErrorCode = keyof typeof ERROR_CODES;

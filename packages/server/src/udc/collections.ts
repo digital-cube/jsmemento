@@ -1,5 +1,4 @@
 import { type ViewConfigInput, ViewConfigSchema } from "@jsudc/core";
-import { CollectionRegistry } from "@jsudc/server";
 import { EVENT_TYPES } from "@memento/core";
 import { eq } from "drizzle-orm";
 import type { Database } from "../db/client.js";
@@ -11,6 +10,7 @@ import {
   OTHER_SERIES_FIELD,
   seriesField,
 } from "./activity.js";
+import { MementoRegistry } from "./registry.js";
 import { EventCollectionSource, type EventField, payloadNumber } from "./source.js";
 
 /** The memento event types the CPU monitor demo pushes. */
@@ -227,8 +227,8 @@ export function eventCollections({
   db,
   renderer,
   activity,
-}: EventCollectionsOptions): CollectionRegistry {
-  const registry = new CollectionRegistry();
+}: EventCollectionsOptions): MementoRegistry {
+  const registry = new MementoRegistry();
   registry.register({
     name: "events",
     label: "Events",

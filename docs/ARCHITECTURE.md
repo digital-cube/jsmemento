@@ -239,12 +239,14 @@ tenant's templates for the page's event types.
 
 | code | HTTP | when |
 |---|---|---|
-| `bad_request` | 400 / 413 / 415 | malformed JSON, bad cursor, unsupported content type |
-| `unauthorized` | 401 | missing / invalid / revoked / expired key, inactive tenant |
-| `forbidden` | 403 | key lacks the route's scope |
+| `bad_request` | 400 / 413 | malformed JSON, bad cursor, body too large |
+| `unauthorized` | 401 | missing / invalid / revoked / expired key, inactive tenant; no / expired session (`config.auth`) |
+| `forbidden` | 403 | key lacks the route's scope; `admin` session route for a non-admin |
 | `not_found` | 404 | unknown route, unknown tenant |
 | `conflict` | 409 | duplicate tenant slug, duplicate template without `--replace` |
+| `unsupported_media_type` | 415 | unsupported content type; a cookie write without `application/json` |
 | `validation_error` | 422 | Zod validation failed (`details` = Zod issues) |
+| `rate_limited` | 429 | `/auth/*` rate limits |
 | `internal_error` | 500 | anything unexpected (logged with stack, message hidden) |
 
 ### Deployment modes

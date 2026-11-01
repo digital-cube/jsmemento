@@ -1,20 +1,34 @@
 export {
+  type AccountsOptions,
   type BuildAppOptions,
   buildApp,
   codeForStatus,
+  DEFAULT_LIMITS,
   type MementoPluginOptions,
   mementoPlugin,
   requestId,
   type StreamOptions,
   selectSubprotocol,
 } from "./app.js";
-export { installAuth } from "./auth.js";
-export { type Config, loadConfig } from "./config.js";
+export {
+  type InstallAuthOptions,
+  installAuth,
+  type SessionAuth,
+  type SessionOptions,
+} from "./auth.js";
+export {
+  type AccountsConfig,
+  type Config,
+  type LimitsConfig,
+  loadConfig,
+  parseMailFrom,
+} from "./config.js";
 export { currentTenant, requireTenant, runWithTenant, type TenantContext } from "./context.js";
 export {
   connect,
   type Database,
   type DatabaseHandle,
+  type Executor,
   MIGRATIONS_FOLDER,
   runMigrations,
 } from "./db/client.js";
@@ -34,6 +48,7 @@ export {
   recordCandidates,
   unknownLookups,
 } from "./lookups.js";
+export * from "./mail/index.js";
 export {
   type EventPublisher,
   MemoryPublisher,
@@ -41,6 +56,28 @@ export {
   type PublishedEvent,
   RedisPublisher,
 } from "./publisher.js";
+export {
+  type AccountTenantView,
+  checkLogin,
+  getUserByEmail,
+  listUsers,
+  markUserVerified,
+  normalizeEmail,
+  type RegisterInput,
+  type Registration,
+  randomTenantSlug,
+  registerUser,
+  resetPassword,
+  serializeAccountTenant,
+  serializeUser,
+  setUserAdmin,
+  setUserDisabled,
+  startPasswordReset,
+  type UserListing,
+  type UserView,
+  updateUser,
+  verifyEmail,
+} from "./services/accounts.js";
 export {
   authenticateApiKey,
   type CreateApiKeyInput,
@@ -70,6 +107,15 @@ export {
   pushEvent,
   serializeEvent,
 } from "./services/events.js";
+export {
+  type AuthenticatedSession,
+  authenticateSession,
+  createSession,
+  deleteSession,
+  deleteUserSessions,
+  purgeExpiredSessions,
+  SESSION_COOKIE,
+} from "./services/sessions.js";
 export {
   checkTemplateBody,
   deleteTemplate,
@@ -139,6 +185,7 @@ export {
   type UdcRoutesOptions,
   udcRoutes,
 } from "./udc/plugin.js";
+export { collectionAuth, type MementoCollection, MementoRegistry } from "./udc/registry.js";
 export {
   EVENT_SOURCE_CAPABILITIES,
   EventCollectionSource,

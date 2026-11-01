@@ -183,11 +183,51 @@ docker run -d -p 3000:3000 \
 | `MEMENTO_LOOKUPS_STRICT` | `false` | `true` rejects events whose types are not in `lookups.yaml` (`422`). |
 | `MEMENTO_WS_HEARTBEAT_MS` | `30000` | WebSocket ping interval (min 1000). |
 | `MEMENTO_WS_MAX_BUFFERED` | `1000` | Unwritten messages per connection before it is closed `4008`. |
+| `MEMENTO_ACCOUNTS` | `false` | Self-service accounts: the `/auth/*` routes and the session cookie ([Self-service accounts](#self-service-accounts)). Off → none of it is reachable. Compose: `ACCOUNTS`. |
+| `MEMENTO_SERVICE_URL` | *(unset)* | Public origin of the service site (`https://service.stage.memento-service.org`): the links in verify / reset mails. **Required** with accounts on. Compose: `SERVICE_URL`. |
+| `MEMENTO_BREVO_API_KEY` | *(unset)* | Brevo transactional mail key. Unset → mails are logged at info level with their full text (`LogMailer`). Compose: `BREVO_API_KEY`. |
+| `MEMENTO_MAIL_FROM` | *(unset)* | `Name <address>`, required with the Brevo key; the address must be a **sender verified in Brevo**. Compose: `MAIL_FROM`. |
+| `MEMENTO_TRUST_PROXY` | `false` | Fastify `trustProxy`: client IP from `X-Forwarded-For` (rate limits), https from `X-Forwarded-Proto` (`Secure` cookie). `true` only behind a proxy that sets them. Compose: `TRUST_PROXY`. |
+| `MEMENTO_SESSION_DAYS` | `30` | Sliding lifetime of a session (and the cookie's `Max-Age`). |
+| `MEMENTO_DEFAULT_MAX_KEYS` | `10` | Active API keys a tenant without its own `max_keys` may hold. |
+| `MEMENTO_DEFAULT_DAILY_LIMIT` | `100000` | Events per day of a tenant without its own limit. |
+| `MEMENTO_MAX_DAILY_LIMIT` | *(unset)* | Ceiling no tenant's daily limit may exceed; unset → none. |
 
 `docker-compose.yaml` additionally reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`,
 `MEMENTO_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_BIND`, `REDIS_BIND` and
-`MEMENTO_IMAGE`; the `demo` profile adds the `CPU_MONITOR_*` variables
+`MEMENTO_IMAGE`, and passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
+`TRUST_PROXY` to the server as the `MEMENTO_*` variables above (empty by default); the `demo` profile adds the `CPU_MONITOR_*` variables
 ([Demo pusher](#demo-pusher-profile-demo)).
+
+## Self-service accounts
+
+`MEMENTO_ACCOUNTS=true` turns on registration, sign-in and the `memento_session` cookie
+([API.md "Accounts"](API.md#accounts-memento_accountstrue)). In `.env` next to
+`docker-compose.yaml`:
+
+```bash
+ACCOUNTS=true
+SERVICE_URL=https://service.stage.memento-service.org
+BREVO_API_KEY=xkeysib-…          # never into the repository
+MAIL_FROM=memento <info@example.com>
+TRUST_PROXY=true                 # behind nginx
+```
+
+- **Brevo sender verification:** Brevo refuses mail from an address it has not verified. In
+  Brevo → *Senders, Domains & Dedicated IPs*, add the `MAIL_FROM` address as a sender (or
+  authenticate its domain with the DKIM/DMARC records Brevo shows) before turning the key on.
+  A refused mail is logged as `brevo refused the mail` (with Brevo's message) and the request
+  still succeeds — check the logs after the first registration.
+- Without `BREVO_API_KEY` every mail is logged at info level with its full text, links
+  included: fine for development, not for a public instance.
+- Rate limit counters go to Redis when `REDIS_URL` is set, so every process shares them.
+- `TRUST_PROXY=true` only when the port is reachable through the proxy alone: otherwise a
+  client picks its own IP with `X-Forwarded-For` and walks around the rate limits.
+- Users are managed with the CLI: `memento list-users`, `make-admin`, `disable-user`,
+  `verify-user` ([CLI.md](CLI.md#users)).
+- Migration `0004_accounts` (applied at startup) adds `memento_user`, `memento_tenant_user`,
+  `memento_session`, `memento_user_token` and the `plan` / `max_keys` / `retention_days`
+  columns of `memento_tenant`.
 
 ## Behind a reverse proxy
 
@@ -202,6 +242,9 @@ location /memento/ {
     proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
     proxy_read_timeout 120s;
+    # with MEMENTO_TRUST_PROXY=true (accounts: client IP for rate limits, Secure cookie)
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 

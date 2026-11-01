@@ -17,6 +17,10 @@ machine-readable output.
 | `list-tenants` | list tenants |
 | `create-key --tenant --scopes --name [--expires-in-days]` | create an API key (printed once) |
 | `revoke-key <prefix>` | revoke a key |
+| `list-users` | self-service users: email, name, tenant slug, verified, admin, disabled, created ([Users](#users)) |
+| `make-admin <email>` / `revoke-admin <email>` | set / clear a user's `is_admin` |
+| `disable-user <email>` / `enable-user <email>` | a disabled user cannot sign in; disabling deletes every session |
+| `verify-user <email>` | mark the email verified without a mail (stage smoke tests) |
 | `create-template` / `list-templates` / `delete-template` | per-tenant Handlebars templates ([TEMPLATES.md](TEMPLATES.md)) |
 | `create-chat` / `send-message` | chats ([CHATS.md](CHATS.md)) |
 | `tail` | print new events as they are stored, like `tail -f` |
@@ -102,6 +106,22 @@ memento --json cpu-monitor | jq .payload                    # one stored event p
   and the next sample is tried; `● reconnected after N failed push(es)` when it gets through.
   A refused push (bad key, missing scope, invalid event: any 4xx) stops with exit code 1.
   Ctrl+C stops and prints `cpu-monitor stopped: N pushed, M failed`.
+
+## Users
+
+The self-service users of `MEMENTO_ACCOUNTS` ([API.md "Accounts"](API.md#accounts-memento_accountstrue)).
+Emails are matched case-insensitively.
+
+```bash
+memento list-users
+#   ana@example.com  Ana  t-k6xdzysv  verified  -  -  2026-11-01T08:00:53.991Z
+memento make-admin ana@example.com        # ✔ admin: ana@example.com
+memento disable-user spam@example.com     # ✔ disabled: spam@example.com (signed out everywhere)
+memento verify-user smoke@example.com     # ✔ verified: smoke@example.com
+memento --json list-users                 # [{"email":…,"tenant":…,"verified":true,…}]
+```
+
+An unknown email: `error: no user "x@example.com"`, exit code 1.
 
 ## Errors
 

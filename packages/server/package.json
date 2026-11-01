@@ -24,7 +24,8 @@
   "files": [
     "dist",
     "drizzle",
-    "templates"
+    "templates",
+    "mail"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -38,12 +39,15 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/rate-limit": "^11.2.1",
     "@fastify/static": "^10.1.8",
     "@fastify/websocket": "^11.3.4",
     "@jsudc/core": "0.2.0",
     "@jsudc/server": "0.2.1",
     "@memento/core": "workspace:*",
     "@memento/lookups": "workspace:*",
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",
     "handlebars": "^4.7.10",

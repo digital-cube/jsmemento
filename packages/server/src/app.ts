@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import fastifyCookie from "@fastify/cookie";
 import fastifyWebsocket from "@fastify/websocket";
 import type { CollectionRegistry } from "@jsudc/server";
 import {
@@ -15,12 +16,18 @@ import Fastify, {
   type FastifyServerOptions,
   LogController,
 } from "fastify";
+import type { Redis } from "ioredis";
 import { installAuth } from "./auth.js";
+import type { LimitsConfig } from "./config.js";
 import type { Database } from "./db/client.js";
 import { resolveDemoKey } from "./demo.js";
 import { MementoError } from "./errors.js";
 import { emptyLookups, type Lookups } from "./lookups.js";
+import { AccountMails } from "./mail/account-mails.js";
+import { LogMailer, type Mailer } from "./mail/mailer.js";
+import { MailTemplates } from "./mail/templates.js";
 import { type EventPublisher, NoopPublisher } from "./publisher.js";
+import { accountRoutes } from "./routes/accounts.js";
 import { chatRoutes } from "./routes/chats.js";
 import { demoRoutes } from "./routes/demo.js";
 import { describeRoutes } from "./routes/describe.js";
@@ -44,6 +51,28 @@ export interface StreamOptions {
   /** Unwritten messages per connection before it is dropped as a slow consumer. Default 1000. */
   maxBufferedMessages?: number;
 }
+
+/** Self-service accounts (`MEMENTO_ACCOUNTS`): the `/auth/*` routes and the session cookie. */
+export interface AccountsOptions {
+  /** Public origin of the service site: the links in the verify / reset mails. */
+  serviceUrl: string;
+  /** Sliding session lifetime. Default 30. */
+  sessionDays?: number;
+  /** Default: a `LogMailer` (mails logged at info level, not sent). */
+  mailer?: Mailer;
+  /** Default: the bundled `mail/` templates. */
+  mailTemplates?: MailTemplates;
+  /** Quota defaults `GET /auth/me` reports. Default 10 keys, 100 000 events/day, no ceiling. */
+  limits?: LimitsConfig;
+  /** Auth rate limits: `max` requests per `timeWindowMs` (default 10 per 15 min). */
+  rateLimit?: { max?: number; timeWindowMs?: number; redis?: Redis | null };
+}
+
+export const DEFAULT_LIMITS: LimitsConfig = {
+  defaultMaxKeys: 10,
+  defaultDailyLimit: 100_000,
+  maxDailyLimit: null,
+};
 
 export interface MementoPluginOptions {
   db: Database;
@@ -75,6 +104,8 @@ export interface MementoPluginOptions {
    * or not exactly `read`-scoped key fails startup (`DemoKeyError`). Default: none → 404.
    */
   demoApiKey?: string;
+  /** Turns on self-service accounts. Default: off — no `/auth/*`, no session credential. */
+  accounts?: AccountsOptions;
 }
 
 /** Selects `memento.v1` when offered, else the `bearer.<key>` protocol the client sent. */
@@ -187,7 +218,10 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
     }
   }
 
-  installAuth(app, deps.db);
+  const accounts = options.accounts;
+  const sessions = accounts ? { days: accounts.sessionDays ?? 30 } : null;
+  if (accounts && !app.hasRequestDecorator("cookies")) await app.register(fastifyCookie);
+  installAuth(app, deps.db, { sessions });
   if (hub) await app.register(streamRoutes, { hub });
   await app.register(healthRoutes, deps);
   await app.register(eventRoutes, deps);
@@ -196,10 +230,28 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(describeRoutes, deps);
   const demo = options.demoApiKey ? await resolveDemoKey(deps.db, options.demoApiKey) : null;
   await app.register(demoRoutes, { demo });
+  if (accounts && sessions) {
+    await app.register(accountRoutes, {
+      db: deps.db,
+      mails: new AccountMails({
+        mailer: accounts.mailer ?? new LogMailer(app.log),
+        templates: accounts.mailTemplates ?? new MailTemplates(),
+        serviceUrl: accounts.serviceUrl.replace(/\/+$/, ""),
+        log: app.log,
+      }),
+      sessionDays: sessions.days,
+      limits: accounts.limits ?? DEFAULT_LIMITS,
+      rateLimit: {
+        max: accounts.rateLimit?.max ?? 10,
+        timeWindowMs: accounts.rateLimit?.timeWindowMs ?? 15 * 60_000,
+        redis: accounts.rateLimit?.redis ?? null,
+      },
+    });
+  }
   if (options.udc !== false) {
     const registry = options.udc ?? eventCollections({ db: deps.db, renderer: deps.renderer });
     if (options.menu) registry.register(menuCollection({ file: options.menu, registry }));
-    await app.register(udcRoutes, { db: deps.db, registry });
+    await app.register(udcRoutes, { db: deps.db, registry, sessions });
   }
 };
 
@@ -213,6 +265,8 @@ export interface BuildAppOptions extends MementoPluginOptions {
    * Default: none — only the API answers.
    */
   ui?: Omit<UiOptions, "apiPrefix">;
+  /** Fastify `trustProxy`: client IP / protocol from `X-Forwarded-*` (behind nginx). */
+  trustProxy?: boolean;
 }
 
 /** Standalone server: a Fastify instance with the memento plugin mounted. */
@@ -221,8 +275,9 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     logger: options.logger ?? true,
     genReqId: (request) => requestId(request.headers["x-request-id"]),
     logController: new LogController({ requestIdLogLabel: "request_id" }),
+    trustProxy: options.trustProxy ?? false,
   });
-  const { prefix, logger: _logger, ui, ...plugin } = options;
+  const { prefix, logger: _logger, ui, trustProxy: _trustProxy, ...plugin } = options;
   await app.register(mementoPlugin, { ...plugin, prefix: prefix ?? "/memento" });
   if (ui) await app.register(uiRoutes, { ...ui, apiPrefix: prefix ?? "/memento" });
   return app;

@@ -9,6 +9,34 @@ share one version.
 
 ### Added
 
+- **Self-service accounts, server side** (`@memento/server`, behind `MEMENTO_ACCOUNTS`, off by
+  default): `POST /auth/register` (a user, a tenant of their own `t-xxxxxxxx`, the `owner`
+  membership, a verify mail, a session), `/auth/verify`, `/auth/resend`, `/auth/login`,
+  `/auth/logout`, `/auth/forgot`, `/auth/reset`, `GET`/`PATCH /auth/me`. Passwords argon2id
+  (`@node-rs/argon2`); single-use mail tokens stored as SHA-256 (verify 24 h, reset 1 h);
+  rate limits (`@fastify/rate-limit`, Redis store with `REDIS_URL`) 10 per IP per 15 min,
+  login also per email. Migration `0004_accounts`: `memento_user`, `memento_tenant_user`,
+  `memento_session`, `memento_user_token`, and `plan` / `max_keys` / `retention_days` on
+  `memento_tenant`.
+- **The session credential**: cookie `memento_session` (HttpOnly, SameSite=Lax, Secure over
+  https, sliding `MEMENTO_SESSION_DAYS`), `config.auth: "session" | "admin"` on routes next
+  to `config.scope` — the two never accept each other's credential; cookie writes need
+  `Content-Type: application/json` (415 otherwise). `TenantContext` gains `userId`,
+  `userEmail`, `isAdmin`; `apiKeyId` is `null` for a session. UDC collections registered in
+  the new `MementoRegistry` with `auth: "session" | "admin"` are read with the cookie.
+- **Mail** (`@memento/server`): `Mailer`, `BrevoMailer` (Brevo transactional API; a refusal is
+  logged, never fails the request), `LogMailer`, `MemoryMailer`; templates
+  `packages/server/mail/{verify,reset}.{en,sr}.hbs` (first line the subject) rendered with the
+  event templates' Handlebars sandbox.
+- **Config**: `MEMENTO_ACCOUNTS`, `MEMENTO_SERVICE_URL`, `MEMENTO_BREVO_API_KEY`,
+  `MEMENTO_MAIL_FROM`, `MEMENTO_TRUST_PROXY`, `MEMENTO_SESSION_DAYS`,
+  `MEMENTO_DEFAULT_MAX_KEYS`, `MEMENTO_DEFAULT_DAILY_LIMIT`, `MEMENTO_MAX_DAILY_LIMIT`;
+  `docker-compose.yaml` passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
+  `TRUST_PROXY`. `buildApp({ trustProxy, accounts })`.
+- **CLI** (`@memento/cli`): `list-users`, `make-admin` / `revoke-admin`, `disable-user` /
+  `enable-user`, `verify-user`.
+- **Error codes** (`@memento/core`): `unsupported_media_type` (415), `rate_limited` (429).
+
 - **`activity` UDC collection** (`@memento/server`): the tenant's events counted per minute and
   per `event_type`, computed per request with a `GROUP BY` over `memento_event` (no migration,
   no new index: the inner query is bounded on `occurred_at` and reads the tenant/time index).
@@ -81,6 +109,9 @@ share one version.
   (`Server {{instance_id}} — CPU: …`).
 
 ### Changed
+
+- A framework `415` (unsupported content type) now answers with the code
+  `unsupported_media_type` instead of `bad_request`; `429` with `rate_limited`.
 
 - **Breaking:** the health check moved from `GET <prefix>/health` to `GET <prefix>/api/health`
   (default `/memento/api/health`), so it sits under the `/api/` path like other API endpoints

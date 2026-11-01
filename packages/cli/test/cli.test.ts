@@ -7,6 +7,7 @@ import {
   loadConfig,
   MemoryPublisher,
   MIGRATIONS_FOLDER,
+  registerUser,
   schema,
 } from "@memento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -22,7 +23,7 @@ beforeEach(async () => {
   out = [];
   err = [];
   await handle.pool.query(
-    "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
+    "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant, memento_user cascade",
   );
 });
 afterAll(() => handle.close());
@@ -146,6 +147,65 @@ describe("memento create-key", () => {
   });
 });
 
+describe("memento user commands", () => {
+  const ana = () =>
+    registerUser(handle.db, {
+      email: "Ana@Example.com",
+      password: "correct horse battery",
+      name: "Ana",
+      terms: true,
+    });
+
+  it("lists users, and says so when there are none", async () => {
+    expect(await run("list-users")).toBe(0);
+    expect(out).toEqual(["no users"]);
+    out = [];
+    const { tenant } = await ana();
+    expect(await run("list-users")).toBe(0);
+    expect(out[0]).toMatch(new RegExp(`^ana@example\\.com\tAna\t${tenant.slug}\t-\t-\t-\t\\d{4}-`));
+    out = [];
+    expect(await run("--json", "list-users")).toBe(0);
+    expect(JSON.parse(out[0] as string)).toEqual([
+      {
+        email: "ana@example.com",
+        name: "Ana",
+        tenant: tenant.slug,
+        verified: false,
+        admin: false,
+        disabled: false,
+        created_at: expect.any(String),
+      },
+    ]);
+  });
+
+  it("makes and revokes admins, disables and enables, verifies", async () => {
+    await ana();
+    const flags = async () => {
+      out = [];
+      await run("--json", "list-users");
+      return JSON.parse(out[0] as string)[0];
+    };
+    expect(await run("make-admin", "ANA@example.com")).toBe(0);
+    expect(out).toEqual(["admin: ana@example.com"]);
+    expect((await flags()).admin).toBe(true);
+    expect(await run("revoke-admin", "ana@example.com")).toBe(0);
+    expect((await flags()).admin).toBe(false);
+    expect(await run("disable-user", "ana@example.com")).toBe(0);
+    expect((await flags()).disabled).toBe(true);
+    expect(await run("enable-user", "ana@example.com")).toBe(0);
+    expect((await flags()).disabled).toBe(false);
+    out = [];
+    expect(await run("--json", "verify-user", "ana@example.com")).toBe(0);
+    expect(JSON.parse(out[0] as string)).toMatchObject({ email_verified: true });
+    expect((await flags()).verified).toBe(true);
+  });
+
+  it("reports an unknown email", async () => {
+    expect(await run("make-admin", "nobody@example.com")).toBe(1);
+    expect(err).toEqual(['error: no user "nobody@example.com"']);
+  });
+});
+
 describe("other commands", () => {
   it("migrate applies migrations", async () => {
     expect(MIGRATIONS_FOLDER).toMatch(/drizzle$/);
@@ -166,6 +226,12 @@ describe("other commands", () => {
       "create-key",
       "revoke-key",
       "list-tenants",
+      "list-users",
+      "make-admin",
+      "revoke-admin",
+      "disable-user",
+      "enable-user",
+      "verify-user",
       "create-template",
       "list-templates",
       "delete-template",

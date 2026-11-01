@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   index,
+  integer,
   jsonb,
   pgTable,
   primaryKey,
@@ -22,6 +23,12 @@ export const tenants = pgTable("memento_tenant", {
   name: varchar("name", { length: 200 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: createdAt(),
+  /** Self-service plan (`free`, …); the quota defaults come from it and the config. */
+  plan: varchar("plan", { length: 32 }).notNull().default("free"),
+  /** Active API keys the tenant may hold; NULL → `MEMENTO_DEFAULT_MAX_KEYS`. */
+  maxKeys: integer("max_keys"),
+  /** Days events are kept; NULL → forever. */
+  retentionDays: integer("retention_days"),
 });
 
 /** API keys: only the SHA-256 of the key is stored; `prefix` finds the row. */
@@ -189,6 +196,90 @@ export const chatParticipants = pgTable(
   ],
 );
 
+/** A person who signs in to the service site (self-service accounts, `MEMENTO_ACCOUNTS`). */
+export const users = pgTable(
+  "memento_user",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Stored trimmed and lower-cased. */
+    email: varchar("email", { length: 320 }).notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    locale: varchar("locale", { length: 8 }).$type<"en" | "sr">().notNull().default("en"),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }).notNull(),
+    isAdmin: boolean("is_admin").notNull().default(false),
+    createdAt: createdAt(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  },
+  (t) => [check("memento_user_locale_check", sql`${t.locale} in ('en', 'sr')`)],
+);
+
+/** Which users belong to which tenant. Registration makes the `owner` row. */
+export const tenantUsers = pgTable(
+  "memento_tenant_user",
+  {
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 16 }).$type<"owner" | "member">().notNull(),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.userId] }),
+    index("memento_tenant_user_user_idx").on(t.userId),
+    check("memento_tenant_user_role_check", sql`${t.role} in ('owner', 'member')`),
+  ],
+);
+
+/** A signed-in browser: `id` is the SHA-256 hex of the `memento_session` cookie value. */
+export const sessions = pgTable(
+  "memento_session",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    userAgent: varchar("user_agent", { length: 400 }),
+    ip: varchar("ip", { length: 64 }),
+  },
+  (t) => [
+    index("memento_session_user_idx").on(t.userId),
+    index("memento_session_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/** Single-use mail tokens (`verify` the address, `reset` the password); only the hash is kept. */
+export const userTokens = pgTable(
+  "memento_user_token",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 16 }).$type<"verify" | "reset">().notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("memento_user_token_user_idx").on(t.userId),
+    check("memento_user_token_kind_check", sql`${t.kind} in ('verify', 'reset')`),
+  ],
+);
+
 export type TenantRow = typeof tenants.$inferSelect;
 export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type EventRow = typeof events.$inferSelect;
+export type UserRow = typeof users.$inferSelect;
+export type SessionRow = typeof sessions.$inferSelect;

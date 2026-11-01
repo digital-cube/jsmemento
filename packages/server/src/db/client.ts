@@ -26,3 +26,9 @@ export const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../drizzle", import.m
 export async function runMigrations(db: Database): Promise<void> {
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
 }
+
+/** A transaction handle of `Database` (what `db.transaction(fn)` hands to `fn`). */
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/** Either the pool or a transaction: services that may run inside one take this. */
+export type Executor = Database | Transaction;

@@ -30,13 +30,18 @@ import {
   LOOKUPS_CODEGEN,
   listTemplates,
   listTenants,
+  listUsers,
   MementoError,
+  markUserVerified,
   NoopPublisher,
   revokeApiKey,
   runMigrations,
   runWithTenant,
   saveTemplate,
   sendMessage,
+  serializeUser,
+  setUserAdmin,
+  setUserDisabled,
 } from "@memento/server";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CpuMonitorError, runCpuMonitor } from "./cpu-monitor.js";
@@ -399,6 +404,80 @@ Environment:
       const apiKey = await revokeApiKey(db(), prefix);
       print(apiKey, `revoked key ${apiKey.prefix} (${apiKey.name})`);
     });
+
+  // --- Self-service users (MEMENTO_ACCOUNTS) ----------------------------------------------
+  program
+    .command("list-users")
+    .description("list the self-service users (email, name, tenant, verified, admin, disabled)")
+    .addHelpText("after", examples(["memento list-users --json", "every user as JSON"]))
+    .action(async () => {
+      const users = await listUsers(db());
+      const flag = (on: boolean, label: string) => (on ? label : "-");
+      print(
+        users,
+        users.length === 0
+          ? "no users"
+          : users
+              .map((u) =>
+                [
+                  u.email,
+                  u.name,
+                  u.tenant ?? "-",
+                  flag(u.verified, "verified"),
+                  flag(u.admin, "admin"),
+                  flag(u.disabled, "disabled"),
+                  u.created_at,
+                ].join("\t"),
+              )
+              .join("\n"),
+      );
+    });
+
+  const userCommand = (
+    name: string,
+    description: string,
+    apply: (email: string) => Promise<Parameters<typeof serializeUser>[0]>,
+    done: string,
+  ) =>
+    program
+      .command(name)
+      .description(description)
+      .argument("<email>")
+      .addHelpText("after", examples([`memento ${name} ana@example.com`, description]))
+      .action(async (email: string) => {
+        const user = serializeUser(await apply(email));
+        print(user, `${done}: ${user.email}`);
+      });
+  userCommand(
+    "make-admin",
+    "make a user an administrator",
+    (email) => setUserAdmin(db(), email, true),
+    "admin",
+  );
+  userCommand(
+    "revoke-admin",
+    "take the administrator flag away",
+    (email) => setUserAdmin(db(), email, false),
+    "no longer admin",
+  );
+  userCommand(
+    "disable-user",
+    "disable a user (cannot sign in; every session is deleted)",
+    (email) => setUserDisabled(db(), email, true),
+    "disabled",
+  );
+  userCommand(
+    "enable-user",
+    "enable a disabled user again",
+    (email) => setUserDisabled(db(), email, false),
+    "enabled",
+  );
+  userCommand(
+    "verify-user",
+    "mark a user's email verified without a mail (stage smoke tests)",
+    (email) => markUserVerified(db(), email),
+    "verified",
+  );
 
   program
     .command("create-template")

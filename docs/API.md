@@ -28,6 +28,9 @@ pnpm memento create-key --tenant acme --scopes read,write --name backend-prod
 | `write` | `POST /events`, `POST /chats…` |
 | `admin` | everything; may read chats without naming a participant `user_id` |
 
+The `/auth/*` routes and session collections take a **session cookie** instead, never a key
+(and key routes never take the cookie): see [Accounts](#accounts-memento_accountstrue).
+
 ## Envelope
 
 Success:
@@ -47,12 +50,14 @@ Error:
 
 | code | HTTP |
 |---|---|
-| `bad_request` | 400 (also 413 / 415 for body size / content type) |
+| `bad_request` | 400 (also 413 for body size) |
 | `unauthorized` | 401 |
 | `forbidden` | 403 |
 | `not_found` | 404 |
 | `conflict` | 409 |
+| `unsupported_media_type` | 415 — a cookie-authenticated write without `Content-Type: application/json` |
 | `validation_error` | 422 — `details` lists the Zod issues (`path`, `message`, …) |
+| `rate_limited` | 429 — `/auth/*` rate limits |
 | `internal_error` | 500 |
 
 Every response carries `X-Request-Id`. Send your own (`[A-Za-z0-9_.:-]{1,128}`) to correlate
@@ -252,7 +257,8 @@ without the scope, is answered in-protocol: `{"kind":"udc.list.err","payload":{"
 | `menu` | the examples site's sidebar: `menu.yaml` (`MEMENTO_MENU_PATH`) as flat tree rows (`code`, `translation_key`, `icon`, `url`, `parent_id`, `order`, `depth`, `ancestor_ids`, `children_count`, `is_dynamic`), `source_kind: yaml_menu`. Its `udc:collections` branch lists every collection served, this one included. Not tenant data: the same for every key. Only when the file exists. |
 
 Actions: `collections`, `describe`, `list` (filter DSL, sort, offset paging, exact `total`),
-`read`. Every collection is read-only — events are immutable, push them with
+`read`. A collection registered with `auth: "session" | "admin"` (`MementoRegistry`, see
+[Accounts](#session-collections)) takes the session cookie instead of a key. Every collection is read-only — events are immutable, push them with
 `POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`.
 
 ```bash
@@ -282,6 +288,88 @@ curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
 `GET /memento/healthz` (the UDC plugin's own liveness, no key) answers `{"ok":true}`.
 Embedding the plugin: `mementoPlugin`'s `udc` option takes your own `CollectionRegistry`, or
 `false` to serve none.
+
+## Accounts (`MEMENTO_ACCOUNTS=true`)
+
+Self-service users for the service site: anyone registers, gets a **tenant** of their own and
+is its first **user** (`owner`; the membership table allows more users per tenant later).
+With `MEMENTO_ACCOUNTS` off (the default, and the examples instance) none of these routes
+exist (404) and no request is ever authenticated by a cookie.
+
+### The session credential
+
+- Cookie `memento_session`: 32 random bytes, base64url. The server stores only its SHA-256
+  (`memento_session.id`). `HttpOnly; SameSite=Lax; Path=/; Max-Age=<MEMENTO_SESSION_DAYS>`,
+  `Secure` when the request is https (`X-Forwarded-Proto` counts with `MEMENTO_TRUST_PROXY`).
+- **Sliding:** a session last seen more than 60 s ago gets `last_seen_at` and `expires_at`
+  pushed out (`now + MEMENTO_SESSION_DAYS`) and the cookie is re-sent with a fresh `Max-Age`.
+- A route declares `config.auth: "session" | "admin"` next to `config.scope`. No / unknown /
+  expired cookie → `401 unauthorized` (and the cookie is cleared); a disabled user → `401`
+  and the session row is deleted; `admin` for a user without `is_admin` → `403 forbidden`.
+  The tenant context is the session's tenant with `scopes: ["admin"]`, `apiKeyId: null`,
+  plus `userId`, `userEmail`, `isAdmin` — `requireTenant()` works unchanged.
+- **Credentials never cross:** a `config.scope` route ignores the cookie (`401 missing API
+  key`), a `config.auth` route ignores `Authorization` / `X-Api-Key`.
+- **CSRF:** every mutating cookie route (and every `/auth/*` POST) needs
+  `Content-Type: application/json` — an HTML form cannot send it — else `415
+  unsupported_media_type`. A body may be empty under that content type (`logout`, `resend`).
+
+### Routes
+
+All JSON, the usual envelope. Rate limited (`429 rate_limited`): `register`, `login`,
+`forgot`, `resend`, `reset` 10 per client IP per 15 min each; `login` also 10 per email per
+15 min. Counters live in Redis when `REDIS_URL` is set (shared by every process), in memory
+otherwise. The client IP is the socket's, or `X-Forwarded-For` with `MEMENTO_TRUST_PROXY=true`.
+
+| route | credential | body | answer |
+|---|---|---|---|
+| `POST /auth/register` | — | `{email, password, name, locale?, terms: true}` | `201 {user, tenant}`, sets the cookie, sends the verify mail. `422` bad email / password < 10 / empty name / `terms` not `true` / locale not `en`·`sr`; `409 conflict "email already registered"` |
+| `POST /auth/verify` | — | `{token}` | `200 {user}`; `404` unknown, used or expired token |
+| `POST /auth/resend` | session | — | `200 {sent}` always; a new verify mail while the address is unverified |
+| `POST /auth/login` | — | `{email, password}` | `200 {user, tenant}`, sets a new cookie; `401 "invalid email or password"` for an unknown email, a wrong password and a disabled user alike |
+| `POST /auth/logout` | session | — | `204`; deletes the session row, clears the cookie |
+| `POST /auth/forgot` | — | `{email}` | `200 {sent: true}` always; a reset mail only when the user exists and is not disabled (older unused reset links of the user die) |
+| `POST /auth/reset` | — | `{token, password}` | `200 {user}`; sets the password, uses the token up, deletes **every** session of the user; `404` bad token, `422` short password |
+| `GET /auth/me` | session | — | `{user, tenant, limits}` (below) |
+| `PATCH /auth/me` | session | `{name?, locale?, password?: {current, next}}` | `200 {user}`; a wrong `password.current` → `422` |
+
+```json
+{
+  "user": { "id": "…", "email": "ana@example.com", "name": "Ana", "locale": "en",
+            "email_verified": false, "is_admin": false, "created_at": "2026-11-01T08:00:00.000Z" },
+  "tenant": { "id": "…", "slug": "t-k6xdzysv", "name": "Ana", "plan": "free",
+              "max_keys": null, "retention_days": null },
+  "limits": { "default_max_keys": 10, "default_daily_limit": 100000, "max_daily_limit": null }
+}
+```
+
+Registration runs in one transaction: the user (email trimmed and lower-cased, password
+argon2id), the tenant (`slug` = `t-` + 8 random base32 characters, `name` = the user's name),
+the `owner` membership, a `verify` token and the session. Mail tokens are 32 random bytes
+base64url, stored as SHA-256, single use: `verify` 24 h (`<MEMENTO_SERVICE_URL>/verify/<token>`),
+`reset` 1 h (`<MEMENTO_SERVICE_URL>/reset/<token>`). Mails (`packages/server/mail/<kind>.<locale>.hbs`,
+first line the subject) go out in the user's locale through Brevo, or are logged without a
+Brevo key; a failed delivery never fails the request.
+
+```bash
+curl -si localhost:8000/memento/auth/register -H 'content-type: application/json' \
+  -d '{"email":"ana@example.com","password":"correct horse battery","name":"Ana","terms":true}' \
+  -c jar.txt
+curl -s localhost:8000/memento/auth/me -b jar.txt
+```
+
+### Session collections
+
+A UDC collection registered in memento's `MementoRegistry` with `auth: "session"` (or
+`"admin"`) is read with the cookie — the request needs `Content-Type: application/json` — and
+answers a key with an in-protocol `forbidden`; its source reads the session's tenant from
+`requireTenant()` like any other. Without `MEMENTO_ACCOUNTS` such a collection refuses
+everyone.
+
+```ts
+const registry = eventCollections({ db });
+registry.register({ name: "my_keys", source, view, auth: "session" });
+```
 
 ## `GET /memento/api/demo`
 

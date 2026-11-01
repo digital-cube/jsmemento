@@ -27,6 +27,14 @@ services:
       # without a pasted key (memento create-key --tenant demo --scopes read). Empty: no demo
       # key, the route answers 404. A key that is not read-only stops the server at startup.
       MEMENTO_DEMO_API_KEY: ${DEMO_API_KEY:-}
+      # Self-service accounts (docs/DEPLOYMENT.md "Self-service accounts"). Empty: off, as on
+      # the examples instance. SERVICE_URL is required once ACCOUNTS=true; without
+      # BREVO_API_KEY mails are only logged; MAIL_FROM must be a sender verified in Brevo.
+      MEMENTO_ACCOUNTS: ${ACCOUNTS:-}
+      MEMENTO_SERVICE_URL: ${SERVICE_URL:-}
+      MEMENTO_BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MEMENTO_MAIL_FROM: ${MAIL_FROM:-}
+      MEMENTO_TRUST_PROXY: ${TRUST_PROXY:-}
     ports:
       - "${MEMENTO_PORT:-3000}:3000"
     volumes:
