@@ -1,12 +1,11 @@
 import { intlLocaleOf, udcKeys, useI18n, useUdcClient, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
 import { hue, initials } from "@memento/react";
+import { useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { useQuery } from "@tanstack/react-query";
 import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSettings } from "../../connection.js";
-import { useLive } from "../../live.js";
-import { useThrottledRefresh } from "../../refresh.js";
 import { Connected } from "../../shell/AppShell.js";
 import { FeedStatus, MoreRows, SIMULATOR_COMMAND } from "../activity/Activity.js";
 import type { FeedItem } from "../activity/feed.js";

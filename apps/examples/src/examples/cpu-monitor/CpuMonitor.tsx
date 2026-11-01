@@ -1,9 +1,8 @@
 import { UdcDataView } from "@jsudc/react";
+import { type Health, type LiveState, useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useSettings } from "../../connection.js";
-import { type Health, type LiveState, useLive } from "../../live.js";
-import { useThrottledRefresh } from "../../refresh.js";
 import { COLLECTIONS, type Settings, streamFilter, withSettingsFilter } from "../../settings.js";
 import { Connected } from "../../shell/AppShell.js";
 

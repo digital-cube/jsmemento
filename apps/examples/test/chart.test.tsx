@@ -1,5 +1,6 @@
 import { udcKeys } from "@jsudc/react";
 import { decodeFilterParam } from "@jsudc/react/headless";
+import { useThrottledRefresh } from "@memento/ui-shell";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -14,7 +15,6 @@ import {
   withWindow,
   withWindowCondition,
 } from "../src/examples/chart/chart.js";
-import { useThrottledRefresh } from "../src/refresh.js";
 import { defaultSettings, STORAGE_KEY } from "../src/settings.js";
 import { FakeSocket } from "./fake-socket.js";
 import { udcServer } from "./udc-server.js";

@@ -1,12 +1,11 @@
 import type { Row } from "@jsudc/core";
 import { intlLocaleOf, useI18n, useUdcClient, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
+import { useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 import { mementoUdcClient, useSettings } from "../../connection.js";
-import { useLive } from "../../live.js";
-import { useThrottledRefresh } from "../../refresh.js";
 import { Connected } from "../../shell/AppShell.js";
 import { SIMULATOR_COMMAND } from "../activity/Activity.js";
 import { entityPath, timelineTime } from "../entity/entity.js";

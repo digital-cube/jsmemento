@@ -1,11 +1,10 @@
 import { intlLocaleOf, useI18n, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
 import { hue, initials } from "@memento/react";
+import { type Health, MoreRows, useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { useSettings } from "../../connection.js";
-import { type Health, useLive } from "../../live.js";
-import { useThrottledRefresh } from "../../refresh.js";
 import { Connected } from "../../shell/AppShell.js";
 import { entityPath } from "../entity/entity.js";
 import {
@@ -154,34 +153,7 @@ function InstanceChip({ item }: { item: FeedItem }) {
   );
 }
 
-/** The next page: as soon as the end of the list scrolls into view, or on a click. */
-export function MoreRows({
-  loading,
-  onMore,
-  children,
-}: {
-  loading: boolean;
-  onMore: () => void;
-  children: string;
-}) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const more = useRef(onMore);
-  more.current = onMore;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) more.current();
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <button ref={ref} type="button" className="feed__more" disabled={loading} onClick={onMore}>
-      {loading ? <Spinner /> : children}
-    </button>
-  );
-}
+export { MoreRows };
 
 function EmptyFeed() {
   const { t } = useI18n();

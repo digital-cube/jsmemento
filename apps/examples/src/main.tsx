@@ -1,4 +1,5 @@
 import "@jsudc/react/styles.css";
+import "@memento/ui-shell/shell.css";
 import "./app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

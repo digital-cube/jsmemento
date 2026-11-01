@@ -28,6 +28,11 @@ The code does not match the target yet. Do not assume otherwise:
 - `apps/examples` (the examples site: sidebar from the `menu` collection, the CPU monitor over
   `cpu_load`) reads everything through `@jsudc/react` — the reference for new UIs. A new
   example is a `menu.yaml` entry plus a page there.
+- `apps/service` (the self-service site, a second container of the image: register, API keys,
+  per-key activity / events / usage, admin) reads every list through `@jsudc/react` with the
+  session cookie (no token); writes go to `/auth/*`, `/keys*`, `/admin/*`. The shell both sites
+  share (menu sidebar, header, locale, refetch hooks, chart window, feed lines) is
+  `packages/ui-shell` (`@memento/ui-shell`, private, consumed as source).
 - `packages/react/src/MementoDataView.tsx` is built on `MementoClient` from `@memento/core`
   and the local `EventTable`, not on `@jsudc/react`.
 - `apps/example/src/App.tsx` has one raw `fetch` (POST of a test event).

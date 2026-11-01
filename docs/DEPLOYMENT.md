@@ -159,6 +159,8 @@ docker run -d -p 3000:3000 \
   Mount your own over `/app/config` (or point `MEMENTO_LOOKUPS_PATH` elsewhere).
 - `/app/config/menu.yaml` — the examples site's menu (`MEMENTO_MENU_PATH`), served as the
   `menu` UDC collection; `/app/ui` — the built examples site (`MEMENTO_UI_DIR`).
+- `/app/config/menu-service.yaml` and `/app/ui-service` — the service site (`apps/service`) and
+  its menu, served by the second container ([The service site](#the-service-site)).
 - `/data` — a volume; unknown lookup values are recorded under `/data/candidates`.
 
 ## Environment variables
@@ -172,7 +174,7 @@ docker run -d -p 3000:3000 \
 | `PORT` | `3000` | Listen port (the code default outside the image is 8000). |
 | `LOG_LEVEL` | `info` | pino: `fatal` `error` `warn` `info` `debug` `trace` `silent`. Logs are JSON on stdout. |
 | `MEMENTO_API_PREFIX` | `/memento` | Path every route is mounted under. |
-| `MEMENTO_UI_DIR` | `/app/ui` (image) · unset | Built web UI (the examples site, `apps/examples`) served at `/` and `/en/`; unset → API only. |
+| `MEMENTO_UI_DIR` | `/app/ui` (image) · unset | Built web UI (the examples site, `apps/examples`) served at `/` and `/en/`; unset → API only. The `service` container: `/app/ui-service`. |
 | `MEMENTO_MENU_PATH` | `/app/config/menu.yaml` (image) · `menu.yaml` at the repository root | The examples site's sidebar, served as the `menu` UDC collection. Missing → no `menu` collection (warning); the site shows its built-in entries. |
 | `MEMENTO_DEMO_API_KEY` | *(unset)* | Read-only key `GET <prefix>/api/demo` hands to the examples site ([Demo key](#demo-key-examples-site)). Not exactly `read`, unknown or revoked → the server does not start. Compose: `DEMO_API_KEY`. |
 | `MEMENTO_DEFAULT_LOCALE` | `en` | Locale events are rendered in when a request names none. |
@@ -195,7 +197,7 @@ docker run -d -p 3000:3000 \
 
 `docker-compose.yaml` additionally reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`,
 `MEMENTO_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `POSTGRES_BIND`, `REDIS_BIND` and
-`MEMENTO_IMAGE`, and passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
+`MEMENTO_IMAGE`, `SERVICE_PORT` (the `service` container's host port, default 8201), and passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
 `TRUST_PROXY`, `DEFAULT_MAX_KEYS`, `DEFAULT_DAILY_LIMIT`, `MAX_DAILY_LIMIT` to the server as the `MEMENTO_*` variables above (empty by default); the `demo` profile adds the `CPU_MONITOR_*` variables
 ([Demo pusher](#demo-pusher-profile-demo)).
 
@@ -232,6 +234,62 @@ TRUST_PROXY=true                 # behind nginx
   `daily_limit`, `created_by`, `quota_warned_on`, `quota_exceeded_on` to `memento_apikey`,
   `api_key_id` (+ index `memento_event_apikey_idx`) to `memento_event`, and the hourly
   counters table `memento_apikey_usage`. Existing events get `api_key_id = NULL`.
+
+## The service site
+
+`https://service.stage.memento-service.org/` is `apps/service`: people register, verify their
+address, create API keys (each shown **once**), and watch per key what it writes — activity per
+minute, the events, hourly usage — pause, resume, re-limit and delete keys; administrators see
+every user and key. It is a **second container of the same image**, `service` in
+`docker-compose.yaml`:
+
+| | `memento` | `service` |
+|---|---|---|
+| UI (`MEMENTO_UI_DIR`) | `/app/ui` — the examples site | `/app/ui-service` — the service site |
+| menu (`MEMENTO_MENU_PATH`) | `/app/config/menu.yaml` | `/app/config/menu-service.yaml` |
+| accounts | `ACCOUNTS` (empty: off) | always on, `TRUST_PROXY` on |
+| demo key | `DEMO_API_KEY` | none |
+| host port | `MEMENTO_PORT` (3000) | `SERVICE_PORT` (8201) |
+
+Both share `DATABASE_URL`, `REDIS_URL` and the lookups, so a key created on the service site
+pushes events to either container (`MEMENTO_URL=https://service.stage.memento-service.org/memento`
+is what the once-view prints). The `service` container takes `SERVICE_URL` (the links in mails;
+default `http://localhost:8201`), `BREVO_API_KEY`, `MAIL_FROM` and the quota variables. `memento`
+gets the Brevo and quota variables too: the 80 % / 100 % quota mails are sent by whichever
+instance stores the event.
+
+- **Keys** come only from the site (or `memento create-key` for CLI keys). **Mails** (verify,
+  reset, quota) go through Brevo with `BREVO_API_KEY` + `MAIL_FROM` (a verified sender); without
+  the key they are logged — `docker compose logs service | grep verify/` finds the link.
+- The site reads everything through UDC with the `memento_session` cookie: `api_keys`,
+  `api_key_events`, `api_key_history` (a key's own lifecycle), `api_key_activity`,
+  `api_key_usage`, `admin_users`, `admin_api_keys`, and the `menu` (which, with accounts on,
+  takes a key *or* the cookie). Writes are `/auth/*`, `/keys*`, `/admin/*`.
+- **No live stream:** `/memento/ws` takes an API key and the site has only the cookie, so the
+  key page polls its collections every 10 s instead.
+- An administrator: `docker compose exec service memento make-admin ana@example.com`; the
+  sidebar then shows *Administration* (`/admin/users`).
+
+nginx (done by hand after deploying; the examples vhost stays as it is):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name service.stage.memento-service.org;
+    # ssl_certificate … (certbot)
+
+    location / {
+        proxy_pass http://127.0.0.1:8201;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+}
+```
+
+`X-Forwarded-Proto` matters: the session cookie is `Secure` only when the server sees https.
 
 ### Quotas
 

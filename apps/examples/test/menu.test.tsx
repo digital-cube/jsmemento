@@ -10,25 +10,26 @@ import {
   UdcI18nProvider,
   UdcProvider,
 } from "@jsudc/react";
+import {
+  activeLeaf,
+  buildMenu,
+  loadMenuExpanded,
+  MENU_EXPAND_KEY,
+  MenuTree,
+  menuLabel,
+  parseMenuUrl,
+  RemoteMenu,
+  saveMenuExpanded,
+  visibleItems,
+  withOpen,
+} from "@memento/ui-shell";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Circle, Kanban } from "lucide-react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { EXAMPLES_MESSAGES } from "../src/i18n/messages.js";
-import { MenuTree, RemoteMenu } from "../src/shell/MenuTree.js";
-import {
-  activeLeaf,
-  BUILTIN_MENU_ROWS,
-  buildMenu,
-  loadMenuExpanded,
-  MENU_EXPAND_KEY,
-  menuLabel,
-  parseMenuUrl,
-  saveMenuExpanded,
-  visibleItems,
-  withOpen,
-} from "../src/shell/menu.js";
+import { BUILTIN_MENU_ROWS } from "../src/shell/menu.js";
 import { caps, node, SERVED_MENU } from "./udc-server.js";
 
 // Ported from the jsudc example (frontend/test/menu.test.tsx, MIT).
@@ -300,7 +301,7 @@ describe("the served menu", () => {
         <UdcI18nProvider messages={EXAMPLES_MESSAGES}>
           <UdcProvider client={client}>
             <MemoryRouter initialEntries={["/"]}>
-              <RemoteMenu listing={listing} />
+              <RemoteMenu listing={listing} fallback={BUILTIN_MENU_ROWS} />
             </MemoryRouter>
           </UdcProvider>
         </UdcI18nProvider>

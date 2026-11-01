@@ -1,10 +1,7 @@
 import {
   createRendererRegistry,
   createUdcQueryClient,
-  isLocale,
-  LOCALE_STORAGE_KEY,
   type Locale,
-  storage,
   UdcDataView,
   UdcI18nProvider,
   UdcProvider,
@@ -14,6 +11,7 @@ import { chartRenderer } from "@jsudc/react/chart";
 import { UdcReactRouterUrlState } from "@jsudc/react/react-router";
 import { tableRenderer } from "@jsudc/react/table";
 import { Toaster, TooltipProvider } from "@jsudc/react/ui";
+import { routerBasename, storedLocale, storeLocale } from "@memento/ui-shell";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
@@ -37,19 +35,8 @@ const renderers = createRendererRegistry(tableRenderer, chartRenderer);
 /** The first example: where `/` leads. */
 export const FIRST_EXAMPLE = "/examples/cpu-monitor";
 
-/**
- * The router's base: `/en` when the page was opened under `/en/` (the server serves the
- * site there too, so the links people already have keep working), `/` otherwise.
- */
-export function routerBasename(pathname: string): string {
-  return /^\/en(\/|$)/.test(pathname) ? "/en" : "/";
-}
-
-/** The language the visitor picked last (the header's EN / SR), `en` the first time. */
-export function storedLocale(): Locale {
-  const stored = storage.get(LOCALE_STORAGE_KEY);
-  return isLocale(stored) ? stored : "en";
-}
+// The locale helpers are @memento/ui-shell's (the service site uses them too).
+export { routerBasename, storedLocale };
 
 /** `/udc/:collection`: any collection the server lists, as a plain data view. */
 function CollectionPage() {
@@ -81,7 +68,7 @@ export function App() {
   // The header's language: the strings of the site and the `rendered` text of every row.
   const [locale, setLocale] = useState<Locale>(storedLocale);
   const changeLocale = useCallback((next: Locale) => {
-    storage.set(LOCALE_STORAGE_KEY, next);
+    storeLocale(next);
     setLocale(next);
   }, []);
 

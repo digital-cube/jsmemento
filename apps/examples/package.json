@@ -17,6 +17,7 @@
     "@jsudc/react": "0.2.1",
     "@memento/core": "workspace:*",
     "@memento/react": "workspace:*",
+    "@memento/ui-shell": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^1.65.0",

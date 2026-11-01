@@ -6,13 +6,13 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { Link, useLocation } from "react-router";
 import {
   activeLeaf,
-  BUILTIN_MENU_ROWS,
   buildMenu,
   loadMenuExpanded,
   type MenuItem,
   menuLabel,
   saveMenuExpanded,
   withOpen,
+  withoutHidden,
 } from "./menu.js";
 
 /*
@@ -20,9 +20,6 @@ import {
  * keyboard and expand state, styled by this app's CSS (app.css `.menu*`) instead of
  * Tailwind utilities.
  */
-
-/** The collection the sidebar is drawn from; another deployment may name its own. */
-export const MENU_COLLECTION = import.meta.env.VITE_MENU_COLLECTION?.trim() || "menu";
 
 const INDENT = 14;
 
@@ -47,10 +44,24 @@ function focusRow(from: HTMLElement, where: -1 | 1 | string) {
 /**
  * The menu collection (`yaml_menu`) as the sidebar: every row in one list (the server has
  * already resolved `udc:collections`), drawn by `MenuTree`. While it loads, skeleton rows;
- * when it cannot be read, the built-in entries.
+ * when it cannot be read, `fallback` (the site's built-in entries). `hidden` drops a node and
+ * its subtree (the service site hides `ADMIN*` from a user who is not an administrator).
  */
-export function RemoteMenu({ listing }: { listing: CollectionListing }) {
+export function RemoteMenu({
+  listing,
+  fallback,
+  hidden,
+}: {
+  /** The menu collection: its name and paging capabilities (a `collections` or `describe` answer). */
+  listing: Pick<CollectionListing, "name" | "capabilities">;
+  fallback: readonly Row[];
+  hidden?: ((row: Row) => boolean) | undefined;
+}) {
   const data = useUdcAllRows({ collection: listing.name, capabilities: listing.capabilities });
+  const rows = useMemo(() => {
+    const all = data.error ? fallback : data.rows;
+    return hidden ? withoutHidden(all, hidden) : all;
+  }, [data.error, data.rows, fallback, hidden]);
   if (data.isLoading) {
     return (
       <div className="menu__loading" data-testid="menu-loading">
@@ -60,12 +71,7 @@ export function RemoteMenu({ listing }: { listing: CollectionListing }) {
       </div>
     );
   }
-  return (
-    <MenuTree
-      rows={data.error ? BUILTIN_MENU_ROWS : data.rows}
-      source={data.error ? "builtin" : "menu"}
-    />
-  );
+  return <MenuTree rows={rows} source={data.error ? "builtin" : "menu"} />;
 }
 
 /**
@@ -78,7 +84,7 @@ export function MenuTree({
   source,
 }: {
   rows: readonly Row[];
-  /** `menu`: the collection; `builtin`: `BUILTIN_MENU_ROWS`. Shown as `data-source`. */
+  /** `menu`: the collection; `builtin`: the site's built-in rows. Shown as `data-source`. */
   source: "menu" | "builtin";
 }) {
   const { t, tMaybe } = useI18n();

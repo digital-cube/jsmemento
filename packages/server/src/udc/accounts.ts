@@ -4,6 +4,7 @@ import { requireTenant } from "../context.js";
 import type { Database } from "../db/client.js";
 import { apiKeys, apiKeyUsage, events, tenants, tenantUsers, users } from "../db/schema.js";
 import type { QuotaGuard } from "../quota.js";
+import { APIKEY_INSTANCE_TYPE } from "../services/keys.js";
 import type { EventRenderer } from "../templates/renderer.js";
 import { ActivityCollectionSource, type ActivitySourceOptions } from "./activity.js";
 import type { MementoRegistry } from "./registry.js";
@@ -314,8 +315,8 @@ export interface RegisterAccountCollectionsOptions extends AccountCollectionsOpt
 
 /**
  * The self-service collections (`MEMENTO_ACCOUNTS`), all read with the session cookie:
- * `api_keys`, `api_key_events`, `api_key_activity`, `api_key_usage` for the signed-in user's
- * tenant, `admin_users` and `admin_api_keys` for administrators.
+ * `api_keys`, `api_key_events`, `api_key_history`, `api_key_activity`, `api_key_usage` for
+ * the signed-in user's tenant, `admin_users` and `admin_api_keys` for administrators.
  */
 export function registerAccountCollections(
   registry: MementoRegistry,
@@ -337,6 +338,23 @@ export function registerAccountCollections(
     source: new EventCollectionSource(
       db,
       { fields: options.eventFields, where: isNotNull(events.apiKeyId), requiredFilter: "api_key" },
+      renderer,
+    ),
+    view: ViewConfigSchema.parse(options.eventsView),
+  });
+  registry.register({
+    name: "api_key_history",
+    label: "History of an API key",
+    auth: "session",
+    // The key's own lifecycle (APIKEY_CREATED, _DISABLED, …): written by the signed-in user,
+    // so not in `api_key_events` (events a key wrote). `instance_id` is the key's prefix.
+    source: new EventCollectionSource(
+      db,
+      {
+        fields: options.eventFields,
+        where: eq(events.instanceType, APIKEY_INSTANCE_TYPE),
+        requiredFilter: "instance_id",
+      },
       renderer,
     ),
     view: ViewConfigSchema.parse(options.eventsView),

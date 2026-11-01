@@ -1,9 +1,9 @@
 import { intlLocaleOf, useI18n } from "@jsudc/react";
 import { INSTANCE_TYPES } from "@memento/core";
+import type { Health } from "@memento/ui-shell";
 import { type FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useSettings } from "../../connection.js";
-import type { Health } from "../../live.js";
 import { Connected } from "../../shell/AppShell.js";
 import { SIMULATOR_COMMAND } from "../activity/Activity.js";
 import {

@@ -1,17 +1,23 @@
 import { useI18n, useUdcCollections } from "@jsudc/react";
-import { Segmented, Spinner } from "@jsudc/react/ui";
+import { Spinner } from "@jsudc/react/ui";
+import { MenuTree, RemoteMenu, TopBar } from "@memento/ui-shell";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router";
 import { useSettings } from "../connection.js";
-import { MENU_COLLECTION, MenuTree, RemoteMenu } from "./MenuTree.js";
 import { BUILTIN_MENU_ROWS } from "./menu.js";
+
+/** The collection the sidebar is drawn from; another deployment may name its own. */
+export const MENU_COLLECTION = import.meta.env.VITE_MENU_COLLECTION?.trim() || "menu";
+
 import { ConnectionForm, KeyBadge, SettingsPopover } from "./Settings.js";
 
 /** Header, sidebar (the menu collection), and the page of the route. */
 export function AppShell() {
   return (
     <div className="app">
-      <TopBar />
+      <TopBar end={<SettingsPopover />}>
+        <KeyBadgeOfConnection />
+      </TopBar>
       <div className="app__body">
         <Sidebar />
         <main className="app__main">
@@ -22,32 +28,10 @@ export function AppShell() {
   );
 }
 
-function TopBar() {
-  const { t, locale, locales, setLocale } = useI18n();
+/** The header's badge of the key in use (demo / own / none). */
+function KeyBadgeOfConnection() {
   const { connection } = useSettings();
-  return (
-    <header className="topbar">
-      <div className="brand" data-testid="app-name">
-        <span className="brand__mark">{t("APP", "NAME")}</span>
-        <span className="brand__sub">{t("APP", "TAGLINE")}</span>
-      </div>
-      <div className="topbar__tools">
-        <KeyBadge connection={connection} />
-        <Segmented
-          aria-label={t("APP", "LANGUAGE")}
-          data-testid="locale-switch"
-          value={locale}
-          onChange={setLocale}
-          options={locales.map((l) => ({
-            value: l,
-            label: l.toUpperCase(),
-            testId: `locale-${l}`,
-          }))}
-        />
-        <SettingsPopover />
-      </div>
-    </header>
-  );
+  return <KeyBadge connection={connection} />;
 }
 
 /**
@@ -68,7 +52,7 @@ function Sidebar() {
 function ServedMenu() {
   const collections = useUdcCollections();
   const menu = collections.data?.collections.find((c) => c.name === MENU_COLLECTION);
-  if (menu) return <RemoteMenu listing={menu} />;
+  if (menu) return <RemoteMenu listing={menu} fallback={BUILTIN_MENU_ROWS} />;
   if (collections.isLoading) return <div className="menu__loading" data-testid="menu-loading" />;
   return <MenuTree rows={BUILTIN_MENU_ROWS} source="builtin" />;
 }

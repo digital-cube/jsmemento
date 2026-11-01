@@ -1,0 +1,33 @@
+{
+  "name": "@memento/ui-shell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The shell the examples site and the service site share: menu sidebar, header, locale helpers, live/polling refetch, chart window, feed lines. Consumed as TypeScript source by the apps (Vite).",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./shell.css": "./src/shell.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@jsudc/core": "0.2.0",
+    "@jsudc/react": "0.2.1",
+    "@memento/core": "workspace:*",
+    "@tanstack/react-query": "^5.105.0",
+    "lucide-react": "^1.65.0"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-router": ">=7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "react-router": "^7.18.4"
+  }
+}

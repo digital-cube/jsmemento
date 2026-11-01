@@ -27,3 +27,21 @@ export function useThrottledRefresh(collection: string, ms = REFRESH_THROTTLE_MS
   );
   return refresh;
 }
+
+/**
+ * Refetches every list of `collections` every `ms` while mounted: the live updates of a page
+ * that has no stream to listen to (the service site — memento's `/ws` takes an API key, the
+ * service site has only the session cookie).
+ */
+export function usePolling(collections: readonly string[], ms: number): void {
+  const queryClient = useQueryClient();
+  const key = collections.join("|");
+  useEffect(() => {
+    const timer = setInterval(() => {
+      for (const collection of key.split("|")) {
+        void queryClient.invalidateQueries({ queryKey: udcKeys.lists(collection) });
+      }
+    }, ms);
+    return () => clearInterval(timer);
+  }, [queryClient, key, ms]);
+}

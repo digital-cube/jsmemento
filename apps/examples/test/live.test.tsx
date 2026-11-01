@@ -1,6 +1,6 @@
+import { healthOf, rateOf, useLive } from "@memento/ui-shell";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { healthOf, rateOf, useLive } from "../src/live.js";
 import { FakeSocket, uuid } from "./fake-socket.js";
 
 beforeEach(() => {

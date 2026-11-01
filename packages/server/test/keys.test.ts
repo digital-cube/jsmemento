@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { Redis } from "ioredis";
@@ -666,12 +667,79 @@ describe("session collections", () => {
     expect(write.kind).toBe("udc.mutate.err");
   });
 
+  it("api_key_history lists the key's lifecycle, needs instance_id and the session", async () => {
+    const ana = await register();
+    const bob = await register("bob@example.com", "Bob");
+    const { api_key } = await createKey(ana.cookie, { name: "ingest" });
+    await createKey(bob.cookie, { name: "bobs" });
+    await session(ana.cookie, "POST", `/keys/${api_key.id}/disable`, {});
+
+    const history = await udcList(
+      { cookie: ana.cookie },
+      {
+        collection: "api_key_history",
+        filter: { field: "instance_id", op: "eq", value: api_key.prefix },
+        sort: [{ field: "occurred_at", dir: "asc" }],
+      },
+    );
+    expect(history.kind, JSON.stringify(history.payload)).toBe("udc.list.ok");
+    expect(history.payload.rows.map((r: { event_type: string }) => r.event_type)).toEqual([
+      "APIKEY_CREATED",
+      "APIKEY_DISABLED",
+    ]);
+    // Another tenant's key history is not there, even by its prefix.
+    const bobs = await udcList(
+      { cookie: bob.cookie },
+      {
+        collection: "api_key_history",
+        filter: { field: "instance_id", op: "eq", value: api_key.prefix },
+      },
+    );
+    expect(bobs.payload.total).toBe(0);
+    const unfiltered = await udcList({ cookie: ana.cookie }, { collection: "api_key_history" });
+    expect(unfiltered.payload.code).toBe("validation_error");
+  });
+
   it("refuse an API key", async () => {
-    for (const collection of ["api_keys", "api_key_events", "api_key_activity", "api_key_usage"]) {
+    for (const collection of [
+      "api_keys",
+      "api_key_events",
+      "api_key_history",
+      "api_key_activity",
+      "api_key_usage",
+    ]) {
       const answer = await udcList({ key: fx.keys.admin }, { collection });
       expect(answer.kind, collection).toBe("udc.list.err");
       expect(answer.payload.code).toBe("forbidden");
     }
+  });
+});
+
+describe("the menu of the service site", () => {
+  const MENU = fileURLToPath(new URL("../../../menu-service.yaml", import.meta.url));
+
+  it("is read with an API key, or without one by a signed-in user — reading only", async () => {
+    await setup({});
+    await fx.app.close();
+    fx = await setupApp(handle, {
+      accounts: { serviceUrl: SERVICE_URL, mailer: new MemoryMailer() },
+      menu: MENU,
+    });
+    apps.push(fx.app);
+    const ana = await register();
+    const byCookie = await udcList({ cookie: ana.cookie }, { collection: "menu" });
+    expect(byCookie.kind, JSON.stringify(byCookie.payload)).toBe("udc.list.ok");
+    expect(byCookie.payload.rows.map((r: { code: string }) => r.code)).toEqual(
+      expect.arrayContaining(["HOME", "KEYS", "CLIENTS", "ACCOUNT", "ADMIN"]),
+    );
+    expect((await udcList({ key: fx.keys.admin }, { collection: "menu" })).kind).toBe(
+      "udc.list.ok",
+    );
+    const anonymous = await udcList({ cookie: "nope" }, { collection: "menu" });
+    expect(anonymous.kind).toBe("udc.list.err");
+    // The cookie still opens no key collection.
+    const events = await udcList({ cookie: ana.cookie }, { collection: "events" });
+    expect(events.payload.message).toBe("missing API key");
   });
 });
 

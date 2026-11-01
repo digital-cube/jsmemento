@@ -10,6 +10,7 @@ export default defineConfig({
     alias: [
       { find: /^@memento\/core$/, replacement: src("../../packages/core/src/index.ts") },
       { find: /^@memento\/react$/, replacement: src("../../packages/react/src/index.ts") },
+      { find: /^@memento\/ui-shell$/, replacement: src("../../packages/ui-shell/src/index.ts") },
     ],
   },
   test: {
@@ -20,7 +21,7 @@ export default defineConfig({
     setupFiles: ["test/setup.ts"],
     // One react-router for the app and @jsudc/react's router adapter: run the library
     // through Vite too, instead of Node resolving its own copy of the router.
-    server: { deps: { inline: [/@jsudc\/react/] } },
+    server: { deps: { inline: [/@jsudc\/react/, /ui-shell/] } },
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
       // The entry point only mounts <App />.

@@ -16,6 +16,8 @@ TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
 | [`@memento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
 | [`apps/example`](apps/example) | Vite + React demo of `@memento/react`: paste a key, watch the live table |
 | [`apps/examples`](apps/examples) | the examples site (served at `/` and `/en/`): a sidebar from the `menu` UDC collection, the live CPU monitor (`memento cpu-monitor` → `cpu_load` → `@jsudc/react`) as its first example |
+| [`apps/service`](apps/service) | the service site (`service.stage.memento-service.org`, a second container of the image): register, create API keys, watch what each key writes; admin |
+| [`packages/ui-shell`](packages/ui-shell) | private: the shell both sites share (menu sidebar, header, locale, refetch hooks, chart window, feed lines) |
 | [`packages/e2e`](packages/e2e) | end-to-end suite: the built server ×2 against PostgreSQL + Redis (not published) |
 
 ## Run it with Docker

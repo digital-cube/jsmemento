@@ -9,13 +9,14 @@ import {
   isJsonRequest,
   type SessionAuth,
   type SessionOptions,
+  sessionCookie,
 } from "../auth.js";
 import type { TenantContext } from "../context.js";
 import type { Database } from "../db/client.js";
 import { MementoError } from "../errors.js";
 import { authenticateApiKey } from "../services/apikeys.js";
 import type { UsageMeter } from "../usage.js";
-import { collectionAuth } from "./registry.js";
+import { type CollectionAuth, collectionAuth } from "./registry.js";
 
 export interface UdcRoutesOptions {
   db: Database;
@@ -82,7 +83,8 @@ function refuse(
 /**
  * The UDC collections (`POST /udc/<action>`, served by `@jsudc/server`) behind memento's
  * auth. A collection registered with `auth: "session" | "admin"` (`MementoRegistry`) takes
- * the `memento_session` cookie and never a key; every other one an API key with the
+ * the `memento_session` cookie and never a key; `key_or_session` (the `menu` with accounts
+ * enabled) a key, or without one the cookie for reading; every other one an API key with the
  * action's scope. A refused request is answered in-protocol with a `forbidden` error; an
  * authenticated one sets `request.tenant`, which the memento plugin's `preHandler` turns
  * into the tenant context every collection source reads — with the `X-Memento-Locale` the
@@ -123,6 +125,34 @@ export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
     return (await authenticateSessionRequest(request, reply, db, auth, sessions)).context;
   }
 
+  /**
+   * `key_or_session`: the API key when the request carries one; otherwise the cookie of a
+   * signed-in user (accounts enabled), for reading only.
+   */
+  async function byKeyOrSession(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    action: string,
+  ): Promise<TenantContext> {
+    if (extractApiKey(request.headers) || !sessions || !sessionCookie(request)) {
+      return byKey(request, action);
+    }
+    if (scopeForAction(action) !== "read") {
+      throw new MementoError("forbidden", "a signed-in user may only read this collection");
+    }
+    return bySession(request, reply, "session");
+  }
+
+  function authenticate(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    action: string,
+    auth: CollectionAuth | null,
+  ): Promise<TenantContext> {
+    if (auth === "key_or_session") return byKeyOrSession(request, reply, action);
+    return auth ? bySession(request, reply, auth) : byKey(request, action);
+  }
+
   // preValidation, not onRequest: the collection (and so its credential) is in the body.
   app.addHook("preValidation", async (request, reply) => {
     const action = actionOf(request.url);
@@ -130,7 +160,7 @@ export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
     const collection = collectionOf(request.body);
     const auth = collection === null ? null : collectionAuth(registry, collection);
     try {
-      const tenant = auth ? await bySession(request, reply, auth) : await byKey(request, action);
+      const tenant = await authenticate(request, reply, action, auth);
       const header = request.headers[LOCALE_HEADER];
       const asked = Array.isArray(header) ? header[0] : header;
       if (asked) {

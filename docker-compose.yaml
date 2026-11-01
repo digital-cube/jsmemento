@@ -53,6 +53,49 @@ services:
       start_period: 20s
       retries: 5
 
+  # The service site (apps/service, https://service.stage.memento-service.org/): the same image
+  # with MEMENTO_UI_DIR=/app/ui-service and its own sidebar (menu-service.yaml), accounts on.
+  # People register, verify their address, create API keys and watch what each key writes;
+  # the keys work on either container (same database). No demo key. nginx proxies the vhost to
+  # SERVICE_PORT (docs/DEPLOYMENT.md "The service site").
+  service:
+    image: ${MEMENTO_IMAGE:-ghcr.io/digital-cube/jsmemento:latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-jsmemento}:${POSTGRES_PASSWORD:-jsmemento}@postgres:5432/${POSTGRES_DB:-jsmemento}
+      REDIS_URL: redis://redis:6379/0
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MEMENTO_DEFAULT_LOCALE: ${MEMENTO_DEFAULT_LOCALE:-en}
+      MEMENTO_LOOKUPS_STRICT: ${MEMENTO_LOOKUPS_STRICT:-false}
+      MEMENTO_UI_DIR: /app/ui-service
+      MEMENTO_MENU_PATH: /app/config/menu-service.yaml
+      MEMENTO_ACCOUNTS: "true"
+      MEMENTO_TRUST_PROXY: "true"
+      # The verify / reset links in mails point here.
+      MEMENTO_SERVICE_URL: ${SERVICE_URL:-http://localhost:8201}
+      # Without a Brevo key mails are only logged (`docker compose logs service`).
+      MEMENTO_BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MEMENTO_MAIL_FROM: ${MAIL_FROM:-}
+      MEMENTO_DEFAULT_MAX_KEYS: ${DEFAULT_MAX_KEYS:-}
+      MEMENTO_DEFAULT_DAILY_LIMIT: ${DEFAULT_DAILY_LIMIT:-}
+      MEMENTO_MAX_DAILY_LIMIT: ${MAX_DAILY_LIMIT:-}
+    ports:
+      - "${SERVICE_PORT:-8201}:3000"
+    volumes:
+      - memento-data:/data
+    healthcheck:
+      test: ["CMD", "memento-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
   # Demo data: pushes the host's load averages as CPU_LOAD events every second, so the
   # CPU monitor of the examples site (/ and /en/) always shows a live table. Off unless the `demo` profile is on
   # (`--profile demo` or COMPOSE_PROFILES=demo); see docs/DEPLOYMENT.md "Demo pusher".

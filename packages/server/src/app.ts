@@ -44,6 +44,7 @@ import { EventRenderer } from "./templates/renderer.js";
 import { eventCollections } from "./udc/collections.js";
 import { menuCollection } from "./udc/menu.js";
 import { udcRoutes } from "./udc/plugin.js";
+import { MementoRegistry } from "./udc/registry.js";
 import { type UiOptions, uiRoutes } from "./ui.js";
 import { UsageMeter } from "./usage.js";
 
@@ -295,7 +296,15 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
         renderer: deps.renderer,
         ...(quota ? { accounts: { quota } } : {}),
       });
-    if (options.menu) registry.register(menuCollection({ file: options.menu, registry }));
+    if (options.menu) {
+      const menu = menuCollection({ file: options.menu, registry });
+      // With accounts the menu is read by a signed-in user too: the service site has no key.
+      if (sessions && registry instanceof MementoRegistry) {
+        registry.register({ ...menu, auth: "key_or_session" });
+      } else {
+        registry.register(menu);
+      }
+    }
     await app.register(udcRoutes, { db: deps.db, registry, sessions, usage });
   }
 };

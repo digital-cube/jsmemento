@@ -1,0 +1,37 @@
+# JSMemento — the service site's menu (apps/service): the sidebar of a signed-in user at
+# https://service.stage.memento-service.org/.
+#
+# Served by the service instance of @memento/server as its `menu` UDC collection
+# (MEMENTO_MENU_PATH=/app/config/menu-service.yaml in the image). With MEMENTO_ACCOUNTS the
+# menu is read with the session cookie (`key_or_session`): the site has no API key.
+# Same keys as menu.yaml; `translation_key`s are the site's messages
+# (apps/service/src/i18n/messages.ts): MENU_KEYS → t("MENU", "KEYS").
+#
+# A node whose `code` starts with ADMIN is hidden from a user who is not an administrator
+# (the shell reads `user.is_admin` of GET /auth/me). The admin routes refuse them anyway.
+# Icons: one of @jsudc/react's LUCIDE_ICONS (an unknown name draws its fallback circle).
+
+- code: HOME
+  translation_key: MENU_HOME
+  icon: lucide:house
+  url: /
+
+- code: KEYS
+  translation_key: MENU_KEYS
+  icon: lucide:database
+  url: /keys
+
+- code: CLIENTS
+  translation_key: MENU_CLIENTS
+  icon: lucide:layout-grid
+  url: /clients
+
+- code: ACCOUNT
+  translation_key: MENU_ACCOUNT
+  icon: lucide:info
+  url: /account
+
+- code: ADMIN
+  translation_key: MENU_ADMIN
+  icon: lucide:network
+  url: /admin/users

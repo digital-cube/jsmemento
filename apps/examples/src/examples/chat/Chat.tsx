@@ -2,11 +2,11 @@ import "@memento/react/styles.css";
 import { useI18n } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
 import { MementoChat, MementoProvider, useMemento } from "@memento/react";
+import { useLive } from "@memento/ui-shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { useSearchParams } from "react-router";
 import { useSettings } from "../../connection.js";
-import { useLive } from "../../live.js";
 import { Connected } from "../../shell/AppShell.js";
 import { SIMULATOR_COMMAND } from "../activity/Activity.js";
 import {
