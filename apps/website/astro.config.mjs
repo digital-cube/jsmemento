@@ -60,6 +60,7 @@ export default defineConfig({
         { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
       ],
       plugins: [starlightLinksValidator({ exclude: ({ link }) => PLACEHOLDERS.has(link) })],
+      routeMiddleware: "./src/routeData.ts",
       lastUpdated: false,
     }),
   ],
