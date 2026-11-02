@@ -1,0 +1,16 @@
+---
+title: Examples
+description: The examples site, page by page — what each example shows and how it is built.
+sidebar:
+  order: 0
+  label: Overview
+---
+
+import { EXAMPLE_URL } from "../../../site.mjs";
+
+This section will walk through the examples site one page at a time, starting with the live
+CPU monitor: the CLI pushes this machine's load every second, the server serves it as the
+`cpu_load` collection, and the page draws it and refreshes on every event from the stream.
+
+The pages are not written yet; the examples themselves are already
+<a href={EXAMPLE_URL}>live</a>.

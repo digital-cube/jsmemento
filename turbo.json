@@ -29,6 +29,15 @@
       "cache": false,
       "persistent": true
     },
+    "@memento/website#build": {
+      "dependsOn": ["^build"],
+      "env": ["SITE_URL", "EXAMPLE_URL", "SERVICE_URL"],
+      "outputs": ["dist/**"]
+    },
+    "@memento/website#typecheck": {
+      "dependsOn": ["^build"],
+      "env": ["SITE_URL", "EXAMPLE_URL", "SERVICE_URL"]
+    },
     "@memento/cli#test": {
       "dependsOn": ["^build", "@memento/server#test"],
       "outputs": [],

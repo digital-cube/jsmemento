@@ -1,0 +1,128 @@
+/*
+ * memento's identity, mapped onto Starlight's scale. The tokens are the ones of the
+ * under-construction page at memento-service.org:
+ *
+ *   --ink #232B36  --ink-deep #1A212B  --bone #E8E3D8  --bone-dim #C9C4B8
+ *   --mist #7E8894  --thread #C25B4E
+ *
+ * Dark (Starlight's :root) is ink surfaces with bone text, light ([data-theme="light"]) bone
+ * surfaces with ink text, and the thread is the accent of both. The thread itself (#C25B4E)
+ * is 3.8:1 on ink-deep and 3.4:1 on bone: enough for the mark and rules, not for text. Text in
+ * the accent (links, the primary button) uses a lighter thread on dark (#E39488, 6.8:1 on
+ * ink-deep) and a deeper one on light (#9A3B30, 5.4:1 on bone).
+ */
+:root {
+  --memento-ink: #232b36;
+  --memento-ink-deep: #1a212b;
+  --memento-bone: #e8e3d8;
+  --memento-bone-dim: #c9c4b8;
+  --memento-mist: #7e8894;
+  --memento-thread: #c25b4e;
+
+  --memento-font-display: "Bodoni Moda Variable", Didot, "Bodoni MT", Georgia, serif;
+  --sl-font:
+    "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* dark: bone on ink */
+  --sl-color-white: #e8e3d8; /* bone: headings, strong text */
+  --sl-color-gray-1: #ddd8cd;
+  --sl-color-gray-2: #c9c4b8; /* bone-dim: body text, 9.3:1 */
+  --sl-color-gray-3: #9ba3ad; /* lighter mist: secondary text, 6.4:1 */
+  --sl-color-gray-4: #7e8894; /* mist */
+  --sl-color-gray-5: #364050;
+  --sl-color-gray-6: #232b36; /* ink: nav, sidebar */
+  --sl-color-black: #1a212b; /* ink-deep: the page */
+
+  --sl-color-accent-low: #3a2a2d;
+  --sl-color-accent: #c25b4e;
+  --sl-color-accent-high: #e39488;
+
+  --memento-surface-raised: #232b36;
+  --memento-rule: color-mix(in srgb, var(--memento-mist) 35%, transparent);
+}
+
+:root[data-theme="light"] {
+  /* light: ink on bone */
+  --sl-color-white: #1a212b; /* ink-deep: headings */
+  --sl-color-gray-1: #232b36; /* ink */
+  --sl-color-gray-2: #343d4a; /* body text, 8.6:1 */
+  --sl-color-gray-3: #56606c; /* secondary text, 5.0:1 on bone */
+  --sl-color-gray-4: #8a9199;
+  --sl-color-gray-5: #c9c4b8; /* bone-dim: hairlines */
+  --sl-color-gray-6: #ddd7ca;
+  --sl-color-gray-7: #efebe2; /* nav */
+  --sl-color-black: #e8e3d8; /* bone: the page */
+
+  --sl-color-accent-low: #efd3cc;
+  --sl-color-accent: #9a3b30;
+  --sl-color-accent-high: #6f261e;
+
+  --memento-surface-raised: #efebe2;
+  --memento-rule: color-mix(in srgb, var(--memento-ink) 18%, transparent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--memento-thread) 32%, transparent);
+}
+
+/* Headings in the display face: the docs read as memento's, not as a default install. */
+.sl-markdown-content :is(h1, h2, h3),
+h1#_top {
+  font-family: var(--memento-font-display);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+.sl-markdown-content h2 {
+  font-size: 1.9rem;
+}
+h1#_top {
+  font-weight: 450;
+  font-variation-settings: "opsz" 72;
+}
+
+/* Links: the thread, underlined with a thin rule that thickens on hover. */
+.sl-markdown-content a:not(.sl-link-button, .card a, .sl-link-card a) {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+.sl-markdown-content a:not(.sl-link-button):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Inline code: event names (USER_LOGIN) are the vocabulary of this site. */
+.sl-markdown-content :not(pre) > code {
+  font-size: 0.86em;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* Buttons are squarer than Starlight's pills: a ledger, not a toy. */
+.sl-link-button {
+  border-radius: 4px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sl-color-accent-high);
+  outline-offset: 2px;
+}
+
+/* The home page (the only page with a hero) is wider than a docs page, and its one content
+   panel needs no rule above the content. */
+html[data-has-hero]:not([data-has-sidebar]) {
+  --sl-content-width: 72rem;
+}
+html[data-has-hero] .content-panel + .content-panel {
+  border-top: 0;
+}
+html[data-has-hero] main {
+  padding-bottom: 5rem;
+}
+
+/* The current page in the sidebar: a thread down its left edge, not a filled bar. */
+.sidebar-content a[aria-current="page"][aria-current] {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-white);
+  box-shadow: inset 2px 0 0 var(--memento-thread);
+  border-radius: 0 3px 3px 0;
+}

@@ -2,6 +2,7 @@
 **/dist
 **/coverage
 **/.turbo
+**/.astro
 **/*.tsbuildinfo
 .git
 .thilo

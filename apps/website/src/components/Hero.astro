@@ -1,0 +1,275 @@
+---
+/*
+ * The splash hero (Starlight's `Hero` overridden). Left: the headline, the lede, the actions
+ * and the install line, all from the page's frontmatter (`hero`, plus `install`). Right, on
+ * the home page only: one event as an application sends it, the thread, and the sentence
+ * memento renders from it in two languages (the server's own USER_LOGIN templates,
+ * packages/server/templates/USER_LOGIN.{en,sr}.hbs).
+ *
+ * A link of `{EXAMPLE_URL}` or `{SERVICE_URL}` is resolved from src/site.mjs, which
+ * frontmatter cannot import (astro.config.mjs keeps them out of the links validator).
+ */
+import { LinkButton } from "@astrojs/starlight/components";
+import { EXAMPLE_URL, SERVICE_URL } from "../site.mjs";
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+const install = data.install;
+const resolve = (link: string) =>
+  link.replace("{EXAMPLE_URL}", EXAMPLE_URL).replace("{SERVICE_URL}", SERVICE_URL);
+---
+
+<div class:list={["hero", "not-content", { "with-specimen": Boolean(install) }]}>
+  <div class="copy">
+    <h1 id="_top" data-page-title set:html={title} />
+    {tagline && <p class="lede" set:html={tagline} />}
+    {
+      actions.length > 0 && (
+        <div class="actions">
+          {actions.map(({ link, text, variant }) => (
+            <LinkButton href={resolve(link)} variant={variant}>
+              {text}
+            </LinkButton>
+          ))}
+        </div>
+      )
+    }
+    {
+      install && (
+        <div class="install">
+          <code>
+            <span class="prompt" aria-hidden="true">$ </span>
+            {install}
+          </code>
+          <button type="button" class="copy-install" data-copy={install}>
+            Copy
+          </button>
+        </div>
+      )
+    }
+  </div>
+
+  {
+    install && (
+      <figure class="specimen" aria-label="One event and the sentence memento renders from it">
+        <pre class="event"><span class="verb">POST</span> /memento/events
+{"{"}"event_type": <b>"USER_LOGIN"</b>,
+ "instance_type": "user", "instance_id": 42,
+ "actor_id": "igor"{"}"}</pre>
+        <svg class="thread" viewBox="0 9 120 24" aria-hidden="true">
+          <path
+            pathLength="1"
+            d="M4,30 C24,30 36,29 46,25 C58,20 66,14 71,17 C76,20 72,28 64,29 C56,30 52,24 58,19 C66,12 82,15 92,19 C102,23 110,24 116,24"
+          />
+        </svg>
+        <dl class="sentences">
+          <div lang="en">
+            <dt>en</dt>
+            <dd>User igor logged in.</dd>
+          </div>
+          <div lang="sr">
+            <dt>sr</dt>
+            <dd>Korisnik igor se prijavio.</dd>
+          </div>
+        </dl>
+      </figure>
+    )
+  }
+</div>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>(".copy-install")) {
+    button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(button.dataset.copy ?? "");
+      button.textContent = "Copied";
+      setTimeout(() => {
+        button.textContent = "Copy";
+      }, 1600);
+    });
+  }
+</script>
+
+<style>
+  .hero {
+    display: grid;
+    gap: 3rem;
+    padding-block: 3rem 2rem;
+  }
+  /* h1#_top: above theme.css's docs-page title rule */
+  h1#_top {
+    font-family: var(--memento-font-display);
+    font-size: clamp(2.6rem, 6.4vw, 4.6rem);
+    font-weight: 500;
+    font-variation-settings: "opsz" 36;
+    line-height: 1.04;
+    letter-spacing: -0.015em;
+    color: var(--sl-color-white);
+    max-width: 14ch;
+    text-wrap: balance;
+  }
+  .lede {
+    margin-top: 1.5rem;
+    max-width: 60ch;
+    font-size: 1.1875rem;
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+  }
+  .lede :global(code) {
+    font-family: var(--sl-font-mono);
+    font-size: 0.82em;
+    color: var(--sl-color-white);
+    background: var(--sl-color-gray-6);
+    padding: 0.08em 0.32em;
+    border-radius: 3px;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-top: 2.25rem;
+  }
+  .actions :global(.sl-link-button) {
+    margin: 0;
+    font-size: 0.9375rem;
+    padding: 0.7rem 1.25rem;
+  }
+  .actions :global(.sl-link-button.minimal) {
+    padding-inline: 0.25rem;
+  }
+  .install {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+    max-width: 100%;
+    width: fit-content;
+    padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+    border: 1px solid var(--memento-rule);
+    border-radius: 4px;
+  }
+  .install code {
+    font-family: var(--sl-font-mono);
+    font-size: 0.8125rem;
+    color: var(--sl-color-gray-1);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .prompt {
+    color: var(--sl-color-gray-3);
+  }
+  .copy-install {
+    flex: none;
+    font: inherit;
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-3);
+    background: transparent;
+    border: 1px solid var(--memento-rule);
+    border-radius: 3px;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+  }
+  .copy-install:hover {
+    color: var(--sl-color-white);
+  }
+
+  /* The specimen: machine on top, the thread, words underneath. */
+  .specimen {
+    margin: 0;
+    align-self: center;
+    max-width: 30rem;
+  }
+  .event {
+    margin: 0;
+    font-family: var(--sl-font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.75;
+    color: var(--sl-color-gray-3);
+    white-space: pre-wrap;
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+  .event .verb {
+    color: var(--sl-color-gray-3);
+  }
+  .event b {
+    font-weight: 500;
+    color: var(--sl-color-white);
+  }
+  .thread {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-block: 1.25rem 1rem;
+    overflow: visible;
+  }
+  .thread path {
+    fill: none;
+    stroke: var(--memento-thread);
+    stroke-width: 1;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 1.6s cubic-bezier(0.6, 0, 0.3, 1) 0.25s forwards;
+  }
+  .sentences {
+    margin: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+  .sentences div {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    align-items: baseline;
+    opacity: 0;
+    animation: arrive 0.7s ease 1.5s forwards;
+  }
+  .sentences div + div {
+    animation-delay: 1.7s;
+  }
+  .sentences dt {
+    font-family: var(--sl-font-mono);
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-3);
+  }
+  .sentences dd {
+    margin: 0;
+    font-family: var(--memento-font-display);
+    font-style: italic;
+    font-size: clamp(1.4rem, 2.6vw, 1.85rem);
+    font-variation-settings: "opsz" 36;
+    line-height: 1.25;
+    color: var(--sl-color-white);
+  }
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes arrive {
+    to {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .thread path {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+    .sentences div {
+      animation: none;
+      opacity: 1;
+    }
+  }
+
+  @media (min-width: 62rem) {
+    .hero {
+      padding-block: 5rem 3rem;
+    }
+    .hero.with-specimen {
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+      gap: 4.5rem;
+      align-items: center;
+    }
+  }
+</style>

@@ -1,0 +1,19 @@
+---
+title: memento
+description: A self-hosted activity ledger. Applications push machine events; memento keeps them immutable and tenant-isolated and serves them back per entity, per actor, as a feed, as a live stream, as sentences in the reader's language.
+template: splash
+hero:
+  title: A ledger of what happened, told back in words.
+  tagline: Your applications push machine events — <code>USER_LOGIN</code>, <code>TICKET_CLOSED</code>, <code>CPU_LOAD</code>. memento keeps them as an immutable, tenant-isolated ledger and serves them back per entity, per actor, as a feed or a live stream, each one rendered as a sentence in the reader's language.
+  actions:
+    - text: Get started
+      link: /get-started/
+      variant: primary
+    - text: Open the live example
+      link: "{EXAMPLE_URL}"
+      variant: secondary
+    - text: Get an API key
+      link: "{SERVICE_URL}"
+      variant: minimal
+install: docker compose -f docker-compose.yaml up -d
+---

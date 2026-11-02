@@ -79,6 +79,22 @@ jobs:
           path: packages/*/coverage/
           if-no-files-found: ignore
 
+  website:
+    name: Website build (links validated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @memento/website...
+      # apps/website: Astro + Starlight; starlight-links-validator fails the build on a broken
+      # internal link. Needs no network (astro check runs in the test job's `pnpm typecheck`).
+      - run: pnpm --filter @memento/website build
+
   docker:
     name: Docker image + E2E against docker-compose.yaml
     runs-on: ubuntu-latest
