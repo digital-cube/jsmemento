@@ -17,6 +17,12 @@ share one version.
   `starlight-links-validator` fails the build on a broken internal link (CI job *Website
   build*). Served at `stage.memento-service.org` by `deploy/website/stage.sh`
   (build-and-swap, nginx vhost in `deploy/website/nginx/`). Not part of the image.
+  The home page below the hero: one event read back every way (entity history, en / sr,
+  Filter DSL, a `/ws` frame), the eight examples as real screenshots, the API, four quick
+  starts and the packages; **Get started** with Docker, a client and embedded in Node. Its code
+  is repository files imported raw (`apps/website/snippets/`, `clients/`): requests and answers
+  recorded by `npm run capture`, screenshots by `npm run shots`, the snippets compiled by
+  `check:snippets` in `typecheck`.
 
 - **The `/clients` page of the service site** (`apps/service`, [docs/CLIENTS.md](docs/CLIENTS.md#the-clients-page-of-the-service-site)):
   public, a tab per language at `/clients/<lang>` (remembered in localStorage), the two

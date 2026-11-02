@@ -1,0 +1,131 @@
+---
+/*
+ * The API: the envelope, the key and its scopes, every route in one table, and one UDC `list`
+ * of cpu_load with its answer. The request, the answer and the refused push are files of
+ * snippets/wire/ (scripts/capture.mjs); the routes follow docs/API.md.
+ */
+import { Code } from "@astrojs/starlight/components";
+import errorOut from "../../../snippets/wire/error.out.json?raw";
+import udcList from "../../../snippets/wire/udc-list.json?raw";
+import udcListOut from "../../../snippets/wire/udc-list.out.json?raw";
+
+const API = "https://github.com/digital-cube/jsmemento/blob/main/docs/API.md";
+const routes = [
+  { method: "POST", path: "/events", scope: "write", text: "push an event" },
+  { method: "GET", path: "/events", scope: "read", text: "list, newest first, cursor paging" },
+  { method: "POST", path: "/events/query", scope: "read", text: "list with the Filter DSL" },
+  { method: "GET", path: "/entities/:type/:id/events", scope: "read", text: "one object's history" },
+  { method: "GET", path: "/describe", scope: "read", text: "what this server offers the key" },
+  { method: "GET", path: "/ws", scope: "read", text: "the live stream (WebSocket)" },
+  { method: "POST", path: "/udc/<action>", scope: "read", text: "UDC collections: events, cpu_load, activity, menu" },
+  { method: "…", path: "/chats…", scope: "read · write", text: "chats: rooms, messages, who has read what" },
+  { method: "GET", path: "/api/health", scope: "—", text: "liveness, no key" },
+];
+---
+
+<section class="home-section api not-content" aria-labelledby="the-api">
+  <div class="copy">
+    <h2 id="the-api">The API: JSON over HTTP, one key</h2>
+    <p>
+      Every answer is an envelope: <code>{"{"}ok: true, data, meta{"}"}</code> or
+      <code>{"{"}ok: false, error{"}"}</code> with a code, a message and the details. A bearer
+      API key belongs to one tenant and carries the scopes <code>read</code> and
+      <code>write</code>; nothing in a request can name another tenant.
+    </p>
+    <table>
+      <thead>
+        <tr><th scope="col">/memento</th><th scope="col">scope</th><th scope="col"></th></tr>
+      </thead>
+      <tbody>
+        {
+          routes.map((r) => (
+            <tr>
+              <td><code><span class="verb">{r.method}</span> {r.path}</code></td>
+              <td class="scope">{r.scope}</td>
+              <td>{r.text}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    <p class="more"><a href={API}>Every route, parameter and error code in docs/API.md</a></p>
+  </div>
+
+  <div class="wire">
+    <p class="wire-label">POST /memento/udc/list <span>the list side, in the UDC protocol</span></p>
+    <Code code={udcList.trimEnd()} lang="json" />
+    <p class="wire-label">200 OK <span>a UDC answer: its kind says ok or err</span></p>
+    <Code code={udcListOut.trimEnd()} lang="json" />
+    <p class="wire-label">422 <span>a push memento refuses</span></p>
+    <Code code={errorOut.trimEnd()} lang="json" />
+  </div>
+</section>
+
+<style>
+  .api {
+    display: grid;
+    gap: 2.5rem 3.5rem;
+  }
+  .copy,
+  .wire {
+    min-width: 0;
+  }
+  .copy h2 {
+    margin-bottom: 1rem;
+  }
+  .copy > p {
+    color: var(--sl-color-gray-2);
+    max-width: 52ch;
+  }
+  table {
+    width: 100%;
+    margin-top: 1.75rem;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  th {
+    text-align: left;
+    font: 500 0.75rem var(--sl-font-mono);
+    color: var(--sl-color-gray-3);
+    padding: 0 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--memento-rule);
+  }
+  td {
+    padding: 0.55rem 0.75rem 0.55rem 0;
+    border-bottom: 1px solid var(--memento-rule);
+    color: var(--sl-color-gray-2);
+    vertical-align: baseline;
+  }
+  td code {
+    overflow-wrap: anywhere;
+    background: none !important;
+    padding: 0 !important;
+  }
+  .verb {
+    display: inline-block;
+    min-width: 2.6em;
+    color: var(--sl-color-gray-3);
+  }
+  .scope {
+    font: 0.78rem var(--sl-font-mono);
+    color: var(--sl-color-gray-3);
+    white-space: nowrap;
+  }
+  .more {
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+  }
+  .wire :global(.expressive-code) {
+    margin-top: 0;
+  }
+  @media (min-width: 40rem) {
+    td code {
+      white-space: nowrap;
+    }
+  }
+  @media (min-width: 64rem) {
+    .api {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    }
+  }
+</style>

@@ -1,0 +1,84 @@
+---
+title: Your first event with a client
+description: A key from the service site and one of eight client programs — push an event, list the last ten, follow the live stream for ten seconds.
+sidebar:
+  order: 2
+---
+
+import { Code, Steps } from "@astrojs/starlight/components";
+import clientMjs from "../../../../../../clients/javascript/memento.mjs?raw";
+import output from "../../../../snippets/client/output.txt?raw";
+import run from "../../../../snippets/client/run.sh?raw";
+import { SERVICE_URL } from "../../../site.mjs";
+
+No server of your own needed: the stage service runs memento for anyone with a key. The
+programs under `clients/` talk to it the way any integration would, with the language's own HTTP
+client and a WebSocket, no SDK.
+
+<Steps>
+
+1. <a href={`${SERVICE_URL}/register`}>Register</a> on the service site and open the link in the
+   mail it sends: until the address is verified, the site creates no keys. The account comes
+   with a tenant of its own; nobody else's events are visible to it, and yours to nobody.
+
+2. Under <a href={`${SERVICE_URL}/keys`}>Keys</a>, **New API key**: a name, the scopes **read**
+   (list and stream) and **write** (push) — the program needs both — and optionally an expiry
+   date and a daily limit.
+
+   - The key is shown **once**, in the dialog that creates it, with the two lines the programs
+     read (`MEMENTO_URL`, `MEMENTO_API_KEY`) and a button that copies them. The server keeps
+     only its hash.
+   - A key may store 100 000 events per UTC day unless you set a lower limit. At 80 % you get a
+     mail; past the limit `POST /events` answers `429 quota_exceeded` until midnight UTC. The
+     Keys page shows each key's count for today.
+
+3. Get the JavaScript program and run it with the key (Node 22 or newer, nothing to install):
+
+   <Code code={run} lang="sh" title="Terminal" />
+
+   `MEMENTO_URL` defaults to the service's API, `https://service.stage.memento-service.org/memento`;
+   point it at your own server ([Docker](/get-started/docker/): `http://localhost:3000/memento`)
+   and the program does not notice.
+
+4. Read what it printed:
+
+   <Code code={output} lang="txt" title="What it prints" />
+
+   - **Push**: one `USER_LOGIN` for you (your OS user is the `instance_id` and the actor), with
+     `payload: {ip, client}`. memento answers with the stored event; the program prints its id and
+     the sentence memento rendered from it.
+   - **Query**: the last ten events of `user/<you>` through the Filter DSL
+     (`POST /events/query`), newest first: every run adds one.
+   - **Tail**: ten seconds of `GET /ws?instance_type=user&instance_id=<you>`. Anything stored for
+     you in that time arrives as it is stored; the line above is a push from another terminal.
+
+</Steps>
+
+The whole program, as the zip has it:
+
+<Code code={clientMjs} lang="js" title="javascript/memento.mjs" />
+
+## The other seven
+
+The same three steps with the same event, so the programs read side by side. Each is a zip on
+<a href={`${SERVICE_URL}/clients`}>the service site's Clients page</a>, with its README.
+
+| language | files | run | tail |
+| --- | --- | --- | --- |
+| TypeScript | `memento.ts`, `package.json` | `npx tsx memento.ts` | yes |
+| Python | `memento.py` | `python3 memento.py` | with the `websockets` package |
+| PHP | `memento.php` | `php memento.php` | no |
+| Java | `Memento.java` | `java Memento.java` (Java 21) | yes |
+| Rust | `Cargo.toml`, `src/main.rs` | `cargo run` | yes |
+| Go | `main.go`, `go.mod` | `go run .` | yes |
+| C++ | `memento.cpp`, `CMakeLists.txt` | `cmake -B build && cmake --build build && ./build/memento` | no |
+
+Without `MEMENTO_API_KEY` every program says where to create one and exits with code 2; an HTTP
+error prints the status and the server's message (`HTTP 401: invalid or expired API key`) and
+exits with 1. All eight run in CI against a real server on every change of `clients/`.
+
+## Next
+
+- The routes the programs use, and every other one: the [API section](/#the-api) of the home
+  page and [docs/API.md](https://github.com/digital-cube/jsmemento/blob/main/docs/API.md).
+- Your own memento instead of the stage service: [Run it with Docker](/get-started/docker/).

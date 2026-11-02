@@ -59,7 +59,13 @@ export default defineConfig({
         { label: "Clients", items: [{ autogenerate: { directory: "clients" } }] },
         { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
       ],
-      plugins: [starlightLinksValidator({ exclude: ({ link }) => PLACEHOLDERS.has(link) })],
+      /* `/#the-api`, `/#start`: the home page's sections are components, whose heading ids the
+         validator does not see (src/components/home/). */
+      plugins: [
+        starlightLinksValidator({
+          exclude: ({ link }) => PLACEHOLDERS.has(link) || link.startsWith("/#"),
+        }),
+      ],
       routeMiddleware: "./src/routeData.ts",
       lastUpdated: false,
     }),

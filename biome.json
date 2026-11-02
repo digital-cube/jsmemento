@@ -17,7 +17,8 @@
       "!**/*.astro",
       "!**/*.mdx",
       "!apps/website/dist",
-      "!apps/website/.astro"
+      "!apps/website/.astro",
+      "!apps/website/snippets/wire"
     ]
   },
   "formatter": {

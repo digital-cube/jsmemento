@@ -1,0 +1,7 @@
+{
+  "event_type": "USER_LOGIN",
+  "instance_type": "user",
+  "instance_id": 42,
+  "actor_id": "igor",
+  "payload": { "method": "password", "client": "web" }
+}

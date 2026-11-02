@@ -1,0 +1,158 @@
+---
+/*
+ * One event, every way to read it. Left: the USER_LOGIN an application pushes and what memento
+ * answered. Right, as tabs: the same event read back as the entity's history, as sentences in
+ * en and sr, through the Filter DSL, and as a frame of the live stream. Every request body and
+ * answer is a file of snippets/wire/, recorded from the stage service by scripts/capture.mjs
+ * (npm run capture), never typed.
+ */
+import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
+import entityOut from "../../../snippets/wire/entity.out.json?raw";
+import entitySrOut from "../../../snippets/wire/entity-sr.out.json?raw";
+import push from "../../../snippets/wire/push.json?raw";
+import pushOut from "../../../snippets/wire/push.out.json?raw";
+import query from "../../../snippets/wire/query.json?raw";
+import queryOut from "../../../snippets/wire/query.out.json?raw";
+import wsOut from "../../../snippets/wire/ws.out.txt?raw";
+
+const event = JSON.parse(push);
+const entity = `/memento/entities/${event.instance_type}/${event.instance_id}/events`;
+const sentence = (raw: string) => JSON.parse(raw).data[0].rendered as string;
+const sentences = [
+  { locale: "en", text: sentence(entityOut), path: `${entity}?limit=1` },
+  { locale: "sr", text: sentence(entitySrOut), path: `${entity}?limit=1&locale=sr` },
+];
+// The stream file holds the frames in arrival order, a blank line between two.
+const frames = wsOut
+  .trim()
+  .split("\n\n")
+  .map((code) => ({ code, kind: JSON.parse(code).kind as string }));
+---
+
+<section class="home-section one-event not-content" aria-labelledby="one-event">
+  <header>
+    <h2 id="one-event">One event, every way to read it</h2>
+    <p>
+      An application says what happened, once. memento stores it as an immutable row of its
+      tenant and hands it back however the reader asks: as one object's history, as a sentence in
+      the reader's language, through a query, or the moment it happens. Real requests to the stage
+      service; ids shortened.
+    </p>
+  </header>
+
+  <div class="grid">
+    <div class="side push">
+      <p class="wire-label">POST /memento/events <span>the application sends</span></p>
+      <Code code={push.trimEnd()} lang="json" />
+      <p class="wire-label">201 Created <span>memento stores and renders it</span></p>
+      <Code code={pushOut.trimEnd()} lang="json" />
+    </div>
+
+    <div class="side read">
+      <Tabs syncKey="one-event">
+        <TabItem label="Entity history">
+          <p class="wire-label">GET {entity} <span>what happened to user 42</span></p>
+          <Code code={entityOut.trimEnd()} lang="json" />
+        </TabItem>
+        <TabItem label="en · sr">
+          <dl class="sentences">
+            {
+              sentences.map((s) => (
+                <div lang={s.locale}>
+                  <dt>{s.locale}</dt>
+                  <dd>{s.text}</dd>
+                  <dd class="path">GET {s.path}</dd>
+                </div>
+              ))
+            }
+          </dl>
+          <p class="note">
+            The sentence comes from the event type's Handlebars template in the asked locale
+            (<code>USER_LOGIN.sr.hbs</code>), rendered per request: the stored event is the same.
+          </p>
+          <p class="wire-label">GET {sentences[1]?.path}</p>
+          <Code code={entitySrOut.trimEnd()} lang="json" />
+        </TabItem>
+        <TabItem label="Filter DSL">
+          <p class="wire-label">POST /memento/events/query <span>and / or / not over the fields</span></p>
+          <Code code={query.trimEnd()} lang="json" />
+          <p class="wire-label">200 OK</p>
+          <Code code={queryOut.trimEnd()} lang="json" />
+        </TabItem>
+        <TabItem label="Live stream">
+          <p class="wire-label">
+            GET /memento/ws?instance_type={event.instance_type}&instance_id={event.instance_id}
+            <span>WebSocket, the key as subprotocol</span>
+          </p>
+          {
+            frames.map((frame) => (
+              <>
+                <p class="wire-label">← {frame.kind}</p>
+                <Code code={frame.code} lang="json" />
+              </>
+            ))
+          }
+        </TabItem>
+      </Tabs>
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    gap: 2.5rem 3rem;
+  }
+  .side {
+    min-width: 0;
+  }
+  .side :global(.expressive-code) {
+    margin-top: 0;
+  }
+  .read :global(starlight-tabs) {
+    display: block;
+  }
+  .sentences {
+    display: grid;
+    gap: 1.25rem;
+    margin: 1.25rem 0 0;
+  }
+  .sentences div {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    align-items: baseline;
+    row-gap: 0.25rem;
+  }
+  .sentences dt {
+    font-family: var(--sl-font-mono);
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-3);
+  }
+  .sentences dd {
+    margin: 0;
+    grid-column: 2;
+    font-family: var(--memento-font-display);
+    font-style: italic;
+    font-size: clamp(1.5rem, 2.8vw, 2rem);
+    font-variation-settings: "opsz" 36;
+    line-height: 1.2;
+    color: var(--sl-color-white);
+  }
+  .sentences dd.path {
+    font: 400 0.75rem var(--sl-font-mono);
+    color: var(--sl-color-gray-3);
+  }
+  .note {
+    margin-top: 1.25rem;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
+  }
+  @media (min-width: 64rem) {
+    .grid {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    }
+    .push {
+      padding-top: 3.25rem;
+    }
+  }
+</style>

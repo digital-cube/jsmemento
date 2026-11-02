@@ -1,0 +1,164 @@
+---
+/*
+ * The packages with the versions of packages/*\/package.json, read when the site is built (no
+ * network), the Docker image and its tags (docs/DEPLOYMENT.md), and the eight client programs.
+ */
+import cli from "../../../../../packages/cli/package.json";
+import core from "../../../../../packages/core/package.json";
+import lookups from "../../../../../packages/lookups/package.json";
+import react from "../../../../../packages/react/package.json";
+import server from "../../../../../packages/server/package.json";
+import { SERVICE_URL } from "../../site.mjs";
+
+const REPO = "https://github.com/digital-cube/jsmemento";
+const packages = [
+  { pkg: core, dir: "core", text: "The protocol: the event and envelope schemas, the Filter DSL, the HTTP client and MementoStream." },
+  { pkg: server, dir: "server", text: "The Fastify app and plugin: PostgreSQL storage, tenants and keys, templates, /ws, UDC collections, accounts." },
+  { pkg: cli, dir: "cli", text: "memento: migrations, tenants, keys, templates, chats, lookups, a live tail, the CPU monitor and the simulator." },
+  { pkg: react, dir: "react", text: "MementoProvider, the live MementoDataView, MementoChat and MementoSearch." },
+  { pkg: lookups, dir: "lookups", text: "The vocabulary of lookups.yaml: event, instance and actor types, translations, candidates, codegen." },
+];
+const tags = [
+  { tag: "1.0.0, 1.0, 1, latest", from: "a release tag v1.0.0 (the first one is still to come)" },
+  { tag: "main, edge", from: "the newest commit on main" },
+  { tag: "sha-<short>", from: "that commit" },
+];
+const clients = [
+  ["JavaScript", "javascript"],
+  ["TypeScript", "typescript"],
+  ["Python", "python"],
+  ["PHP", "php"],
+  ["Java", "java"],
+  ["Rust", "rust"],
+  ["Go", "golang"],
+  ["C++", "cpp"],
+];
+---
+
+<section class="home-section pkgs not-content" aria-labelledby="packages">
+  <header>
+    <h2 id="packages">Five packages, one image, eight clients</h2>
+    <p>
+      One monorepo, one version line. The packages go to npm with the first release tag; until
+      then they install from <a href={REPO}>the repository</a>, and the image is on GitHub's
+      registry from every commit of main.
+    </p>
+  </header>
+  <ul class="list">
+    {
+      packages.map(({ pkg, dir, text }) => (
+        <li>
+          <a class="name" href={`${REPO}/tree/main/packages/${dir}`}>
+            {pkg.name}
+          </a>
+          <p>{text}</p>
+          <span class="version">{pkg.version}</span>
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="more">
+    <div>
+      <h3><a href={`${REPO}/pkgs/container/jsmemento`}>ghcr.io/digital-cube/jsmemento</a></h3>
+      <p>Multi-arch (amd64, arm64), with a build provenance attestation. The server, the CLI, the examples site and the service site in one image.</p>
+      <table>
+        <tbody>
+          {
+            tags.map((t) => (
+              <tr>
+                <td><code>{t.tag}</code></td>
+                <td>{t.from}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3><a href={`${SERVICE_URL}/clients`}>Client programs</a></h3>
+      <p>
+        One complete program per language, plain HTTP and a WebSocket, no SDK:
+        {
+          clients.map(([label, dir], i) => (
+            <>
+              <a href={`${REPO}/tree/main/clients/${dir}`}>{label}</a>
+              {i < clients.length - 1 ? ", " : "."}
+            </>
+          ))
+        }
+      </p>
+    </div>
+  </div>
+  <p class="licence">MIT licence.</p>
+</section>
+
+<style>
+  .list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .list li {
+    display: grid;
+    gap: 0.4rem 2rem;
+    align-items: baseline;
+    padding: 1.2rem 0;
+    border-top: 1px solid var(--memento-rule);
+  }
+  .list li:last-child {
+    border-bottom: 1px solid var(--memento-rule);
+  }
+  .name {
+    font: 500 1rem var(--sl-font-mono);
+    color: var(--sl-color-white) !important;
+    text-decoration: none;
+  }
+  .name:hover {
+    color: var(--sl-color-text-accent) !important;
+  }
+  .list p {
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+  }
+  .version {
+    font: 0.8125rem var(--sl-font-mono);
+    color: var(--sl-color-gray-3);
+  }
+  .more {
+    display: grid;
+    gap: 2rem 3.5rem;
+    margin-top: 2.5rem;
+  }
+  .more h3 {
+    font: 500 1rem var(--sl-font-mono);
+    margin-bottom: 0.5rem;
+  }
+  .more p {
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+  }
+  table {
+    margin-top: 0.75rem;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  td {
+    padding: 0.4rem 1rem 0.4rem 0;
+    border-bottom: 1px solid var(--memento-rule);
+    color: var(--sl-color-gray-2);
+  }
+  .licence {
+    margin-top: 2rem;
+    color: var(--sl-color-gray-3);
+    font-size: 0.875rem;
+  }
+  @media (min-width: 50rem) {
+    .list li {
+      grid-template-columns: 11rem minmax(0, 1fr) auto;
+    }
+    .more {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>

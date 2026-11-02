@@ -1,0 +1,29 @@
+{
+  "kind": "memento.welcome",
+  "payload": {
+    "protocol_version": "1",
+    "tenant": "t-4uvljqyl",
+    "filter": { "instance_type": "user", "instance_id": "42" },
+    "heartbeat_interval_ms": 30000,
+    "max_buffered_messages": 1000
+  }
+}
+
+{
+  "kind": "memento.event.new",
+  "id": "0cba06fc…",
+  "payload": {
+    "id": "0cba06fc…",
+    "occurred_at": "2026-11-02T00:41:20.166Z",
+    "received_at": "2026-11-02T00:41:20.169Z",
+    "event_type": "USER_LOGIN",
+    "instance_type": "user",
+    "instance_id": "42",
+    "actor_id": "igor",
+    "payload": { "client": "web", "method": "password" },
+    "rendered": "User igor logged in.",
+    "rendered_locale": "en",
+    "archived_at": null,
+    "api_key_id": "44cebcf6…"
+  }
+}

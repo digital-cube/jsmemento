@@ -1,0 +1,74 @@
+---
+title: Embedded in Node
+description: mementoPlugin inside your own Fastify app — its tables in your database, its migrations, a tenant and a key from the CLI, and MementoStream following what happens.
+sidebar:
+  order: 3
+---
+
+import { Code, Steps } from "@astrojs/starlight/components";
+import install from "../../../../snippets/embedded/install.sh?raw";
+import run from "../../../../snippets/embedded/run.sh?raw";
+import serverTs from "../../../../snippets/embedded/server.ts?raw";
+import tailOutput from "../../../../snippets/embedded/tail-output.txt?raw";
+import tailTs from "../../../../snippets/embedded/tail.ts?raw";
+
+The memento server is a Fastify plugin before it is a process. Register it in the Fastify app you
+already run and it serves the whole API under a prefix: push, lists, queries, entity history,
+the `/ws` stream and the UDC collections, with its own API keys, its own error handler and its
+own hooks, none of which leak into your routes.
+
+<Steps>
+
+1. Install the packages. They go to npm with the first release tag; until then, build and pack
+   them from a clone (pnpm, through corepack, is what the repository uses):
+
+   <Code code={install} lang="sh" title="Terminal" />
+
+   `@memento/server` brings Fastify's WebSocket, cookie and static plugins, Drizzle and `pg`;
+   `@memento/cli` is the `memento` command; `@memento/core` is the protocol and its clients.
+
+2. The server, next to whatever your app already serves:
+
+   <Code code={serverTs} lang="ts" title="server.ts" />
+
+   - `runMigrations` applies memento's migrations, which ship inside `@memento/server`. Run it
+     on every start: what is applied already is skipped. Every table is `memento_*`.
+   - `LocalBus` is both the `publisher` (where stored events go) and the stream's `feed` (where
+     `/ws` takes them from), in memory. With several processes, give each a `RedisPublisher`
+     and a `RedisFeed` on the same `REDIS_URL`: an event stored by one reaches the `/ws` clients
+     of all of them.
+   - More options: `lookups` (the vocabulary of `lookups.yaml`), `defaultLocale`, `udc` (your
+     own UDC collections next to memento's, or `false`), `menu`, `demoApiKey` and `accounts`
+     (the self-service routes). Their meaning is in the `MementoPluginOptions` type.
+
+3. Something to follow the stream with. `MementoStream` from `@memento/core` is the client
+   `@memento/react` and `memento tail` use: it sends the key as a WebSocket subprotocol, waits
+   for the welcome, and reconnects with backoff:
+
+   <Code code={tailTs} lang="ts" title="tail.ts" />
+
+4. Run them, with a tenant and a key made by the CLI straight in the database:
+
+   <Code code={run} lang="sh" title="Terminal" />
+   <Code code={tailOutput} lang="txt" title="What tail.ts prints" />
+
+   Node 24 runs the `.ts` files as they are, stripping the types. `npx memento` reads the same
+   `DATABASE_URL`; `create-key` prints the `mk_…` secret once, like the Docker page's.
+
+</Steps>
+
+## What you get under `/memento`
+
+Your own route keeps answering at `/`; memento's are under the prefix, each with the scope its
+key needs. The list is the [API section](/#the-api) of the home page; every parameter is in
+[docs/API.md](https://github.com/digital-cube/jsmemento/blob/main/docs/API.md), the stream's
+messages and close codes in
+[docs/STREAMING.md](https://github.com/digital-cube/jsmemento/blob/main/docs/STREAMING.md).
+
+## Next
+
+- Draw the events in React: `MementoProvider` and `MementoDataView` from `@memento/react`, the
+  **React** tab of [Start where you are](/#start).
+- The standalone server is this plugin too: `packages/server/src/server.ts` adds Redis, the
+  lookups, the menu and the accounts from environment variables
+  ([docs/ARCHITECTURE.md](https://github.com/digital-cube/jsmemento/blob/main/docs/ARCHITECTURE.md#deployment-modes)).

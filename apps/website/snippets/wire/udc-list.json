@@ -1,0 +1,6 @@
+{
+  "collection": "cpu_load",
+  "filter": { "field": "instance_id", "op": "eq", "value": "stage" },
+  "sort": [{ "field": "occurred_at", "dir": "desc" }],
+  "page": { "limit": 1 }
+}

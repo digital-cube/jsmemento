@@ -1,0 +1,5 @@
+created tenant acme (Acme Inc) id=40c1b5bc-0c20-40e2-b00a-b88dc9e3b4e5
+created key "backend" for acme [read,write]
+prefix: 27lho6hx
+key:    mk_27lho6hx_…
+Store it now: it cannot be shown again.

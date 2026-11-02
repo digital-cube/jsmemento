@@ -6,7 +6,7 @@ processes) Redis.
 
 | tag | built from |
 |---|---|
-| `1.0.0`, `1.0`, `1`, `latest` | the release tag `v1.0.0` |
+| `1.0.0`, `1.0`, `1`, `latest` | the release tag `v1.0.0` — not pushed yet, so these tags do not exist yet |
 | `main`, `edge` | the newest commit on `main` |
 | `sha-<short>` | that commit |
 
@@ -19,8 +19,14 @@ The repository's `docker-compose.yaml` is a production-like stack: memento, Post
 Redis 7, with health checks and named volumes.
 
 ```bash
-export POSTGRES_PASSWORD='change-me'                  # or put it in .env next to the file
-docker compose -f docker-compose.yaml up -d --wait    # pulls :latest (or builds with --build)
+# .env next to docker-compose.yaml. MEMENTO_IMAGE defaults to :latest, which the first release
+# tag publishes; until then use the image of main (or build it here with --build).
+cat > .env <<'ENV'
+POSTGRES_PASSWORD=change-me
+MEMENTO_IMAGE=ghcr.io/digital-cube/jsmemento:main
+ENV
+
+docker compose -f docker-compose.yaml up -d --wait memento   # + postgres and redis, its dependencies
 
 docker compose -f docker-compose.yaml exec memento memento create-tenant acme --name "Acme Inc"
 docker compose -f docker-compose.yaml exec memento \
@@ -32,6 +38,11 @@ curl -X POST localhost:3000/memento/events -H "Authorization: Bearer mk_…" \
   -d '{"event_type":"USER_LOGIN","instance_type":"user","instance_id":42,"actor_id":"igor"}'
 ```
 
+A plain `up -d` also starts `service`, the service site (below). The same steps, each with
+what it prints, are the website's [Get started › Run it with Docker](https://memento-service.org/get-started/docker/).
+The file names its project `jsmemento`: a second stack on the same host needs its own
+`COMPOSE_PROJECT_NAME` and ports, or Compose treats it as the first one.
+
 `compose.yaml` (the default file of `docker compose`) is the **development** infrastructure —
 PostgreSQL + Redis only, plus the test database. Always pass `-f docker-compose.yaml` for the
 full stack.
@@ -41,8 +52,10 @@ full stack.
 | `memento` | `${MEMENTO_PORT:-3000}` → 3000 | `memento-data:/data` | `memento-healthcheck` (`GET /memento/api/health`) |
 | `postgres` | `127.0.0.1:${POSTGRES_PORT:-5432}` | `postgres-data:/var/lib/postgresql` | `pg_isready` |
 | `redis` | `127.0.0.1:${REDIS_PORT:-6379}` | `redis-data:/data` (AOF on) | `redis-cli ping` |
+| `service` | `${SERVICE_PORT:-8201}` → 3000 | `memento-data:/data` | `memento-healthcheck` (the service site, [below](#the-service-site)) |
 | `cpu-monitor` | — (profile `demo`, off by default) | — | — (pushes `CPU_LOAD` every second; see [Demo pusher](#demo-pusher-profile-demo)) |
 | `simulator` | — (profile `demo`, off by default) | — | — (plays a ticket desk, one event every 3 s; see [Demo pusher](#demo-pusher-profile-demo)) |
+| `retention` | — (profile `demo`, off by default) | — | — (`memento retention` once a day; see [Retention](#retention)) |
 
 PostgreSQL and Redis are published on `127.0.0.1` only; set `POSTGRES_BIND` / `REDIS_BIND`
 to change that, or remove their `ports:` when nothing outside the stack needs them.

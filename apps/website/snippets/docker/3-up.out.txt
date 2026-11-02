@@ -1,0 +1,4 @@
+ Container jsmemento-redis-1  Healthy
+ Container jsmemento-postgres-1  Healthy
+ Container jsmemento-memento-1  Healthy
+{"ok":true,"data":{"status":"ok"}}

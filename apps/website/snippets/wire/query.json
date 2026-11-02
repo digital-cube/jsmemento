@@ -1,0 +1,10 @@
+{
+  "filter": {
+    "and": [
+      { "field": "instance_type", "op": "eq", "value": "user" },
+      { "field": "event_type", "op": "in", "value": ["USER_LOGIN", "USER_LOGOUT"] },
+      { "field": "actor_id", "op": "eq", "value": "igor" }
+    ]
+  },
+  "limit": 2
+}

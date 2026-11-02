@@ -1,0 +1,89 @@
+---
+title: Run it with Docker
+description: memento, PostgreSQL 18 and Redis 7 from the repository's docker-compose.yaml — a tenant, a key, the first event, the examples site.
+sidebar:
+  order: 1
+---
+
+import { Code, Steps } from "@astrojs/starlight/components";
+import clone from "../../../../snippets/docker/1-clone.sh?raw";
+import env from "../../../../snippets/docker/2-env.sh?raw";
+import upOut from "../../../../snippets/docker/3-up.out.txt?raw";
+import up from "../../../../snippets/docker/3-up.sh?raw";
+import keyOut from "../../../../snippets/docker/4-key.out.txt?raw";
+import key from "../../../../snippets/docker/4-key.sh?raw";
+import eventOut from "../../../../snippets/docker/5-event.out.txt?raw";
+import event from "../../../../snippets/docker/5-event.sh?raw";
+import down from "../../../../snippets/docker/6-down.sh?raw";
+
+The repository's `docker-compose.yaml` is a production-like stack: memento from the image
+`ghcr.io/digital-cube/jsmemento`, PostgreSQL 18 and Redis 7, with health checks and named
+volumes. The server applies its migrations when it starts, and the CLI is inside the image.
+
+<Steps>
+
+1. Get the compose file, with the rest of the repository:
+
+   <Code code={clone} lang="sh" />
+
+2. Give it a database password and the image to run. `MEMENTO_IMAGE` defaults to the `latest`
+   tag, which the first release tag will publish; until then `main` is the image of the newest
+   commit:
+
+   <Code code={env} lang="sh" />
+
+3. Start memento. Compose starts PostgreSQL and Redis first, because memento waits for their
+   health checks; `--wait` returns when all three are healthy. Then ask the server how it is:
+
+   <Code code={up} lang="sh" />
+   <Code code={upOut} lang="txt" title="What it prints" />
+
+   The file has more services: `service`, the self-service site (accounts, keys, usage), and
+   behind the `demo` profile a CPU monitor and a ticket desk simulator. Naming `memento` starts
+   only what the API needs.
+
+4. Create a tenant, and an API key of it. A key belongs to one tenant: everything it pushes or
+   reads is that tenant's. `read` lets it list, query and stream; `write` lets it push.
+
+   <Code code={key} lang="sh" />
+   <Code code={keyOut} lang="txt" title="What it prints" />
+
+   Only a hash of the key is stored. Copy the `mk_…` line now; a lost key is revoked
+   (`memento revoke-key <prefix>`) and replaced, never shown again.
+
+5. Push the first event, and read the history of `user/42` back, rendered in Serbian:
+
+   <Code code={event} lang="sh" />
+   <Code code={eventOut} lang="txt" title="What it prints" wrap />
+
+   memento renders `rendered` from the `USER_LOGIN` template of the asked locale, per request;
+   the event itself is stored once and never changes.
+
+6. Open `http://localhost:3000/`: the image serves the examples site there,
+   same origin as the API. It asks for a key: paste the one from step 4 under **Settings**, or
+   give the server a read-only demo key and it connects by itself (`DEMO_API_KEY`, see
+   [docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md#demo-key-examples-site)).
+   To give its pages something to show, turn on the `demo` profile: the CPU monitor and the
+   simulator push into a tenant `demo` with a write key of it.
+
+7. When you are done:
+
+   <Code code={down} lang="sh" />
+
+</Steps>
+
+## Ports and the rest of the configuration
+
+Every variable can go into `.env`. The host ports: `MEMENTO_PORT` (3000), `SERVICE_PORT`
+(8201), `POSTGRES_PORT` (5432) and `REDIS_PORT` (6379); PostgreSQL and Redis are published on
+`127.0.0.1` only. A second stack next to the first needs its own ports and its own
+`COMPOSE_PROJECT_NAME`: the file names its project `jsmemento`, and two stacks with one name
+are one stack. The whole list, the image's tags, the service site, retention, backups and a
+reverse proxy in front of it:
+[docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md).
+
+## Next
+
+- Push from your own code: [the client programs](/get-started/client/) work against this server
+  with `MEMENTO_URL=http://localhost:3000/memento`.
+- Run memento inside your application instead: [Embedded in Node](/get-started/embedded/).

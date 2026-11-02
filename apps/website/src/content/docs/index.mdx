@@ -17,3 +17,15 @@ hero:
       variant: minimal
 install: docker compose -f docker-compose.yaml up -d
 ---
+
+import Api from "../../components/home/Api.astro";
+import Examples from "../../components/home/Examples.astro";
+import OneEvent from "../../components/home/OneEvent.astro";
+import Packages from "../../components/home/Packages.astro";
+import QuickStarts from "../../components/home/QuickStarts.astro";
+
+<OneEvent />
+<Examples />
+<Api />
+<QuickStarts />
+<Packages />

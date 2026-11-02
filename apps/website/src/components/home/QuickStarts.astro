@@ -1,0 +1,137 @@
+---
+/*
+ * Start where you are: four ways in, as tabs. The code is the snippets/ files Get started shows
+ * too (the embedded and React ones are type-checked against the workspace packages by
+ * scripts/check-snippets.mjs) and the JavaScript client is clients/javascript/memento.mjs itself.
+ */
+import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
+import clientMjs from "../../../../../clients/javascript/memento.mjs?raw";
+import clientOutput from "../../../snippets/client/output.txt?raw";
+import clientRun from "../../../snippets/client/run.sh?raw";
+import serverTs from "../../../snippets/embedded/server.ts?raw";
+import appTsx from "../../../snippets/react/App.tsx?raw";
+import { SERVICE_URL } from "../../site.mjs";
+
+// The Docker steps of Get started, one file each (snippets/docker/<n>-<step>.sh and the
+// <n>-<step>.out.txt it printed), joined in their order; the last step (down) is left out.
+const join = (files: Record<string, string>) =>
+  Object.keys(files)
+    .sort()
+    .map((name) => (files[name] ?? "").trimEnd())
+    .join("\n\n");
+const dockerSh = join(
+  import.meta.glob<string>(["../../../snippets/docker/[1-5]-*.sh"], {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+);
+const dockerOutput = join(
+  import.meta.glob<string>("../../../snippets/docker/*.out.txt", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+);
+---
+
+<section class="home-section start" aria-labelledby="start">
+  <header class="not-content">
+    <h2 id="start">Start where you are</h2>
+    <p>
+      Run your own memento, borrow ours with a key, put it inside the Fastify app you already
+      have, or draw a tenant's events in React. Every command here has been run as written.
+    </p>
+  </header>
+  <Tabs syncKey="quick-start">
+    <TabItem label="Docker">
+      <div class="body">
+        <div class="code">
+          <Code code={dockerSh.trimEnd()} lang="sh" title="Terminal" />
+          <Code code={dockerOutput.trimEnd()} lang="txt" title="What it prints" wrap />
+        </div>
+        <ol class="not-content">
+          <li>Docker with Compose. The stack is <code>docker-compose.yaml</code>: memento, PostgreSQL 18, Redis 7, named volumes and health checks.</li>
+          <li>The server applies its migrations when it starts; the CLI is in the image (<code>memento …</code>).</li>
+          <li>The examples site is served at <code>localhost:3000/</code>, the API under <code>/memento</code>.</li>
+        </ol>
+      </div>
+    </TabItem>
+    <TabItem label="A key and a client">
+      <div class="body">
+        <div class="code">
+          <Code code={clientRun.trimEnd()} lang="sh" title="Terminal" />
+          <Code code={clientOutput.trimEnd()} lang="txt" title="What it prints" />
+          <div class="long">
+            <Code code={clientMjs.trimEnd()} lang="js" title="clients/javascript/memento.mjs" />
+          </div>
+        </div>
+        <ol class="not-content">
+          <li>Register on <a href={SERVICE_URL}>the service site</a> and create a key with <code>read</code> and <code>write</code>; it is shown once.</li>
+          <li>The program pushes a <code>USER_LOGIN</code>, lists the last ten events of <code>user/&lt;you&gt;</code>, then tails the stream for ten seconds.</li>
+          <li>The same three steps in TypeScript, Python, PHP, Java, Rust, Go and C++: <a href={`${SERVICE_URL}/clients`}>/clients</a>.</li>
+        </ol>
+      </div>
+    </TabItem>
+    <TabItem label="Embedded">
+      <div class="body">
+        <div class="code">
+          <Code code={serverTs.trimEnd()} lang="ts" title="server.ts" />
+        </div>
+        <ol class="not-content">
+          <li><code>mementoPlugin</code> is the whole API as one encapsulated Fastify plugin: its auth hooks and error handler stay inside <code>/memento</code>.</li>
+          <li>Migrations come with <code>@memento/server</code>; tenants and keys with <code>@memento/cli</code>, against the same <code>DATABASE_URL</code>.</li>
+          <li><code>stream: {"{"} feed {"}"}</code> turns on <code>/ws</code>. <code>MementoStream</code> from <code>@memento/core</code> follows it from Node or a browser.</li>
+        </ol>
+      </div>
+    </TabItem>
+    <TabItem label="React">
+      <div class="body">
+        <div class="code">
+          <Code code={appTsx.trimEnd()} lang="tsx" title="src/App.tsx" />
+        </div>
+        <ol class="not-content">
+          <li><code>MementoProvider</code> holds the base URL, the key and the locale; every component under it reads through them.</li>
+          <li><code>MementoDataView</code> is a live table with event and instance type filters; <code>MementoSearch</code> and <code>MementoChat</code> sit next to it.</li>
+          <li>Serve your app on the same origin as <code>/memento</code> (a dev proxy does), or allow it with CORS.</li>
+        </ol>
+      </div>
+    </TabItem>
+  </Tabs>
+  <a class="more not-content" href="/get-started/">The whole way, step by step, on Get started</a>
+</section>
+
+<style>
+  .body {
+    display: grid;
+    gap: 1.5rem 3rem;
+  }
+  .code {
+    min-width: 0;
+  }
+  .code > :global(* + *) {
+    margin-top: 1rem;
+  }
+  /* The client is a whole program: shown in a box of its own height, scrolled inside. */
+  .long :global(pre) {
+    max-height: 26rem;
+    overflow-y: auto;
+  }
+  ol {
+    padding-left: 1.25rem;
+    color: var(--sl-color-gray-2);
+  }
+  li + li {
+    margin-top: 0.875rem;
+  }
+  .more {
+    display: inline-block;
+    margin-top: 1.5rem;
+    font-weight: 600;
+  }
+  @media (min-width: 64rem) {
+    .body {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    }
+  }
+</style>

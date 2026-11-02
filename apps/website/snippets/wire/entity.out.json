@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "0cba06fc…",
+      "occurred_at": "2026-11-02T00:41:20.166Z",
+      "received_at": "2026-11-02T00:41:20.169Z",
+      "event_type": "USER_LOGIN",
+      "instance_type": "user",
+      "instance_id": "42",
+      "actor_id": "igor",
+      "payload": { "client": "web", "method": "password" },
+      "rendered": "User igor logged in.",
+      "rendered_locale": "en",
+      "archived_at": null,
+      "api_key_id": "44cebcf6…"
+    }
+  ],
+  "meta": {
+    "limit": 1,
+    "count": 1,
+    "next_cursor": "WyIyMDI2LTExLTAyVDAwOjQxOjIwLjE2NloiLCIwY2JhMDZmYy1kM2VhLTQ5ODItYTVlMi02Zjg4ZWM2N2Q0YTIiXQ"
+  }
+}

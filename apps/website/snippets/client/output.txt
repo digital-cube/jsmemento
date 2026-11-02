@@ -1,0 +1,12 @@
+Pushed fb0e7a36-e137-413e-afea-535471a3effc
+  User digital logged in from 127.0.0.1.
+
+Latest events of user/digital:
+  2026-11-02T00:31:42.133Z  USER_LOGIN  User digital logged in from 127.0.0.1.
+  2026-11-02T00:31:34.681Z  USER_LOGIN  User digital logged in from 127.0.0.2.
+  2026-11-02T00:31:13.174Z  USER_LOGIN  User digital logged in from 127.0.0.1.
+  2026-11-02T00:21:48.199Z  USER_LOGIN  User digital logged in from 127.0.0.1.
+
+Tailing user/digital for 10 s …
+  User digital logged in from 127.0.0.2.
+Done.

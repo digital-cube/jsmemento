@@ -126,3 +126,63 @@ html[data-has-hero] main {
   box-shadow: inset 2px 0 0 var(--memento-thread);
   border-radius: 0 3px 3px 0;
 }
+
+/* --- The home page's sections (src/components/home/) ------------------------------------ */
+.home-section {
+  margin-top: 6rem;
+}
+.home-section > header {
+  display: grid;
+  gap: 0.75rem 3rem;
+  align-items: end;
+  margin-bottom: 1.75rem;
+}
+.home-section h2 {
+  font-family: var(--memento-font-display);
+  font-weight: 500;
+  font-variation-settings: "opsz" 36;
+  font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-white);
+  max-width: 22ch;
+  text-wrap: balance;
+}
+.home-section > header p {
+  color: var(--sl-color-gray-2);
+  max-width: 54ch;
+}
+.home-section :not(pre) > code {
+  font-family: var(--sl-font-mono);
+  font-size: 0.86em;
+  color: var(--sl-color-white);
+  background: var(--sl-color-gray-6);
+  padding: 0.06em 0.3em;
+  border-radius: 3px;
+}
+.home-section a:not(.sl-link-button) {
+  color: var(--sl-color-text-accent);
+}
+/* A request or an answer above its code block: verb, path, status. */
+.home-section .wire-label {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin: 1.25rem 0 0.5rem;
+  font: 500 0.8125rem / 1.4 var(--sl-font-mono);
+  color: var(--sl-color-gray-2);
+}
+.home-section .wire-label:first-child {
+  margin-top: 0;
+}
+.home-section .wire-label span {
+  font-family: var(--sl-font);
+  font-weight: 400;
+  color: var(--sl-color-gray-3);
+}
+@media (min-width: 60rem) {
+  .home-section > header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

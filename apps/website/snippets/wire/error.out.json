@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "error": {
+    "code": "validation_error",
+    "message": "invalid event",
+    "details": [
+      {
+        "origin": "string",
+        "code": "invalid_format",
+        "format": "regex",
+        "pattern": "/^[A-Z][A-Z0-9_]*$/",
+        "path": ["event_type"],
+        "message": "event_type must be SCREAMING_SNAKE_CASE (e.g. USER_LOGIN)"
+      }
+    ]
+  },
+  "request_id": "048b0b5e…"
+}

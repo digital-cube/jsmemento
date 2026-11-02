@@ -1,22 +1,44 @@
 ---
 title: Get started
-description: From nothing to your first event and its sentence — run memento, get a key, push an event, read it back.
+description: From nothing to your first event and its sentence — run memento with Docker, borrow the stage service with a key, or embed it in your own Fastify app.
 sidebar:
   order: 0
   label: Overview
 ---
 
-import { SERVICE_URL } from "../../../site.mjs";
+import { LinkCard } from "@astrojs/starlight/components";
 
-This section will take you from nothing to your first event: run memento with Docker, create a
-tenant and an API key (or get one from the <a href={SERVICE_URL}>service site</a>), push a
-`USER_LOGIN` and read it back as `User igor logged in.`
+memento is a server your applications push events to and read them back from. There are three
+ways to have one: run it yourself, use the stage service with a key of your own, or put it inside
+a Node application you already have. Each page ends with a `USER_LOGIN` pushed and read back as
+`User igor logged in.` and `Korisnik igor se prijavio.`
 
-The pages are being written. Until they are here, the quick start lives in the repository's
-[README](https://github.com/digital-cube/jsmemento#run-it-with-docker) and
-[docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md).
+<LinkCard
+  title="Run it with Docker"
+  href="/get-started/docker/"
+  description="memento, PostgreSQL and Redis from docker-compose.yaml: a tenant, a key, the first event, the examples site."
+/>
+<LinkCard
+  title="Your first event with a client"
+  href="/get-started/client/"
+  description="A key from the service site and one of eight client programs: push, the last ten events, ten seconds of the live stream."
+/>
+<LinkCard
+  title="Embedded in Node"
+  href="/get-started/embedded/"
+  description="mementoPlugin in your own Fastify app, its migrations in your database, MementoStream on the other end."
+/>
 
-## Where to go now
+## What you need
 
-The [Concepts](/concepts/) section will explain what an event, an instance and a tenant are;
-[Clients](/clients/) will hold a complete program in eight languages.
+- **Docker** with Compose, for the first page. The stack brings its own database and Redis.
+- **Node 24** for the embedded server and the JavaScript client (the client runs on Node 22 too);
+  the other seven clients need their own toolchain, nothing else.
+- **PostgreSQL 18** when you run memento outside Docker. Every table it creates is named
+  `memento_*`, so it can share your application's database.
+- **Redis**, optional. One process streams its own events in memory; with more than one, Redis
+  carries every stored event to every process's `/ws` clients.
+
+Every command on these pages was run as it is written here, against a fresh clone and the stage
+service; what a step prints is what it printed then, with ids shortened where they would only
+be noise.

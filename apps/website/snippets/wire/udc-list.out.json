@@ -1,0 +1,20 @@
+{
+  "kind": "udc.list.ok",
+  "id": "",
+  "payload": {
+    "rows": [
+      {
+        "__meta": { "id": "afc33f2d…", "version": 1 },
+        "occurred_at": "2026-11-02T00:41:19.588Z",
+        "instance_type": "server",
+        "instance_id": "stage",
+        "load_1min": 6.9,
+        "load_5min": 7.16,
+        "load_15min": 7.86,
+        "rendered": "Server stage — CPU: 6.9, 7.16, 7.86"
+      }
+    ],
+    "next_cursor": null,
+    "total": 95492
+  }
+}

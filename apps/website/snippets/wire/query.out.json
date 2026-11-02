@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "0cba06fc…",
+      "occurred_at": "2026-11-02T00:41:20.166Z",
+      "received_at": "2026-11-02T00:41:20.169Z",
+      "event_type": "USER_LOGIN",
+      "instance_type": "user",
+      "instance_id": "42",
+      "actor_id": "igor",
+      "payload": { "client": "web", "method": "password" },
+      "rendered": "User igor logged in.",
+      "rendered_locale": "en",
+      "archived_at": null,
+      "api_key_id": "44cebcf6…"
+    },
+    {
+      "id": "97cc15de…",
+      "occurred_at": "2026-11-02T00:35:25.752Z",
+      "received_at": "2026-11-02T00:35:25.755Z",
+      "event_type": "USER_LOGIN",
+      "instance_type": "user",
+      "instance_id": "42",
+      "actor_id": "igor",
+      "payload": { "client": "web", "method": "password" },
+      "rendered": "User igor logged in.",
+      "rendered_locale": "en",
+      "archived_at": null,
+      "api_key_id": "44cebcf6…"
+    }
+  ],
+  "meta": {
+    "limit": 2,
+    "count": 2,
+    "next_cursor": "WyIyMDI2LTExLTAyVDAwOjM1OjI1Ljc1MloiLCI5N2NjMTVkZS1lYjRmLTQ5Y2ItYWMzZC01YzRkODhiNjc0NDQiXQ"
+  }
+}
