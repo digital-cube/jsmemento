@@ -1,0 +1,43 @@
+---
+title: Python
+description: 'The Python client program: push a USER_LOGIN, read the last ten events of your user and follow the live stream, with urllib.request, and the websockets package for the tail step when it is installed.'
+sidebar:
+  order: 3
+---
+
+import ClientReadme from "../../../components/ClientReadme.astro";
+import ClientSource from "../../../components/ClientSource.astro";
+import { SERVICE_URL } from "../../../site.mjs";
+
+<ClientReadme file="clients/python/README.md" />
+
+It talks to memento with `urllib.request`, and the `websockets` package for the tail step when it is installed. What it prints, and what every one of the eight
+does, is on the [Clients overview](/clients/#what-each-program-does). Everything below is
+[`clients/python/`](https://github.com/digital-cube/jsmemento/tree/main/clients/python) as the
+repository has it, read when this site was built.
+
+## Install
+
+<ClientReadme file="clients/python/README.md" section="Install" />
+
+## Set the two variables
+
+<ClientReadme file="clients/python/README.md" section="Set the two variables" />
+
+A key with the **read** and **write** scopes: create one under <a href={`${SERVICE_URL}/keys`}>Keys</a> on
+the service site. It is shown once.
+
+## Run
+
+<ClientReadme file="clients/python/README.md" section="Run" />
+
+## The program
+
+<ClientSource lang="python" />
+
+## Download
+
+<a href={`${SERVICE_URL}/clients/python.zip`}><code>python.zip</code></a> is this directory as the
+service site builds it — the same files, without dependencies or build output — with its
+README. Its <a href={`${SERVICE_URL}/clients/python`}>Clients page</a> has the two environment
+lines with a Copy button.

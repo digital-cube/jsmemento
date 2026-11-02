@@ -1,0 +1,122 @@
+---
+title: UDC collections
+description: The list side of memento speaks UDC, the DigitalCube Universal Data Collection protocol — which collections it serves, who may read them, and how a UI reads them.
+sidebar:
+  order: 6
+---
+
+import { Aside, Code } from "@astrojs/starlight/components";
+import udcList from "../../../../snippets/wire/udc-list.json?raw";
+import udcListOut from "../../../../snippets/wire/udc-list.out.json?raw";
+import { EXAMPLE_URL } from "../../../site.mjs";
+
+Anything a UI filters, sorts or pages — events, CPU samples, counts per minute, a menu, a list of
+keys — memento serves as a **UDC collection**. UDC is one protocol for filtering, sorting and
+paging across every DigitalCube project, with a server library (`@jsudc/server`), a core of
+schemas and a client (`@jsudc/core`), and React views (`@jsudc/react`). Its own site is
+[jsudc.dev](https://jsudc.dev).
+
+## The protocol, briefly
+
+Every action is a `POST /memento/udc/<action>` with a JSON body, answered with HTTP 200 and an
+envelope whose `kind` says ok or error (`udc.list.ok` / `udc.list.err`). The actions memento
+answers are `collections`, `describe`, `list` (filter, sort, offset paging, an exact `total`)
+and `read`.
+
+<Code code={udcList} lang="json" title="POST /memento/udc/list" />
+
+<Code code={udcListOut} lang="json" title="udc.list.ok" />
+
+Every collection is **read-only**. Events are immutable and are pushed with
+`POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`.
+
+## What memento serves
+
+| collection | rows |
+| --- | --- |
+| `events` | every live (not archived) event of the key's tenant, with `api_key` (the prefix of the key that wrote it) |
+| `cpu_load` | `CPU_LOAD` events only, `payload.load_1min` / `5min` / `15min` as decimal columns; a table and a chart |
+| `activity` | the tenant's events counted per minute and per `event_type`, computed per request with a `GROUP BY`; the last 60 minutes unless the filter names `minute`; one integer column per type of `lookups.yaml` for the chart's series |
+| `menu` | the examples site's sidebar, `menu.yaml` as tree rows; not tenant data; its `udc:collections` branch lists every collection served |
+
+With accounts on, memento adds the **session collections** the service site reads:
+
+| collection | rows |
+| --- | --- |
+| `api_keys` | the tenant's keys: name, prefix, scopes, status, daily limit, used today, events in the last 24 h |
+| `api_key_events` | the `events` collection over events written with a key; needs a filter on `api_key` |
+| `api_key_history` | the key lifecycle events (`APIKEY_*`) of one key; needs a filter on `instance_id` |
+| `api_key_activity` | the `activity` collection over events written with a key, bucketed per key too |
+| `api_key_usage` | the hourly usage meter: requests, events written, rows read, stream seconds, bytes in |
+| `admin_users` | every user (administrators only) |
+| `admin_api_keys` | every key of every tenant (administrators only) |
+
+## Who may read
+
+- **An API key** for `events`, `cpu_load`, `activity` and `menu`: `read` for reads. The tenant is
+  the key's, as everywhere ([Tenants and API keys](/concepts/tenants-and-keys/)).
+- **The session cookie** for the session collections (`auth: "session"`, or `"admin"` for the
+  two admin ones), with `Content-Type: application/json`. They refuse a key.
+- **Either** for `menu` when accounts are on (`key_or_session`): the service site has no key, so
+  its sidebar reads the menu with the cookie; writes still need a key.
+
+A refusal is answered in the protocol, not with an HTTP error:
+`{"kind":"udc.list.err","payload":{"code":"forbidden",…}}`.
+
+## Filters: the same tree, UDC's names
+
+A UDC filter is the same shape as memento's own [Filter DSL](/reference/filter-dsl/) —
+conditions `field` / `op` / `value` under `and`, `or` and `not` — over any field of the
+collection, with a few operators spelled UDC's way:
+
+| memento Filter DSL | UDC |
+| --- | --- |
+| `prefix` | `starts_with` |
+| `ne` | `neq` |
+| `nin` | `not_in` |
+| `is_null` with `false` | `is_not_null` |
+
+UDC also has `ends_with`. The [Search](/examples/search/) example shows one search in both
+spellings, side by side.
+
+## Rendered in the reader's language
+
+`events` and `cpu_load` carry the `rendered` sentence. A client that sends the header
+`X-Memento-Locale: sr` on `/udc/list` and `/udc/read` gets the rows rendered in Serbian, for the
+response only ([Rendering](/concepts/rendering/)). The examples site sends the header's language
+with every request, so switching EN / SR reloads every list in the other language.
+
+## How a UI reads them
+
+Through `@jsudc/react`, and nothing else for list data: a `UdcProvider` with a `UdcClient`
+(`httpUrl` the memento base, the key as `Authorization: Bearer`, and `X-Memento-Locale`), then
+`UdcDataView` for a whole table / chart view with its filter chips, sort and paging, or
+`useUdcCollection` when the page draws the rows itself. Filter, sort and page live in the UDC
+request — and, with `UdcReactRouterUrlState`, in the page's URL — never in hand-written query
+parameters.
+
+This is a rule of the repository, not only a habit: new list data is a new UDC collection, read
+through `@jsudc/react`. One protocol means one place, jsudc, to fix a bug or add a feature, and
+every project gets it with the next install.
+
+- The [CPU monitor](/examples/cpu-monitor/) and the [Activity chart](/examples/chart/) are
+  `UdcDataView` over `cpu_load` and `activity`.
+- The [Activity feed](/examples/activity/) and the [Entity timeline](/examples/entity/) draw
+  `events` themselves with `useUdcCollection`.
+- The stream does not carry rows to these pages; an event only tells them to read the
+  collection again ([Streaming](/concepts/streaming/)).
+- Any collection opens as a plain `UdcDataView` at <a href={`${EXAMPLE_URL}/udc/events`}>`/udc/<collection>`</a>
+  of the examples site.
+
+<Aside>
+Embedding memento, the plugin's `udc` option takes your own `CollectionRegistry` (memento's
+`MementoRegistry` adds the per-collection `auth`), or `false` to serve none
+([Deployment modes](/concepts/deployment-modes/)).
+</Aside>
+
+## Next
+
+- Every collection's fields and the session collections' rules:
+  [HTTP API › UDC collections](/reference/api/) and
+  [Self-service collections](/reference/api/#self-service-collections).
+- The protocol itself, its envelope and filter: [jsudc.dev](https://jsudc.dev).

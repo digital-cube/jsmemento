@@ -1,0 +1,43 @@
+---
+title: C++
+description: 'The C++ client program: push a USER_LOGIN and read the last ten events of your user, with libcurl, with the JSON built and parsed by hand.'
+sidebar:
+  order: 8
+---
+
+import ClientReadme from "../../../components/ClientReadme.astro";
+import ClientSource from "../../../components/ClientSource.astro";
+import { SERVICE_URL } from "../../../site.mjs";
+
+<ClientReadme file="clients/cpp/README.md" />
+
+It talks to memento with `libcurl`, with the JSON built and parsed by hand; no tail step in this sample. What it prints, and what every one of the eight
+does, is on the [Clients overview](/clients/#what-each-program-does). Everything below is
+[`clients/cpp/`](https://github.com/digital-cube/jsmemento/tree/main/clients/cpp) as the
+repository has it, read when this site was built.
+
+## Install
+
+<ClientReadme file="clients/cpp/README.md" section="Install" />
+
+## Set the two variables
+
+<ClientReadme file="clients/cpp/README.md" section="Set the two variables" />
+
+A key with the **read** and **write** scopes: create one under <a href={`${SERVICE_URL}/keys`}>Keys</a> on
+the service site. It is shown once.
+
+## Run
+
+<ClientReadme file="clients/cpp/README.md" section="Run" />
+
+## The program
+
+<ClientSource lang="cpp" />
+
+## Download
+
+<a href={`${SERVICE_URL}/clients/cpp.zip`}><code>cpp.zip</code></a> is this directory as the
+service site builds it — the same files, without dependencies or build output — with its
+README. Its <a href={`${SERVICE_URL}/clients/cpp`}>Clients page</a> has the two environment
+lines with a Copy button.

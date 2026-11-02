@@ -1,11 +1,12 @@
-# JSMemento — Architecture (Phases 1–5)
+# JSMemento — Architecture
 
-> Status: Phase 1 (core API & multitenancy), Phase 2 (Handlebars templates, i18n fallback,
-> YAML/CSV lookups — see [TEMPLATES.md](TEMPLATES.md)) and Phase 3 (chats as first-class
-> instances — see [CHATS.md](CHATS.md)) and Phase 4 (WebSocket streaming `/memento/ws` over
-> Redis Pub/Sub — see [STREAMING.md](STREAMING.md)) and Phase 5 (`@memento/react` UI, the
-> example app and CLI polish — see [REACT.md](REACT.md), [CLI.md](CLI.md)) implemented. Per-event seen/star
-> endpoints and UDC integration come later; their tables already exist.
+> Implemented: the core API and multitenancy, Handlebars templates with locale fallback and
+> YAML/CSV lookups ([TEMPLATES.md](TEMPLATES.md)), chats as first-class instances
+> ([CHATS.md](CHATS.md)), WebSocket streaming `/memento/ws` over Redis Pub/Sub
+> ([STREAMING.md](STREAMING.md)), the `@memento/react` UI and the CLI ([REACT.md](REACT.md),
+> [CLI.md](CLI.md)), UDC collections (`packages/server/src/udc/`, [API.md](API.md#post-mementoudcaction--udc-collections))
+> and self-service accounts ([API.md](API.md#accounts-memento_accountstrue)). Per-event seen/star
+> endpoints come later; their tables already exist.
 
 Background and design rationale: [ANALYSIS.md](ANALYSIS.md), [PHILOSOPHY.md](PHILOSOPHY.md).
 Endpoint reference: [API.md](API.md).
@@ -64,6 +65,9 @@ Every type is inferred from its schema (`z.infer`), so server, CLI and clients c
 
 ### Filter DSL
 
+The query language of `POST /memento/events/query`: a tree of conditions on an event's fields,
+combined with `and`, `or` and `not`.
+
 ```ts
 type Filter =
   | { field: FilterField; op: "eq"|"ne"|"lt"|"lte"|"gt"|"gte"|"prefix"|"contains"; value: scalar }
@@ -75,7 +79,7 @@ type Filter =
 FilterField = event_type | instance_type | instance_id | actor_id | occurred_at | received_at
 ```
 
-`payload` is deliberately not filterable in Phase 1. The server compiles the tree to SQL
+`payload` is deliberately not filterable. The server compiles the tree to SQL
 (`packages/server/src/db/filter.ts`); `prefix`/`contains` escape `%`, `_` and `\`, so
 `CHAT_*` matches a literal underscore.
 
@@ -254,7 +258,7 @@ tenant's templates for the page's event types.
 - **Embedded**: `app.register(mementoPlugin, { prefix: "/memento", db, publisher, stream })`
   in your own Fastify app (the plugin is encapsulated: its error handler and auth hooks do not
   leak). `stream: { feed }` enables `/ws`.
-- **Standalone**: `node packages/server/dist/main.js` (or `pnpm dev`) — applies migrations on
+- **Standalone**: `node packages/server/dist/server.js` (or `pnpm dev`) — applies migrations on
   start, then listens on `HOST:PORT`.
 
 ## 5. `@memento/cli`

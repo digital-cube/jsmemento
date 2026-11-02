@@ -6,10 +6,53 @@ sidebar:
   label: Overview
 ---
 
-This section will present the client programs in JavaScript, TypeScript, Python, PHP, Java,
-Rust, Go and C++: each pushes a `USER_LOGIN`, reads the last ten events of its user and tails
-the stream for ten seconds, with the key and the URL from the environment.
+import { Code, LinkCard } from "@astrojs/starlight/components";
+import ClientReadme from "../../../components/ClientReadme.astro";
+import output from "../../../../snippets/client/output.txt?raw";
+import { SERVICE_URL } from "../../../site.mjs";
 
-The programs exist already, in the repository's
-[clients/](https://github.com/digital-cube/jsmemento/tree/main/clients) directory; their pages
-here are not written yet.
+memento has no SDK to install. Each program under
+[`clients/`](https://github.com/digital-cube/jsmemento/tree/main/clients) talks to the API with
+the language's own HTTP client: plain HTTP with `Authorization: Bearer <key>`, and for the live
+stream a WebSocket with the subprotocols `memento.v1` and `bearer.<key>`. Read one to see what an
+integration needs; copy it to start one.
+
+This page, and the page of each language, is rendered from the repository's
+[`clients/README.md`](https://github.com/digital-cube/jsmemento/blob/main/clients/README.md) and
+the programs' own files when the site is built, so it shows what is committed there.
+
+## What each program does
+
+<ClientReadme file="clients/README.md" />
+
+A run against the stage service, with a second push from another terminal while the program was
+tailing:
+
+<Code code={output} lang="txt" title="What it prints" />
+
+## Environment
+
+<ClientReadme file="clients/README.md" section="Environment" />
+
+The key comes from <a href={`${SERVICE_URL}/keys`}>the service site</a> (shown once, scopes
+**read** and **write**), or from `memento create-key` on your own server: see
+[Tenants and API keys](/concepts/tenants-and-keys/). Point `MEMENTO_URL` at your own memento
+(`http://localhost:3000/memento` for the [Docker stack](/get-started/docker/)) and the program does
+not notice the difference.
+
+## Download
+
+Each program is a zip on <a href={`${SERVICE_URL}/clients`}>the service site's Clients page</a>,
+public, signed in or not: the directory without dependencies and build output, with its README.
+The page shows the same source and the two environment lines with a Copy button. No key is ever
+in a download.
+
+## Checks
+
+<ClientReadme file="clients/README.md" section="Checks" />
+
+<LinkCard
+  title="Your first event with a client"
+  href="/get-started/client/"
+  description="The JavaScript program against the stage service, step by step: register, a key, push, query, tail."
+/>

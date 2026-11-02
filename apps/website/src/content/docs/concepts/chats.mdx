@@ -1,0 +1,101 @@
+---
+title: Chats as events
+description: A chat is an ordinary instance; its messages, read markers and joins are events, so filters, rendering, history and the stream work for chats unchanged.
+sidebar:
+  order: 5
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+memento started as an activity log: `USER_LOGIN`, `TICKET_MODIFIED`. A chat message turned out to
+be the same kind of thing — something that happened, to one object, by one actor, at one
+moment. So a chat is an **instance** (`instance_type = "chat"`, `instance_id = "chat-<id>"`), and
+everything said and done in it is an **event** of that instance.
+
+```txt
+chat/chat-acme-sales
+├── 10:00  CHAT_MESSAGE_SENT       igor   { content: "Pozdrav!" }
+├── 10:05  CHAT_MESSAGE_SENT       marko  { content: "Evo!" }
+├── 10:06  CHAT_MESSAGE_SEEN       igor   { messages_read_up_to: <event id> }
+└── 10:10  CHAT_PARTICIPANT_ADDED  marko  { user_id: "ana", added_by: "marko" }
+```
+
+## What that buys
+
+Everything that works for events works for chats, with no chat-specific machinery:
+
+- **History:** `GET /memento/entities/chat/chat-123/events` is the chat's whole story.
+- **Filters:** one chat (`instance_id=chat-123`), every chat (`instance_type=chat`), a family by
+  prefix (`instance_id=chat-*`), every message across all chats (`event_type=CHAT_MESSAGE_SENT`),
+  and the [Filter DSL](/reference/filter-dsl/) for the rest.
+- **Rendering:** each event has its sentence in English and Serbian, `igor sent a message: "…"` /
+  `igor je poslao poruku: "…"`, through the bundled templates and any tenant override
+  ([Rendering](/concepts/rendering/)).
+- **Live:** `/memento/ws?instance_type=chat&instance_id=chat-123` follows one conversation
+  ([Streaming](/concepts/streaming/)).
+- **Immutable:** a message, once sent, is in the ledger like any other event.
+
+## The three event types
+
+| event type | written by | payload | en |
+| --- | --- | --- | --- |
+| `CHAT_MESSAGE_SENT` | `POST /chats/:chat_id/messages` | `{content, sender_user_id, timestamp}` | `igor sent a message: "…"` |
+| `CHAT_MESSAGE_SEEN` | `POST /chats/:chat_id/seen` | `{user_id, messages_read_up_to}` | `marko read the messages` |
+| `CHAT_PARTICIPANT_ADDED` | `POST /chats/:chat_id/participants` | `{user_id, added_by?}` | `ana was added to the chat` |
+
+`actor_id` is the sender, the reader, or `added_by`. A producer may still push these types
+through `POST /memento/events` itself; the chat routes add the participant checks and keep the
+chat's metadata current.
+
+## The metadata
+
+The events are the content; two tables hold only what a chat list needs quickly:
+
+- **`memento_chat`**: the chat's `instance_id` (unique per tenant), `kind`, `name`,
+  `created_at`, `last_message_at` (the newest message's `occurred_at`, only ever moving forward)
+  and `archived_at` — an archived chat is read-only, a write is `409`.
+- **`memento_chat_participant`**: one row per chat and user, with `added_at` and the read
+  watermark `last_seen_event_id` / `last_seen_at`.
+- **`kind`**: `direct` has exactly two participants, fixed; a `room` can take more. Two distinct
+  participants make a `direct` chat by default, anything else a `room`.
+
+## On behalf of a user
+
+An API key belongs to a tenant's backend, which acts for its users. Every chat call names that
+user (`user_id`), and memento checks that the user is a participant:
+
+| call | who | otherwise |
+| --- | --- | --- |
+| send, mark seen | `user_id` must be a participant | `403` |
+| add a participant | `added_by`, when given, must be a participant | `403` |
+| read a chat or its messages | `?user_id=` must be a participant | `403` |
+| read without `user_id` | an `admin` key only (moderation, exports) | `403` |
+
+A chat of another tenant is `404`. The tenant-wide `GET /memento/events` stays the backend's
+view: `read` scope, no per-user check.
+
+## Read markers
+
+`POST /chats/:chat_id/seen` moves a participant's watermark to a message (the newest one when
+none is named) and writes `CHAT_MESSAGE_SEEN`. The watermark only moves forward: marking the same
+or an older message again is a no-op that writes no event and answers `advanced: false`, so a
+client may call it freely, on every focus. A UI draws "Seen by" from the participants'
+watermarks.
+
+<Aside>
+The [Chat](/examples/chat/) example shows the simulator's demo room in `MementoChat` from
+`@memento/react`, read as one participant, live over the stream. It reads through the chat API
+rather than a UDC collection: every read there is checked against the room's participants,
+which the tenant-wide `events` collection does not do.
+</Aside>
+
+## From the CLI
+
+`memento create-chat --tenant acme --participants igor,marko --name "Igor-Marko chat"` creates a
+chat; `memento send-message --tenant acme --chat-id chat-6f1c… --user igor --content "Zdravo!"`
+sends as a participant, rendered and published exactly like the HTTP route;
+`memento tail --chat-id chat-123` follows a chat live, like `tail -f`.
+
+## Next
+
+- Every route, body and answer: [Chats reference](/reference/chats/).

@@ -1,0 +1,91 @@
+---
+title: The service site
+description: The image's second site — register, create API keys shown once, watch what each key writes, download the client programs, administer users.
+sidebar:
+  order: 9
+---
+
+import LiveExample from "../../../components/LiveExample.astro";
+import { SERVICE_URL } from "../../../site.mjs";
+
+The <a href={SERVICE_URL}>service site</a> is
+[`apps/service`](https://github.com/digital-cube/jsmemento/tree/main/apps/service): people
+register, verify their address, create API keys, and watch per key what it writes;
+administrators see every user and key. It is a second container of the same image, `service` in
+`docker-compose.yaml`, with self-service accounts always on, its own UI (`/app/ui-service`) and
+its own menu (`menu-service.yaml`). Both containers share the database, Redis and the lookups, so
+a key created here pushes events to either. How accounts work:
+[Accounts, the service site and retention](/concepts/accounts/).
+
+Like the examples site it reads every list through `@jsudc/react`, but with the
+`memento_session` cookie instead of a key: the session collections refuse an API key, and the
+key routes refuse the cookie. Writes go to `/auth/*`, `/keys*` and `/admin/*`.
+
+## Register and sign in
+
+- **`/register`**: email, password (at least 10 characters), name, locale and the terms.
+  Registering creates a user, a tenant of their own (slug `t-` and 8 random characters) with the
+  user as its owner, and a session, and sends a verification mail. Until the address is
+  verified, the Keys page says so — with **Send again** — and creates no keys.
+- **`/verify/:token`** confirms the address (the link is valid 24 h); **`/forgot`** and
+  **`/reset/:token`** reset a forgotten password (1 h) and sign the user out everywhere.
+- **`/account`**: name and locale, the password (current and new), the tenant's name and slug,
+  Log out.
+
+## Keys
+
+**`/keys`** lists the tenant's keys — the `api_keys` collection: name, prefix, scopes, status,
+the daily limit and today's count, events in the last 24 h, the dates. **New key** asks for a
+name, the scopes **read** and **write** (at least one; `admin` is not a scope a user can give),
+an optional expiry date and the daily limit, prefilled with the server's default. The key is
+shown **once**, in the dialog that creates it, with the two lines the
+[client programs](/clients/) read (`MEMENTO_URL`, `MEMENTO_API_KEY`); the server keeps only its
+hash. A tenant may hold 10 live keys unless the deployment says otherwise.
+
+**`/keys/:id`** is one key: its header (name, prefix, scopes, status, dates, today's usage),
+**Pause** / **Resume**, **Delete** (the name typed back), and four tabs, each its own path:
+
+| tab | collection | what it shows |
+| --- | --- | --- |
+| Activity | `api_key_activity` | the key's events per minute and type, the [activity chart](/examples/chart/) with its window selector |
+| Events | `api_key_events`, `api_key_history` | the events the key wrote; `?view=history` switches to the key's own lifecycle (`APIKEY_CREATED`, `_DISABLED`, …) |
+| Usage | `api_key_usage` | per hour: requests, events written, rows read, stream seconds, bytes in |
+| Settings | — | the name and the daily limit (`PATCH /keys/:id`) |
+
+Every change of a key writes a lifecycle event into the tenant. Past 80 % of the daily limit the
+key's creator gets a mail; past 100 % its writes answer `429 quota_exceeded` until midnight UTC.
+The details: [Tenants and API keys](/concepts/tenants-and-keys/).
+
+There is no live stream here: `/memento/ws` takes an API key and the site has only the cookie,
+so the key page polls its collections every 10 s instead.
+
+## The client programs
+
+**`/clients/<lang>`** is public, signed in or not: one tab per language, the choice in the URL
+and remembered in `localStorage`. Per language: the two environment lines with this origin and
+a `mk_…` placeholder (no key is ever on the page or in a download), the README's install and run
+steps, the source with line numbers and Copy, and **Download `<lang>.zip`**. The site builds the
+page and the zips from the repository's `clients/` directory; the same programs are this site's
+[Clients](/clients/) section.
+
+## Administration
+
+A user with `is_admin` (`memento make-admin <email>`) sees **Administration** in the sidebar —
+every node of `menu-service.yaml` whose code starts with `ADMIN` is hidden from everyone else,
+and the admin routes refuse them anyway. **`/admin/users`** lists every user (`admin_users`);
+**`/admin/users/:id`** shows one, with **Disable** / **Enable** (disabling deletes every session
+of theirs) and the keys of their tenant (`admin_api_keys`), each of which can be paused and
+resumed.
+
+<LiveExample
+  base="service"
+  path="/"
+  title="Open the service site"
+  description="Register, get an API key, run a client program against it."
+/>
+<LiveExample
+  base="service"
+  path="/clients"
+  title="The client programs"
+  description="Eight languages, each one source file and a zip, no SDK."
+/>

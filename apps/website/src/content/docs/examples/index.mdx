@@ -1,16 +1,112 @@
 ---
 title: Examples
-description: The examples site, page by page — what each example shows and how it is built.
+description: The examples site, page by page — what each example shows, what it reads and which component draws it.
 sidebar:
   order: 0
   label: Overview
 ---
 
+import { LinkCard } from "@astrojs/starlight/components";
+import LiveExample from "../../../components/LiveExample.astro";
 import { EXAMPLE_URL } from "../../../site.mjs";
 
-This section will walk through the examples site one page at a time, starting with the live
-CPU monitor: the CLI pushes this machine's load every second, the server serves it as the
-`cpu_load` collection, and the page draws it and refreshes on every event from the stream.
+The <a href={EXAMPLE_URL}>examples site</a> is
+[`apps/examples`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples): a Vite +
+React 19 app on `@jsudc/react` with every memento example behind one sidebar. The Docker image
+serves the built site at `/` and at `/en/` (`MEMENTO_UI_DIR=/app/ui`), on the same origin as the
+API; `/` opens the first example, the CPU monitor.
 
-The pages are not written yet; the examples themselves are already
-<a href={EXAMPLE_URL}>live</a>.
+Every list on every page comes from a UDC collection (`POST /memento/udc/list`), and every page
+follows the live stream (`/memento/ws`). The two exceptions say why: the chat reads memento's
+chat API, and the live tail shows the stream itself.
+
+## The demo key
+
+The site needs a key with the `read` scope. When the server has one configured as
+`MEMENTO_DEMO_API_KEY`, `GET /memento/api/demo` hands it out without auth and the page connects
+with it, so nobody has to paste a key. The server refuses to start with a demo key that is
+unknown, revoked, expired or has any scope besides `read`: the route never hands out a key that
+can write. Without a demo key the route answers `404` and the page asks for a key.
+
+The header shows which key is in use (**demo key** with the tenant, **your key**, **no key**),
+the language (EN / SR) and **Settings**: the API base URL and a key of your own, kept in
+`localStorage`. **Use the demo key** forgets yours again.
+
+## What keeps it moving
+
+Two pushers write to the tenant the site shows. Both run from the same image, in the compose
+profile `demo` of `docker-compose.yaml`, each with a key that has the `write` scope:
+
+- **`cpu-monitor`** (`memento cpu-monitor`) pushes this machine's load averages as a `CPU_LOAD`
+  event every second.
+- **`simulator`** (`memento simulate`) plays a small team at a ticket desk — logging in,
+  creating, modifying, noting and closing tickets, a bot closing stale ones — one event every
+  3 seconds, and the same team talking in the chat room `chat-demo-room`.
+
+[Run it with Docker](/get-started/docker/) starts the stack; the
+[Demo pusher](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md#demo-pusher-profile-demo)
+section of `docs/DEPLOYMENT.md` adds the keys and the profile.
+
+## The sidebar is a collection
+
+The sidebar is the `menu` UDC collection: the repository's
+[`menu.yaml`](https://github.com/digital-cube/jsmemento/blob/main/menu.yaml), served by
+`@memento/server` (source `yaml_menu` of `@jsudc/server`) and read again whenever the file
+changes. Its `Collections` branch is `children: "udc:collections"`, which the server resolves on
+every read into the collections it serves: `events`, `cpu_load`, `activity`, `menu`. Each opens
+at `/udc/<collection>` as a plain `UdcDataView`. A new example is one entry under `EXAMPLES` in
+`menu.yaml` and one page in `apps/examples`.
+
+## The pages
+
+<LinkCard
+  title="CPU monitor"
+  href="/examples/cpu-monitor/"
+  description="memento cpu-monitor pushes, the cpu_load collection serves, UdcDataView draws a table and a chart, the stream refreshes."
+/>
+<LinkCard
+  title="Activity feed"
+  href="/examples/activity/"
+  description="Every event of the tenant as the sentence memento rendered, newest first, in the header's language."
+/>
+<LinkCard
+  title="Entity timeline"
+  href="/examples/entity/"
+  description="What happened to one ticket or user: its events through the events collection, live."
+/>
+<LinkCard
+  title="Chat"
+  href="/examples/chat/"
+  description="The simulator's demo room in MementoChat, seen as one participant, with who has read what."
+/>
+<LinkCard
+  title="Live tail"
+  href="/examples/tail/"
+  description="Every frame of /memento/ws as it arrives, with the stream's filters in the URL."
+/>
+<LinkCard
+  title="Search"
+  href="/examples/search/"
+  description="MementoSearch next to the Filter DSL JSON it sends to POST /events/query, the request and the response."
+/>
+<LinkCard
+  title="Rendering & translations"
+  href="/examples/rendering/"
+  description="One event, its bundled EN and SR templates, and the sentence the server renders from each."
+/>
+<LinkCard
+  title="Activity chart"
+  href="/examples/chart/"
+  description="Events per minute by type, counted by the server as the activity collection, drawn by the chart renderer."
+/>
+<LinkCard
+  title="The service site"
+  href="/examples/service-site/"
+  description="The other site of the image: register, API keys shown once, what each key writes, the client programs."
+/>
+
+<LiveExample
+  path="/"
+  title="Open the examples site"
+  description="All eight pages over one tenant the CPU monitor and the simulator keep writing to."
+/>

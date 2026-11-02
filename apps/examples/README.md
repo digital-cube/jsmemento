@@ -63,7 +63,8 @@ at `http://localhost:3000/` (`MEMENTO_UI_DIR=/app/ui`), same origin as the API. 
 
 ## The shell
 
-- **Sidebar** (`src/shell/MenuTree.tsx`, `src/shell/menu.ts`, ported from the jsudc example's
+- **Sidebar** (`MenuTree` of `@memento/ui-shell`, `packages/ui-shell/src/MenuTree.tsx`, and
+  `src/shell/menu.ts`, ported from the jsudc example's
   shell): every row of the `menu` collection in one `useUdcAllRows` list, built into a tree;
   the leaf of the current route is highlighted and the way to it opened; what is open is kept in
   `localStorage` (`udc:menu:expanded`). Labels are `translation_key`s read through the site's
@@ -128,7 +129,8 @@ memento simulate / cpu-monitor ──POST /events──▶ memento_event
 - **The view**: chart tab first (a line per type, `y` from zero), then the table; an
   `event_type` select filter. The same rows open as a plain table from the sidebar's
   Collections branch (`/udc/activity`).
-- **Window selector** (15 min / 1 h / 6 h / 24 h, `src/examples/chart/chart.ts`): writes
+- **Window selector** (15 min / 1 h / 6 h / 24 h, `ChartWindow` of `@memento/ui-shell`,
+  `packages/ui-shell/src/ChartWindow.tsx` and `chart.ts`; `src/examples/chart/chart.ts` re-exports it): writes
   `minute gte <start>` into the data view's `?f=` (it shows as a chip, like the CPU monitor's
   `instance_type`) and the choice into `?w=`; chips the visitor added are kept. The start is
   the last N whole minutes, the current one included, and **slides**: at every whole minute
@@ -295,7 +297,8 @@ memento simulate ──POST /chats (once), /chats/chat-demo-room/messages, /seen
   the viewer reloads the room as that person: their messages are the "own" ones, the **Seen by**
   markers show where the *other* participants' read watermarks are, and a **New messages**
   divider shows where the viewer's unread messages start.
-- **Read-only.** The composer is disabled, its tooltip says *read-only demo key*: the demo key
+- **Read-only.** The composer is disabled, its tooltip says *read-only demo key* (with a pasted
+  key, *read-only example*): the demo key
   has only the `read` scope (the server refuses to hand out anything else), so nothing can be
   sent and nothing is tried. Writing stays with the simulator.
 - **Live, over the WebSocket — no polling.** `MementoChat` loads the newest 100 messages and
@@ -336,8 +339,9 @@ memento simulate ──POST /events──▶ memento ──POST /udc/list {colle
   every request; memento renders `rendered` in it (docs/TEMPLATES.md, "When it happens"). Switching
   EN / SR invalidates every UDC list, so the feed comes back in the other language without a
   reload. The choice is kept in `localStorage` (`udc-locale`).
-- **Live.** `useLive` (`src/live.ts`) follows the whole stream; every event that is not a
-  `CPU_LOAD` refetches the feed (at most once per 250 ms, `src/refresh.ts`). New lines fade in.
+- **Live.** `useLive` (`@memento/ui-shell`, `packages/ui-shell/src/live.ts`) follows the whole
+  stream; every event that is not a `CPU_LOAD` refetches the feed (at most once per 250 ms,
+  `REFRESH_THROTTLE_MS` in `packages/ui-shell/src/refresh.ts`). New lines fade in.
 - **Empty** (no simulator running): one sentence on what pushes these events and the compose
   command, `docker compose -f docker-compose.yaml --profile demo up -d simulator`.
 
@@ -406,7 +410,7 @@ How it is wired:
   `httpUrl: "/memento"` and `Authorization: Bearer <key>`, so `UdcDataView` calls
   `POST /memento/udc/describe` and `POST /memento/udc/list`. Filtering, sorting and paging are
   the jsudc filter DSL; there is no hand-written fetch of list data.
-- **The stream only says "refetch".** `useLive` (`src/live.ts`) subscribes
+- **The stream only says "refetch".** `useLive` (`@memento/ui-shell`, `packages/ui-shell/src/live.ts`) subscribes
   to `/memento/ws?event_type=CPU_LOAD&instance_type=server` with `MementoStream` from
   `@memento/core`, and every event invalidates the collection's list queries (at most one
   refetch per 250 ms).

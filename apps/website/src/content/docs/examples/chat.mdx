@@ -1,0 +1,76 @@
+---
+title: Chat
+description: The simulator's demo room in MementoChat, read as one of its participants, with who has read what, live over the WebSocket.
+sidebar:
+  order: 4
+---
+
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+
+`memento simulate` also plays a chat: the team talks in one room, and the page shows that room
+with `MementoChat` from `@memento/react` — the component an application would embed —
+read-only and live. A chat is an ordinary memento instance whose messages, read markers and
+joins are events ([Chats as events](/concepts/chats/)).
+
+<ExampleShot
+  name="chat"
+  alt="A chat room with messages in English and Serbian and Seen by markers"
+/>
+
+```txt
+memento simulate ──POST /chats (once), /chats/chat-demo-room/messages, /seen, /participants──▶ memento
+                                                                                                 │
+/examples/chat ◀── GET /chats/chat-demo-room?user_id=igor ── participants, read watermarks ──────┤
+  MementoChat  ◀── GET /chats/chat-demo-room/messages?user_id=<viewer>&locale=<en|sr> ───────────┤
+               ◀── ws /memento/ws?instance_type=chat&instance_id=chat-demo-room ─────────────────┘
+```
+
+## The room
+
+On start the simulator makes sure `chat-demo-room` ("Demo room") exists, creating it with igor,
+marko, ana and jelena when it is missing. In its chat scene an online member says a short line
+about the tickets the desk is working ("I took T-17.", "Zatvaram T-12, duplicate."), lines
+alternating English and Serbian as people write them — nothing is translated; another member
+marks the newest message seen; rarely somebody of the team is added. `--no-chat` leaves the room
+alone.
+
+## Read as a participant
+
+Chat reads are made on behalf of a user: memento checks that the `user_id` of every read is a
+participant of the chat. So the page reads the room as one participant, chosen in **Viewing
+as** on top — the first participant by default, kept in the URL (`?as=ana`). Switching the
+viewer reloads the room as that person: their messages are the "own" ones, the **Seen by**
+markers show where the *other* participants' read watermarks are, and a **New messages**
+divider shows where the viewer's unread messages start.
+
+The composer is disabled. With the demo key its tooltip says *read-only demo key*: that key has
+only the `read` scope, so nothing can be sent and nothing is tried. Writing stays with the
+simulator.
+
+## Live, without polling
+
+`MementoChat` loads the newest 100 messages and then follows the room's events on
+`/memento/ws`: new messages appear as they are sent, read markers move on `CHAT_MESSAGE_SEEN`,
+"X was added" lines appear on `CHAT_PARTICIPANT_ADDED`. The page follows the same stream
+(`useLive` of `@memento/ui-shell`) to read the room again when a participant is added, or, while
+the room is missing, when it first speaks.
+
+`MementoProvider` gets the site's locale: the system lines ("mila was added to the chat" /
+"mila je dodat u čat") are memento's rendered text and switch with EN / SR; people's messages
+stay as written.
+
+## Not UDC, on purpose
+
+Chats are read through memento's chat API (`GET /memento/chats/:chat_id…`), not a UDC
+collection: every read is checked against the room's participants, which the tenant-wide
+`events` collection does not do. The page reads them only through `MementoChat` and
+`MementoClient`, with no hand-written fetch. The routes: [the chats reference](/reference/chats/).
+
+The page: [`apps/examples/src/examples/chat/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/chat).
+
+<LiveExample
+  path="/examples/chat"
+  title="See it live: the demo room"
+  description="The simulated team talking about its tickets, read as any of its members."
+/>

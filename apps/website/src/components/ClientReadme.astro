@@ -1,0 +1,69 @@
+---
+/*
+ * One part of a README under clients/ (clients/README.md or clients/<lang>/README.md), rendered
+ * when the site is built: the part above the first `##` (without the H1) or the section under
+ * `## <section>`. Code blocks go through Starlight's <Code>; links to a client directory become
+ * its page here, other repository links go to GitHub. A missing section fails the build.
+ */
+import { existsSync, statSync } from "node:fs";
+import { dirname, join, posix } from "node:path";
+import { Code } from "@astrojs/starlight/components";
+import { marked, type Token, type Tokens } from "marked";
+import { clientFile, LANGUAGES } from "../clients";
+
+interface Props {
+  /** Repository path, e.g. `clients/README.md`. */
+  file: string;
+  /** The `##` heading to render under; none: the part above the first `##`. */
+  section?: string;
+}
+
+const { file, section } = Astro.props;
+// The repository root: up from where the build runs (this file is bundled, its own URL is not
+// in src/ any more) to the directory with pnpm-workspace.yaml.
+let ROOT = process.cwd();
+while (!existsSync(join(ROOT, "pnpm-workspace.yaml"))) {
+  if (dirname(ROOT) === ROOT) throw new Error("ClientReadme: no pnpm-workspace.yaml above the build");
+  ROOT = dirname(ROOT);
+}
+const REPO = "https://github.com/digital-cube/jsmemento";
+
+const tokens = marked.lexer(clientFile(file));
+const start = section
+  ? tokens.findIndex((t) => t.type === "heading" && t.depth === 2 && t.text === section)
+  : tokens.findIndex((t) => t.type === "heading" && t.depth === 1);
+if (start < 0) throw new Error(`${file}: no ${section ? `section "## ${section}"` : "H1"}`);
+const rest = tokens.slice(start + 1);
+const end = rest.findIndex((t) => t.type === "heading" && t.depth <= 2);
+const part = end < 0 ? rest : rest.slice(0, end);
+
+const href = (target: string) => {
+  if (/^[a-z]+:/i.test(target) || target.startsWith("#") || target.startsWith("/")) return target;
+  const [raw = "", anchor] = target.split("#");
+  const path = posix.normalize(posix.join(posix.dirname(file), raw)).replace(/\/$/, "");
+  const lang = LANGUAGES.find((l) => path === `clients/${l.id}`);
+  if (lang) return `/clients/${lang.id}/`;
+  const abs = join(ROOT, path);
+  if (!existsSync(abs)) throw new Error(`${file}: link ${target} → ${path} does not exist`);
+  const kind = statSync(abs).isDirectory() ? "tree" : "blob";
+  return `${REPO}/${kind}/main/${path}${anchor ? `#${anchor}` : ""}`;
+};
+marked.walkTokens(part, (t) => {
+  if (t.type === "link") (t as Tokens.Link).href = href((t as Tokens.Link).href);
+});
+
+type Block = { kind: "code"; code: string; lang: string } | { kind: "html"; html: string };
+const blocks: Block[] = part
+  .filter((t) => t.type !== "space")
+  .map((t: Token): Block => {
+    if (t.type !== "code") return { kind: "html", html: marked.parser([t]) };
+    const lang = (t as Tokens.Code).lang || "txt";
+    return { kind: "code", code: (t as Tokens.Code).text, lang: lang === "bash" ? "sh" : lang };
+  });
+---
+
+{
+  blocks.map((b) =>
+    b.kind === "code" ? <Code code={b.code} lang={b.lang} /> : <Fragment set:html={b.html} />,
+  )
+}

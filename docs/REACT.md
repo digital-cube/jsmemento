@@ -1,4 +1,4 @@
-# React UI — `@memento/react` (Phase 5)
+# React UI — `@memento/react`
 
 Components for browsing a tenant's events in a React app: a live table, a chat, and a search
 form. They read through the HTTP API and stay current through the WebSocket stream

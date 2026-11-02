@@ -1,0 +1,110 @@
+---
+title: Deployment modes
+description: The same server three ways — a plugin inside your own Fastify app, the standalone container with PostgreSQL and Redis, or the hosted stage service with a key.
+sidebar:
+  order: 8
+---
+
+import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
+import server from "../../../../snippets/embedded/server.ts?raw";
+import { SERVICE_URL } from "../../../site.mjs";
+
+memento is one Fastify plugin, `mementoPlugin` from `@memento/server`. Where it runs is up to
+you: inside an application you already have, as its own container, or not at all on your side —
+on the stage service, with a key.
+
+| | you run | you get |
+| --- | --- | --- |
+| **Embedded** | your Node app, your PostgreSQL | memento's routes under a prefix of your app, its `memento_*` tables in your database |
+| **Standalone** | the image, PostgreSQL, optionally Redis | the server, the CLI, the examples site and the service site |
+| **Hosted** | nothing | a tenant on the stage service and keys for it |
+
+## Embedded
+
+`app.register(mementoPlugin, { prefix: "/memento", db, … })` in your own Fastify app. The plugin
+is encapsulated: its error handler and its authentication hooks apply to its own routes only,
+and your routes stay yours. Every table it creates is named `memento_*`, so it can share your
+application's database; `runMigrations(db)` applies its migrations.
+
+<Code code={server} lang="ts" title="server.ts" />
+
+The options of `mementoPlugin`:
+
+| option | |
+| --- | --- |
+| `db` | the database, from `connect(url)` — the only required one |
+| `publisher` | where stored events are published: a `RedisPublisher` with several processes, a `LocalBus` with one |
+| `stream` | `{ feed }` enables `/ws` (`heartbeatIntervalMs`, `maxBufferedMessages` optional); without it there is no stream and `/describe` says `realtime: false` |
+| `udc` | the UDC collections: memento's own by default (`events`, `cpu_load`, `activity`), your own `CollectionRegistry`, or `false` for none |
+| `menu` | a menu YAML served as the `menu` collection |
+| `lookups`, `defaultLocale`, `renderer` | the vocabulary, the locale when a request names none (`en`), the template renderer |
+| `demoApiKey` | a read-only key `GET /api/demo` hands out; anything but exactly `read` fails startup |
+| `accounts` | self-service accounts (`serviceUrl`, mailer, limits); off by default |
+
+If the host app already registered `@fastify/websocket` it is reused; register it before the
+memento plugin. [Embedded in Node](/get-started/embedded/) walks through it, with a stream
+client on the other end.
+
+## Standalone
+
+One Docker image, `ghcr.io/digital-cube/jsmemento`, multi-arch (amd64, arm64), Node 24, running as
+the unprivileged `node` user. Its entrypoint applies pending migrations, loads the lookups and
+listens on port 3000; `SIGTERM` closes the WebSocket clients, Redis and the pool, then exits.
+The image also carries:
+
+- `/usr/local/bin/memento`, the [CLI](/reference/cli/), with the same `DATABASE_URL` and
+  `REDIS_URL` as the server;
+- `memento-healthcheck`, the image's `HEALTHCHECK` (`GET /memento/api/health`);
+- `/app/config/lookups.yaml` and the translations, `/app/config/menu.yaml`, and the built examples
+  site (`/app/ui`) and service site (`/app/ui-service`);
+- `/data`, a volume for the lookup candidates.
+
+The repository's `docker-compose.yaml` is the production-like stack:
+
+| service | |
+| --- | --- |
+| `memento` | the server and the examples site, port 3000 |
+| `postgres` | PostgreSQL 18, published on `127.0.0.1` only |
+| `redis` | Redis 7, the same |
+| `service` | the service site, a second container of the same image, port 8201 |
+| `cpu-monitor`, `simulator`, `retention` | profile `demo`, off by default: the two pushers the examples site shows, and `memento retention` once a day |
+
+The server is configured by environment variables only ([Environment](/reference/environment/)).
+[Run it with Docker](/get-started/docker/) goes from a clone to the first event.
+
+### One process or many
+
+Without `REDIS_URL` one process stores events and streams them to its own clients from memory.
+With Redis, run any number of processes against the same PostgreSQL and Redis: each publishes
+what it stores, and a client connected to one sees events pushed to another
+([Streaming](/concepts/streaming/#across-processes)). Each process applies pending migrations
+when it starts, so roll out one process first.
+
+## Hosted
+
+The stage service runs memento for anyone with a key: <a href={`${SERVICE_URL}/register`}>register</a>,
+verify the address, create a key on the <a href={`${SERVICE_URL}/keys`}>Keys</a> page, and push
+to `https://service.stage.memento-service.org/memento`. The account comes with its own tenant;
+the key is held to a daily limit (100 000 events by default) and its usage is metered
+([Tenants and API keys](/concepts/tenants-and-keys/)).
+
+Nothing in a program changes between the three: the [client programs](/clients/) read
+`MEMENTO_URL` and `MEMENTO_API_KEY`, and point at the stage service, a container or an embedded
+server alike.
+
+<LinkCard
+  title="Your first event with a client"
+  href="/get-started/client/"
+  description="A key from the service site and one of eight client programs."
+/>
+
+<Aside>
+The website you are reading is not part of the image: it is static files, built from
+`apps/website` and served on their own.
+</Aside>
+
+## Next
+
+- Every variable of the server and the image: [Environment](/reference/environment/).
+- Reverse proxy, scaling, backups:
+  [docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md).

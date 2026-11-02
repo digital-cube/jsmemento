@@ -51,13 +51,27 @@ export default defineConfig({
         { label: "Get started", items: [{ autogenerate: { directory: "get-started" } }] },
         { label: "Concepts", items: [{ autogenerate: { directory: "concepts" } }] },
         {
+          // Written by scripts/gen-reference.mjs from docs/ (pnpm run gen; REFERENCE in
+          // scripts/repo-markdown.mjs has the same order).
           label: "Reference",
           collapsed: true,
-          items: [{ autogenerate: { directory: "reference" } }],
+          items: [
+            "reference",
+            "reference/api",
+            "reference/filter-dsl",
+            "reference/streaming",
+            "reference/chats",
+            "reference/cli",
+            "reference/environment",
+          ],
         },
         { label: "Examples", items: [{ autogenerate: { directory: "examples" } }] },
         { label: "Clients", items: [{ autogenerate: { directory: "clients" } }] },
-        { label: "Packages", items: [{ autogenerate: { directory: "packages" } }] },
+        {
+          label: "Packages",
+          // changelog: written by scripts/gen-changelog.mjs from CHANGELOG.md.
+          items: ["packages", "packages/changelog"],
+        },
       ],
       /* `/#the-api`, `/#start`: the home page's sections are components, whose heading ids the
          validator does not see (src/components/home/). */

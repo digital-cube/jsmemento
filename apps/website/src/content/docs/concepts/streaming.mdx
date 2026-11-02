@@ -1,0 +1,109 @@
+---
+title: Streaming
+description: Every event memento stores is pushed, as it is stored, to the WebSocket clients of its tenant whose filter it matches — across any number of server processes.
+sidebar:
+  order: 4
+---
+
+import { Aside, Code } from "@astrojs/starlight/components";
+import tail from "../../../../snippets/embedded/tail.ts?raw";
+import wsOut from "../../../../snippets/wire/ws.out.txt?raw";
+
+`GET /memento/ws` is a WebSocket. A client connects with a filter and receives every event of
+its tenant that matches, at the moment it is stored. The stream is live only: it carries what
+is stored after the client was welcomed. History is the job of `GET /memento/events`.
+
+```txt
+POST /memento/events ─┐                                        ┌─▶ client ?event_type=USER_LOGIN
+POST /memento/chats/… ┤ store ─▶ publish ─▶ feed ─▶ StreamHub ─┼─▶ client ?instance_type=chat&instance_id=chat-123
+                      │  (PG)    Redis: memento:events:<tenant> └─▶ client (no filter: everything)
+```
+
+## Connecting
+
+- **The key as a subprotocol.** A browser cannot set headers on a WebSocket, so the key goes in
+  the subprotocol list as `bearer.<key>`, next to `memento.v1`. The server selects `memento.v1`,
+  so the key is not echoed back in the handshake. Other clients may send
+  `Authorization: Bearer` or `X-Api-Key` instead. The key needs `read`.
+- **Refusals happen before the upgrade**, as ordinary HTTP answers with the error envelope:
+  `401` for the key, `403` without `read`, `422` for an invalid filter. A plain `GET` without
+  `Upgrade` is a `400`.
+- **The tenant is the key's.** Nothing in the URL changes it, and the hub offers an event only
+  to connections of the tenant it was published for.
+
+## Filters
+
+All optional, all exact, all ANDed; they are fixed for the life of a connection — reconnect to
+change them.
+
+| parameter | example | |
+| --- | --- | --- |
+| `event_type` | `?event_type=USER_LOGIN` | one type |
+| `instance_type` | `?instance_type=chat` | one kind of object |
+| `instance_id` | `?instance_type=chat&instance_id=chat-123` | one object |
+| `actor_id` | `?actor_id=igor` | what one actor did |
+| `locale` | `?locale=sr` | not a filter: re-render `rendered` in this locale |
+
+Without `locale` an event arrives with the text it was stored with.
+
+## Messages
+
+The server sends JSON text frames. The first is `memento.welcome`: from then on every matching
+event is delivered as `memento.event.new`, whose `payload` is the event exactly as
+`POST /memento/events` returned it. These two frames were recorded on the stage service for
+`user/42`, around the push of [Events and instances](/concepts/events/):
+
+<Code code={wsOut} lang="json" title="GET /memento/ws?instance_type=user&instance_id=42" />
+
+Events reach a client in the order the hub received them. A client may send
+`{"kind":"memento.ping"}` and gets `memento.pong` (for clients that cannot see WebSocket ping
+frames); any other client message is answered with `memento.error`, and the connection stays
+open.
+
+## Heartbeat and slow consumers
+
+| | |
+| --- | --- |
+| heartbeat | every 30 s (`MEMENTO_WS_HEARTBEAT_MS`) the server sends a WebSocket ping; a client that did not answer the previous one is terminated. Browsers and `ws` answer by themselves. |
+| slow consumer | the messages not yet written to a client's socket are counted. At 1000 (`MEMENTO_WS_MAX_BUFFERED`) the connection is closed with **4008 `slow consumer`**; other clients are not affected. |
+| shutdown | every connection is closed with **1001 `server shutting down`** |
+| feed down | when the tenant's channel cannot be subscribed, the connection is closed with **1011** |
+
+After any close, reconnect with a backoff and fetch what was missed with
+`GET /memento/events?order=asc&…` from the last `occurred_at` seen.
+
+## Across processes
+
+- **With `REDIS_URL`**, every server process publishes each stored event on
+  `memento:events:<tenant_slug>` (`REDIS_CHANNEL_PREFIX`), and subscribes, on one dedicated
+  connection, to the channels of the tenants it has clients for. An event stored by any
+  process reaches the clients of every process — the end-to-end suite checks exactly that with
+  two servers.
+- **Without `REDIS_URL`**, a `LocalBus` is both publisher and feed: one process streams its own
+  events in memory.
+
+Publishing is best effort. The event is durable before it is published; a Redis failure is
+logged as a warning and does not fail the push.
+
+## `MementoStream`
+
+The browser, `@memento/react` and `memento tail` share one client from `@memento/core`. It puts
+the key in the subprotocol, waits for the welcome, reports its status (`connecting`, `live`,
+`offline`, `closed`) and reconnects with exponential backoff, 0.5 s up to 15 s, reset after each
+welcome. In Node:
+
+<Code code={tail} lang="ts" title="tail.ts" />
+
+The [Live tail](/examples/tail/) example shows every frame of the stream as it arrives; the
+other examples use it only as a signal to read their UDC collections again.
+
+<Aside>
+An embedded server streams only when the plugin is given `stream: { feed }`; without it there
+is no `/ws` route and `/describe` reports `realtime: false` ([Deployment modes](/concepts/deployment-modes/)).
+</Aside>
+
+## Next
+
+- The protocol, frame by frame: [Streaming reference](/reference/streaming/).
+- Behind nginx: forward `Upgrade` / `Connection` and keep the read timeout above the heartbeat
+  ([docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md#behind-a-reverse-proxy)).

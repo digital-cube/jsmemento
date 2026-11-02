@@ -1,0 +1,62 @@
+---
+title: Activity feed
+description: The tenant's events as people read them — the sentences memento rendered, newest first, in the header's language, live.
+sidebar:
+  order: 2
+---
+
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+
+The tenant's events as people read them. `memento simulate` plays a small team working a ticket
+desk, memento renders every event with its Handlebars template, and the page lists the
+sentences, newest first, live.
+
+<ExampleShot
+  name="activity"
+  alt="A feed of rendered sentences: notes, ticket changes and chat messages with avatars"
+/>
+
+```txt
+memento simulate ──POST /events──▶ memento ──POST /udc/list {collection: events}──▶ feed
+  (a ticket desk, 1 event/3 s)      renders  ◀── X-Memento-Locale: en | sr ────────  (EN / SR)
+                                             ──ws /memento/ws─────────────────────▶ refetch
+```
+
+## What it reads
+
+The `events` UDC collection, every event of the tenant except the CPU monitor's samples:
+
+- filter `{field: "event_type", op: "neq", value: "CPU_LOAD"}`;
+- sort `occurred_at desc`;
+- infinite paging by offset, 30 rows a page: the next page loads when the end of the list
+  scrolls into view, or on **Older events**.
+
+The rows come through `useUdcCollection` of `@jsudc/react`. Each line has the time, the actor's
+initials avatar (`initials` and `hue` of `@memento/react`) and id, the **rendered** text, the
+instance as a chip (`ticket/T-17`) that opens its [timeline](/examples/entity/), and the event
+type as a muted tag.
+
+## The language is the header's
+
+The app's `UdcClient` sends `X-Memento-Locale: en` or `sr` with every request, and memento
+renders `rendered` in that locale; stored rows are never changed, the response is. Switching
+EN / SR invalidates every UDC list, so the feed comes back in the other language without a
+reload. The choice is kept in `localStorage` (`udc-locale`). Which template a sentence comes
+from: [Rendering and translations](/concepts/rendering/).
+
+## Live
+
+`useLive` (from `@memento/ui-shell`) follows the whole stream; every event that is not a
+`CPU_LOAD` refetches the feed, at most once per 250 ms. New lines fade in.
+
+With no simulator running the feed is empty: the page says what pushes these events and gives
+the compose command, `docker compose -f docker-compose.yaml --profile demo up -d simulator`.
+
+The page: [`apps/examples/src/examples/activity/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/activity).
+
+<LiveExample
+  path="/examples/activity"
+  title="See it live: the activity feed"
+  description="The simulated ticket desk, one sentence per event, in English or Serbian."
+/>

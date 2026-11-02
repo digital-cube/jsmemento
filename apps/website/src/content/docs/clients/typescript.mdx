@@ -1,0 +1,43 @@
+---
+title: TypeScript
+description: 'The TypeScript client program: push a USER_LOGIN, read the last ten events of your user and follow the live stream, with the same fetch and WebSocket as the JavaScript program, typed, with tsx as its only dependency.'
+sidebar:
+  order: 2
+---
+
+import ClientReadme from "../../../components/ClientReadme.astro";
+import ClientSource from "../../../components/ClientSource.astro";
+import { SERVICE_URL } from "../../../site.mjs";
+
+<ClientReadme file="clients/typescript/README.md" />
+
+It talks to memento with the same `fetch` and `WebSocket` as the JavaScript program, typed, with `tsx` as its only dependency. What it prints, and what every one of the eight
+does, is on the [Clients overview](/clients/#what-each-program-does). Everything below is
+[`clients/typescript/`](https://github.com/digital-cube/jsmemento/tree/main/clients/typescript) as the
+repository has it, read when this site was built.
+
+## Install
+
+<ClientReadme file="clients/typescript/README.md" section="Install" />
+
+## Set the two variables
+
+<ClientReadme file="clients/typescript/README.md" section="Set the two variables" />
+
+A key with the **read** and **write** scopes: create one under <a href={`${SERVICE_URL}/keys`}>Keys</a> on
+the service site. It is shown once.
+
+## Run
+
+<ClientReadme file="clients/typescript/README.md" section="Run" />
+
+## The program
+
+<ClientSource lang="typescript" />
+
+## Download
+
+<a href={`${SERVICE_URL}/clients/typescript.zip`}><code>typescript.zip</code></a> is this directory as the
+service site builds it — the same files, without dependencies or build output — with its
+README. Its <a href={`${SERVICE_URL}/clients/typescript`}>Clients page</a> has the two environment
+lines with a Copy button.

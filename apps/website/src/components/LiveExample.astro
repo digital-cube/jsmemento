@@ -1,0 +1,23 @@
+---
+/*
+ * The "see it live" card an Examples page ends with: a link into the examples site
+ * (EXAMPLE_URL) or the service site (SERVICE_URL), both from src/site.mjs, so a stage and a
+ * production build each point at their own instances.
+ */
+import { LinkCard } from "@astrojs/starlight/components";
+import { EXAMPLE_URL, SERVICE_URL } from "../site.mjs";
+
+interface Props {
+  /** A route of that site: `/examples/cpu-monitor`, `/udc/events`, `/clients`. */
+  path: string;
+  title: string;
+  description: string;
+  /** Which site: the examples site (default) or the service site. */
+  base?: "example" | "service";
+}
+
+const { path, title, description, base = "example" } = Astro.props;
+const origin = base === "service" ? SERVICE_URL : EXAMPLE_URL;
+---
+
+<LinkCard title={title} href={`${origin}${path}`} description={description} />

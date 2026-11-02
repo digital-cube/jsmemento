@@ -1,0 +1,72 @@
+---
+title: Entity timeline
+description: What happened to one object — pick ticket/T-3 and read its create, modify, note and close story, newest on top, live.
+sidebar:
+  order: 3
+---
+
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+
+memento's central question — *what happened to this object?* — for one instance. Pick
+`ticket/T-3` and read its story: created, modified, noted, closed, newest on top, live. Every
+event is tied to an instance (`instance_type` and `instance_id`); this page is that idea on
+screen ([Events and instances](/concepts/events/)).
+
+<ExampleShot
+  name="entity"
+  alt="The timeline of one ticket: its notes, modifications, creation and closing, newest on top"
+/>
+
+```txt
+/examples/entity                      picker: the tenant's instance types, the latest instances
+        │ click / type an id                    of the chosen one, with their event counts
+        ▼
+/examples/entity/ticket/T-3  ──POST /udc/list {collection: events,──▶ memento
+                                filter: instance_type = ticket AND instance_id = T-3}
+                             ◀──ws /memento/ws?instance_type=ticket&instance_id=T-3── refetch
+```
+
+## The timeline
+
+`/examples/entity/:instance_type/:instance_id` shows the same events as
+`GET /memento/entities/:instance_type/:instance_id/events`, read through UDC like every list of
+the site: the `events` collection with an exact `and` of `instance_type eq` and
+`instance_id eq`, sorted `occurred_at desc`, 50 rows a page with **Older events**. The rows come
+through `useUdcCollection` of `@jsudc/react`; there is no new endpoint and no hand-written
+fetch.
+
+Each entry has the date and time, the actor's avatar, the event type as a tag and the text
+memento rendered in the header's language (EN / SR, as in the [feed](/examples/activity/)).
+On top, a summary: first seen, last seen, the event count (the list's `total`) and the distinct
+actors. While older pages are not loaded, the first event comes from its own one-row ascending
+list.
+
+Every actor of an entry is an instance too, `user/<actor>`, and links to its own timeline. The
+routes are react-router's, so the browser's back button walks the way back.
+
+## The picker
+
+`/examples/entity` lists the tenant's instance types, which are not a fixed list. UDC has no
+`distinct`, so the page walks them with one-row lists (`instance_type gt <previous>`, sorted
+ascending): exact, and a handful of requests for the few types a tenant has, at most 50. It
+opens on `ticket` when there is one, and `?type=` keeps the choice.
+
+For the chosen type, the latest 200 events give the 12 most recently active ids, each with its
+last activity and its event count — the exact `total` of a one-row list of its events. **Or
+type one**: any type and id by hand.
+
+## Live
+
+`useLive` (from `@memento/ui-shell`) subscribes to the stream filtered by the open instance,
+`/memento/ws?instance_type=ticket&instance_id=T-3`; every event refetches the timeline, at most
+once per 250 ms. New entries fade in. An instance with no events says so and links back to the
+picker on its type.
+
+The page: [`apps/examples/src/examples/entity/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/entity).
+
+<LiveExample
+  path="/examples/entity"
+  title="See it live: the entity timeline"
+  description="Pick a ticket of the simulated desk, or a user, and read its story."
+/>

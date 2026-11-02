@@ -1,12 +1,15 @@
-# `memento` CLI (Phase 5)
+# The `memento` CLI
+
+`memento` is the command line of the repository and of the image: migrations, tenants, API keys,
+users, templates, chats, lookups, retention, a live tail and the two demo pushers.
 
 ```bash
 pnpm memento --help                 # every command, examples, environment
 pnpm memento <command> --help       # options and examples of one command
 ```
 
-The admin commands talk to PostgreSQL directly (`DATABASE_URL`). `tail` and `cpu-monitor`
-talk to a running server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
+The admin commands talk to PostgreSQL directly (`DATABASE_URL`). `tail`, `cpu-monitor` and
+`simulate` talk to a running server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
 machine-readable output.
 
 | command | |
@@ -25,6 +28,8 @@ machine-readable output.
 | `create-chat` / `send-message` | chats ([CHATS.md](CHATS.md)) |
 | `tail` | print new events as they are stored, like `tail -f` |
 | `cpu-monitor` | push this machine's CPU load averages as `CPU_LOAD` events, every `--interval` seconds |
+| `simulate` | play a ticket desk: a small team's logins, tickets, notes and chat, one event every `--interval` seconds |
+| `retention` | archive each tenant's events older than its `retention_days` ([Retention](#retention)) |
 | `lookups validate` / `codegen` / `candidates` | the vocabulary in `lookups.yaml` |
 
 ## In a terminal
@@ -106,6 +111,30 @@ memento --json cpu-monitor | jq .payload                    # one stored event p
   and the next sample is tried; `● reconnected after N failed push(es)` when it gets through.
   A refused push (bad key, missing scope, invalid event: any 4xx) stops with exit code 1.
   Ctrl+C stops and prints `cpu-monitor stopped: N pushed, M failed`.
+
+## `memento simulate`
+
+```bash
+memento simulate --interval 1 --tenant demo --key mk_…    # one event a second
+memento simulate --seed 42 --count 20                     # the same twenty events every time
+memento simulate --once --json                            # push one scene, print the stored event
+memento simulate --no-chat                                # only the ticket desk, no chat room
+```
+
+- A cast (igor, marko, ana, jelena, nikola, mila and `desk-bot`) logs in and out, creates,
+  modifies, notes and closes tickets (`ticket/T-<n>`); newcomers appear now and then
+  (`USER_CREATED`) and the bot closes tickets nobody touched. Payloads carry the fields the
+  bundled templates read, so every event renders as a sentence. It feeds the Activity feed,
+  Entity timeline and Activity chart of [`apps/examples`](../apps/examples).
+- The team also talks in one room, `chat-demo-room` ("Demo room", created with igor, marko, ana
+  and jelena when it is missing): short lines about the tickets in English or Serbian, read
+  markers (`CHAT_MESSAGE_SEEN`), now and then a new member. `--no-chat` leaves the room alone.
+- **Options:** `--interval` (default 3, fractions allowed), `--seed` (the same seed plays the
+  same story), `--count` (stop after N events), `--once` (= `--count 1`), `--locale` (of the
+  stored `rendered`). **Key** and **server** as for `cpu-monitor`: `--key` / `MEMENTO_API_KEY`
+  (scope `write`), `--tenant`, `--url` / `MEMENTO_URL`.
+- **Errors** as for `cpu-monitor`: network and server errors are logged and the same scene
+  retried; a refused key stops it with exit code 1.
 
 ## Users
 

@@ -6,11 +6,51 @@ sidebar:
   label: Overview
 ---
 
-This section will explain the ideas memento is built on: an event tied to an instance
-(`user/42`, `ticket/T-777`), the ledger that never rewrites what it recorded, the tenant every
-key and event belongs to, the templates that turn an event into a sentence per language, the
-live stream, and the UDC collections the sites read.
+import { LinkCard } from "@astrojs/starlight/components";
 
-Until these pages are written, the
-[philosophy note](https://github.com/digital-cube/jsmemento/blob/main/docs/PHILOSOPHY.md) in the
-repository is the closest thing to them.
+memento keeps a ledger of what happened in your applications. An event is tied to an instance
+(`user/42`, `ticket/T-777`) and to the tenant whose key pushed it; it is never rewritten, turned
+into a sentence in the reader's language, streamed as it is stored, and read back through
+collections a UI can filter, sort and page. These pages explain each idea once; the
+[Reference](/reference/) has every route and option.
+
+<LinkCard
+  title="Events and instances"
+  href="/concepts/events/"
+  description="What an event is, the instance it happens to, and the ledger that never deletes or edits one."
+/>
+<LinkCard
+  title="Tenants and API keys"
+  href="/concepts/tenants-and-keys/"
+  description="Isolation by key, scopes, keys shown once, pausing and deleting, daily limits and the usage meter."
+/>
+<LinkCard
+  title="Rendering and translations"
+  href="/concepts/rendering/"
+  description="Handlebars templates per tenant and locale, the locale chain, and the lookup vocabulary."
+/>
+<LinkCard
+  title="Streaming"
+  href="/concepts/streaming/"
+  description="The /memento/ws WebSocket: filters, frames, heartbeat, slow consumers and Redis fan-out."
+/>
+<LinkCard
+  title="Chats as events"
+  href="/concepts/chats/"
+  description="A chat is an instance and its messages, read markers and joins are events."
+/>
+<LinkCard
+  title="UDC collections"
+  href="/concepts/udc/"
+  description="The list side in the UDC protocol: which collections memento serves and how a UI reads them."
+/>
+<LinkCard
+  title="Accounts, the service site and retention"
+  href="/concepts/accounts/"
+  description="Self-service users and tenants, the session cookie, the service site, archiving old events."
+/>
+<LinkCard
+  title="Deployment modes"
+  href="/concepts/deployment-modes/"
+  description="Embedded in your Fastify app, the standalone container, or the hosted stage service."
+/>

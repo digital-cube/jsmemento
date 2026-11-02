@@ -1,0 +1,107 @@
+---
+title: Accounts, the service site and retention
+description: Self-service users with a tenant each, the session cookie that never mixes with API keys, the service site built on them, and how old events are archived.
+sidebar:
+  order: 7
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { SERVICE_URL } from "../../../site.mjs";
+
+A memento with `MEMENTO_ACCOUNTS=true` lets anyone register: the person gets a **tenant** of
+their own and is its first **user**, its `owner`. That is what the
+<a href={SERVICE_URL}>service site</a> runs on. With accounts off — the default, and the examples
+instance — none of the routes below exist (they answer 404) and no request is ever authenticated
+by a cookie.
+
+## Registering
+
+`POST /memento/auth/register` with an email, a password (at least 10 characters), a name and
+`terms: true` creates, in one transaction, the user (email trimmed and lower-cased, password
+hashed with argon2id), the tenant (slug `t-` and 8 random base32 characters, named after the
+user), the `owner` membership, a verification token and the session. A verification mail goes
+out in the user's locale (`en` or `sr`).
+
+- **Mail tokens** are 32 random bytes, stored as SHA-256, single use: verify 24 h, password
+  reset 1 h. The links point at `MEMENTO_SERVICE_URL`.
+- **Mails** go through Brevo (`MEMENTO_BREVO_API_KEY`, `MEMENTO_MAIL_FROM`, a sender Brevo has
+  verified). Without the key every mail is logged with its full text, links included — fine for
+  development, not for a public instance. A failed delivery never fails the request.
+- **Rate limits:** register, login, forgot, resend and reset allow 10 requests per client IP per
+  15 minutes each, login also 10 per email; past that, `429 rate_limited`. The counters live in
+  Redis when there is one, so every process shares them.
+- Until the address is verified, the service site creates no keys.
+
+## The session
+
+The credential is the cookie `memento_session`: 32 random bytes, of which the server stores only
+the SHA-256. It is `HttpOnly`, `SameSite=Lax`, `Secure` over https, and **sliding**: a session
+seen more than 60 s ago is extended to `MEMENTO_SESSION_DAYS` (30) from now. Resetting the
+password, or an administrator disabling the user, deletes every session of theirs.
+
+- **Credentials never cross.** A route that takes an API key ignores the cookie; a route that
+  takes the session ignores `Authorization` and `X-Api-Key`. A browser that is signed in to the
+  service site therefore cannot push or read events with its cookie.
+- **CSRF:** every mutating cookie route needs `Content-Type: application/json`, which an HTML
+  form cannot send; otherwise `415 unsupported_media_type`.
+- Inside, a session request runs in the session's tenant like a key would, so the services and
+  their tenant checks are the same ([Tenants and API keys](/concepts/tenants-and-keys/)).
+
+## The service site
+
+<a href={SERVICE_URL}>`service.stage.memento-service.org`</a> is `apps/service`. People
+register, verify their address and create API keys, each shown **once**; they watch per key what
+it writes — activity per minute, the events, hourly usage — and pause, resume, re-limit and
+delete keys. A public `/clients` page offers the [eight client programs](/clients/) as zips.
+Administrators also see every user and every key.
+
+It is a **second container of the same image** (`service` in `docker-compose.yaml`), next to the
+one that serves the examples site:
+
+| | `memento` | `service` |
+| --- | --- | --- |
+| UI | the examples site | the service site |
+| menu | `menu.yaml` | `menu-service.yaml` |
+| accounts | off unless `ACCOUNTS` is set | always on, behind a proxy |
+| demo key | `DEMO_API_KEY` | none |
+
+Both share the database, Redis and the lookups, so a key created on the service site pushes
+events to either. The site reads everything through UDC with the cookie — `api_keys`,
+`api_key_events`, `api_key_history`, `api_key_activity`, `api_key_usage`, `admin_users`,
+`admin_api_keys` and its `menu` ([UDC collections](/concepts/udc/)) — and writes to `/auth/*`,
+`/keys*` and `/admin/*`. It has no live stream: `/memento/ws` takes an API key and the site has
+only the cookie, so a key's page reads its collections again every 10 s. The
+[service site](/examples/service-site/) page walks through it screen by screen.
+
+## Users and administrators
+
+Users are managed with the CLI, against the database: `memento list-users`, `make-admin` /
+`revoke-admin`, `disable-user` / `enable-user` (a disabled user cannot sign in, and every
+session is deleted), `verify-user` (for smoke tests). An administrator gets *Administration* in
+the site's sidebar; the `/admin/*` routes answer `403` to anybody else.
+
+## Retention
+
+Events are never deleted, but they can be **archived**: `archived_at` set once, the one change
+the immutability trigger allows ([Events and instances](/concepts/events/#the-ledger)). An
+archived event disappears from every list, query, UDC collection and the stream at once.
+
+`memento retention` archives, for each tenant with `retention_days`, the live events that
+happened before `now − retention_days`, in batches of 10 000. A tenant whose `retention_days` is
+NULL — every tenant, until it is set — keeps everything. `--tenant` limits it to one,
+`--dry-run` only counts.
+
+The `retention` service of `docker-compose.yaml` (profile `demo`) runs it once a day; while no
+tenant has `retention_days` it does nothing.
+
+<Aside>
+Daily limits and the usage meter belong to accounts too: with accounts on, every key is held to
+its events per UTC day, and without accounts there are no limits and no metering
+([Daily limits](/concepts/tenants-and-keys/#daily-limits)).
+</Aside>
+
+## Next
+
+- The routes, bodies and answers: [HTTP API › Accounts](/reference/api/#accounts-memento_accountstrue).
+- The variables: [Environment](/reference/environment/). The CLI commands:
+  [CLI › Users](/reference/cli/#users) and [Retention](/reference/cli/#retention).

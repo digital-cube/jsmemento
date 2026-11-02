@@ -1,0 +1,121 @@
+---
+title: Tenants and API keys
+description: Every event belongs to one tenant, every request names it with an API key, and a key carries scopes, a daily limit and a usage meter.
+sidebar:
+  order: 2
+---
+
+import { Aside, Code } from "@astrojs/starlight/components";
+import errorOut from "../../../../snippets/wire/error.out.json?raw";
+import { SERVICE_URL } from "../../../site.mjs";
+
+One memento holds the events of many **tenants** — companies, applications, the accounts of
+the service site — and none of them sees another's. What decides the tenant of a request is
+its **API key**, and nothing else.
+
+## Tenants
+
+A tenant is a row of `memento_tenant`: a `slug` (`acme`, lowercase words joined by dashes,
+2–63 characters), a display name and `is_active`. The keys of an inactive tenant fail
+authentication. A tenant comes from the CLI (`memento create-tenant acme --name "Acme Inc"`) or
+is made for each person who registers on the service site (slug `t-` and eight random
+characters, see [Accounts](/concepts/accounts/)).
+
+Isolation is enforced in the service layer, not in each route:
+
+- the key is resolved before the handler runs, and the request carries its tenant in an
+  `AsyncLocalStorage` context;
+- every service reads the tenant from that context (`requireTenant()`), never from the body or
+  the query string, and every query has `WHERE tenant_id = <the context's tenant>`;
+- a service called outside a tenant context throws `unauthorized`, so a new route cannot run
+  unscoped by accident.
+
+The same holds for the stream: each tenant's events travel on their own Redis channel, and a
+WebSocket client only receives its own tenant's ([Streaming](/concepts/streaming/)).
+
+## API keys
+
+A key is sent as `Authorization: Bearer mk_…` or `X-Api-Key: mk_…` (on the WebSocket, as the
+subprotocol `bearer.mk_…`). Its format is `mk_<8 × [a-z0-9]>_<32 × [A-Za-z0-9]>`: the eight
+characters after `mk_` are the **prefix**, stored in clear to find the row; the rest is about
+190 bits of secret.
+
+- **Shown once.** memento stores only the SHA-256 of the full key and compares it in constant
+  time. The plaintext exists in the one response (or CLI output) that created it.
+- **One message for every failure.** A missing, unknown, revoked, expired, paused or deleted
+  key, or one of an inactive tenant, is `401 unauthorized` with the same message; a key without
+  the route's scope is `403 forbidden`.
+- `last_used_at` is updated on every authenticated request.
+
+| scope | allows |
+| --- | --- |
+| `read` | list and query events, entity history, `/describe`, read chats, the stream, UDC reads |
+| `write` | push events, create chats and send messages |
+| `admin` | everything; reads chats without naming a participant |
+
+`admin` implies the other two. A person on the service site can give a key `read` and `write`
+only; `admin` keys come from the CLI.
+
+## Where keys come from
+
+- **The CLI**, against the database: `memento create-key --tenant acme --scopes read,write --name backend`
+  (optionally `--expires-in-days N`) prints the key once; `memento revoke-key <prefix>` revokes
+  it for good. The CLI writes no events about its keys.
+- **The service site**, for a signed-in user: <a href={`${SERVICE_URL}/keys`}>Keys</a> creates
+  one with a name, scopes, an optional expiry and an optional daily limit, and shows it once
+  with the two lines a program reads (`MEMENTO_URL`, `MEMENTO_API_KEY`). The same page
+  **pauses** a key (it fails authentication like a revoked one), **resumes** it, changes its
+  name and limit, and **deletes** it — a soft delete: the row stays because events point at it,
+  but the key is hidden from every list and never authenticates again.
+
+A tenant may hold `max_keys` live keys (not deleted, not revoked), else
+`MEMENTO_DEFAULT_MAX_KEYS` (10); one more is `409 limit_reached`. Every change made on the
+site is itself an event in the key's tenant — `APIKEY_CREATED`, `APIKEY_DISABLED`,
+`APIKEY_ENABLED`, `APIKEY_DELETED`, `APIKEY_LIMIT_CHANGED` on the instance `api_key/<prefix>`,
+with the user's email as the actor.
+
+Every event stored with a key records it in `api_key_id`. The UDC `events` collection shows it
+as `api_key`, the prefix, which is what a person recognizes and can filter on.
+
+## Daily limits
+
+With accounts on, every key — CLI keys included — may store a number of events per UTC day:
+its own `daily_limit`, else `MEMENTO_DEFAULT_DAILY_LIMIT` (100 000). Every route that stores an
+event with a key checks it first.
+
+- At **80 %** the event is stored and, the first time that day, the key's creator (or the
+  tenant's owner) gets a `quota_warning` mail.
+- Past **100 %** nothing is stored: the push answers `429 quota_exceeded` with
+  `{limit, used, resets_at}` until midnight UTC, and the first refusal of the day sends one more
+  mail.
+
+A producer pushing one event a second writes 86 400 a day, so heavier ones need a higher limit
+(`MEMENTO_MAX_DAILY_LIMIT` caps what a user may set). Today's count lives in Redis
+(`memento:quota:<key>:<day>`), shared by every process; without Redis it is summed from the
+usage table. Without accounts there are no limits and no metering.
+
+An error looks the same for every route, a `422` here:
+
+<Code code={errorOut} lang="json" title="the error envelope" />
+
+## The usage meter
+
+Per key and per UTC hour the server counts `requests` and `bytes_in` (every API-key request),
+`events_written`, `rows_read` (rows returned by the event lists, the Filter DSL query and UDC
+`list`) and `stream_seconds` (open `/ws` connections). It keeps them in memory and writes them
+to `memento_apikey_usage` every 5 s and on shutdown. Requests made with the session cookie are
+not metered.
+
+The service site draws these counters per key, next to the key's activity per minute and its
+events ([the service site](/examples/service-site/)).
+
+<Aside>
+A key belongs to the deployment, never to the repository: it is a hash in one database, so
+every database needs its own — the examples site's demo key and the pushers' keys included.
+</Aside>
+
+## Next
+
+- The routes, bodies and answers: [HTTP API › Authentication](/reference/api/#authentication)
+  and [Daily limits and usage](/reference/api/#daily-limits-and-usage).
+- Registration, sessions and the service site: [Accounts](/concepts/accounts/).

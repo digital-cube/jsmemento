@@ -1,0 +1,43 @@
+---
+title: Rust
+description: 'The Rust client program: push a USER_LOGIN, read the last ten events of your user and follow the live stream, with ureq, serde_json and tungstenite (with native-tls).'
+sidebar:
+  order: 6
+---
+
+import ClientReadme from "../../../components/ClientReadme.astro";
+import ClientSource from "../../../components/ClientSource.astro";
+import { SERVICE_URL } from "../../../site.mjs";
+
+<ClientReadme file="clients/rust/README.md" />
+
+It talks to memento with `ureq`, `serde_json` and `tungstenite` (with `native-tls`). What it prints, and what every one of the eight
+does, is on the [Clients overview](/clients/#what-each-program-does). Everything below is
+[`clients/rust/`](https://github.com/digital-cube/jsmemento/tree/main/clients/rust) as the
+repository has it, read when this site was built.
+
+## Install
+
+<ClientReadme file="clients/rust/README.md" section="Install" />
+
+## Set the two variables
+
+<ClientReadme file="clients/rust/README.md" section="Set the two variables" />
+
+A key with the **read** and **write** scopes: create one under <a href={`${SERVICE_URL}/keys`}>Keys</a> on
+the service site. It is shown once.
+
+## Run
+
+<ClientReadme file="clients/rust/README.md" section="Run" />
+
+## The program
+
+<ClientSource lang="rust" />
+
+## Download
+
+<a href={`${SERVICE_URL}/clients/rust.zip`}><code>rust.zip</code></a> is this directory as the
+service site builds it — the same files, without dependencies or build output — with its
+README. Its <a href={`${SERVICE_URL}/clients/rust`}>Clients page</a> has the two environment
+lines with a Copy button.

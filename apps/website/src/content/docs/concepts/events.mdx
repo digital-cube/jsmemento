@@ -1,0 +1,108 @@
+---
+title: Events and instances
+description: What an event is — a type, the instance it happened to, who did it, a payload and a time — and why memento never changes one it has stored.
+sidebar:
+  order: 1
+---
+
+import { Aside, Code } from "@astrojs/starlight/components";
+import guard from "../../../../../../packages/server/drizzle/0001_event_immutability.sql?raw";
+import push from "../../../../snippets/wire/push.json?raw";
+import pushOut from "../../../../snippets/wire/push.out.json?raw";
+
+memento records **events**: one thing that happened, to one business object, at one moment.
+An application pushes it once, memento stores it for good and serves it back per object, per
+actor, as a feed or as a live stream.
+
+## One event
+
+This is what a producer sends to `POST /memento/events`:
+
+<Code code={push} lang="json" title="POST /memento/events" />
+
+| field | | rules |
+| --- | --- | --- |
+| `event_type` | what happened | `SCREAMING_SNAKE_CASE`, at most 100 characters: `USER_LOGIN`, `TICKET_CLOSED` |
+| `instance_type` | the kind of object it happened to | lower `snake_case`, at most 64: `user`, `ticket`, `chat` |
+| `instance_id` | which object | a string or an integer, 1–200 characters after trimming, stored as a string |
+| `actor_id` | who did it | optional; a string or an integer, stored as a string |
+| `payload` | anything else | any JSON object, default `{}` |
+| `occurred_at` | when it happened at the producer | optional, ISO-8601 with an offset; default the time memento received it |
+| `rendered` | the sentence, if the producer wrote it | optional; when absent memento renders one ([Rendering](/concepts/rendering/)) |
+
+The input is strict: an unknown field is a `422`. In particular there is no `tenant_id` to
+send — the tenant is the API key's ([Tenants and API keys](/concepts/tenants-and-keys/)).
+
+memento answers with the stored event:
+
+<Code code={pushOut} lang="json" title="201 Created" />
+
+It added the `id` (a UUID), `received_at` (its own clock), the `rendered` sentence and the
+locale it is in, `archived_at` (always `null` on a new event) and `api_key_id`, the key that
+wrote it. `occurred_at` and `received_at` are kept to the millisecond: a JavaScript `Date`
+cannot carry more, and a page cursor that lost precision would skip or repeat rows.
+
+## The instance
+
+Everything that happens is tied to an **instance**: the pair `instance_type` / `instance_id`,
+one concrete object of the application.
+
+| instance | |
+| --- | --- |
+| `user/42` | the user with id 42 |
+| `ticket/T-777` | ticket T-777 |
+| `invoice/INV-2026-001` | one invoice |
+| `chat/chat-acme-sales` | a conversation ([Chats](/concepts/chats/)) |
+
+memento does not know these objects; it only knows the events about them. Its central question
+is *what happened to this object?*, and every way of reading narrows down by instance:
+
+- the history of one object: `GET /memento/entities/ticket/T-777/events`;
+- one kind of object, or a family by prefix: `GET /memento/events?instance_type=chat&instance_id=igor-*`;
+- what one actor did: `?actor_id=igor`; one kind of event everywhere: `?event_type=CHAT_MESSAGE_SENT`;
+- any combination, with time ranges and `and` / `or` / `not`, through the
+  [Filter DSL](/reference/filter-dsl/) of `POST /memento/events/query`.
+
+`payload` is carried, stored as `jsonb` and returned, but it is not a filter field. The
+[Entity timeline](/examples/entity/) example reads one instance's story this way.
+
+## The ledger
+
+memento is an audit trail: what it recorded stays recorded. An event is never edited and
+never deleted.
+
+- **The database enforces it.** Migration `0001_event_immutability.sql` puts the trigger
+  `memento_event_immutable` on `memento_event`. It refuses every `DELETE`, and every `UPDATE`
+  except one: setting `archived_at`, once, from `NULL`.
+- **Archiving is the only removal.** An archived event disappears from every list, query, UDC
+  collection and the stream, but its row stays. `GET /memento/events?include_archived=true`
+  still shows it. [Retention](/concepts/accounts/#retention) archives old events per tenant.
+- **The text is a snapshot.** The sentence memento renders at push is stored with the event.
+  A request in another locale renders a new one for the response only; the row is not updated.
+
+<Code code={guard} lang="sql" title="packages/server/drizzle/0001_event_immutability.sql" />
+
+`TRUNCATE` is not a row operation and is not affected; the test suites use it. For backups this
+means everything durable is in PostgreSQL, and a `pg_dump` holds it all.
+
+<Aside>
+A correction is a new event, not an edit: `TICKET_MODIFIED` after `TICKET_CREATED`, a
+`NOTE` that explains. The history then shows both, in the order they happened.
+</Aside>
+
+## Where events come from
+
+Anything that can make an HTTP request: a backend after a login, a job, the
+[eight client programs](/clients/), the `memento` CLI (`cpu-monitor`, `send-message`), or
+memento itself — the self-service routes write `APIKEY_*` events into the key's tenant. Chat
+messages, read markers and joins are events too ([Chats](/concepts/chats/)).
+
+Event, instance and actor types may be anything that matches the patterns above. The ones the
+deployment knows are listed in `lookups.yaml`; an unknown one is accepted and recorded as a
+candidate unless strict mode is on ([Lookups](/concepts/rendering/#lookups)).
+
+## Next
+
+- The push, list, query and entity routes in full: [HTTP API](/reference/api/).
+- How an event becomes `User igor logged in.` and `Korisnik igor se prijavio.`:
+  [Rendering and translations](/concepts/rendering/).

@@ -5,10 +5,11 @@
   "description": "memento-service.org: the website of memento (Astro + Starlight), static files built by deploy/website/stage.sh; not part of the Docker image.",
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "gen": "node scripts/gen-reference.mjs && node scripts/gen-changelog.mjs",
+    "dev": "pnpm run gen && astro dev",
+    "build": "pnpm run gen && astro build",
     "preview": "astro preview",
-    "typecheck": "astro check && node scripts/check-snippets.mjs",
+    "typecheck": "pnpm run gen && astro check && node scripts/check-snippets.mjs",
     "shots": "node scripts/shots.mjs",
     "capture": "node scripts/capture.mjs",
     "check:snippets": "node scripts/check-snippets.mjs"
@@ -30,6 +31,8 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "fastify": "^5.12.7",
+    "github-slugger": "2.0.0",
+    "marked": "18.1.2",
     "playwright": "1.64.1",
     "react": "^19.3.1",
     "typescript": "^5.9.3"

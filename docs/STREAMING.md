@@ -1,4 +1,4 @@
-# Real-time streaming — `GET /memento/ws` (Phase 4)
+# Real-time streaming — `GET /memento/ws`
 
 Every event memento stores is pushed, as it is stored, to the WebSocket clients of the
 same tenant whose filter it matches. The stream is live only: it carries what is stored
@@ -146,7 +146,7 @@ Reconnect after any close, with backoff; fetch what you missed with
   reports `realtime: false`. If the host app already registered `@fastify/websocket` it is
   reused; register it before the memento plugin.
 
-The channel per tenant is the Phase 1 publishing contract (`memento:events:<tenant_slug>`):
-the stream subscribes to exactly those channels rather than to one shared `memento:events`
-channel, so other subscribers of Phase 1 keep working and a process only receives the
-tenants it has clients for.
+Every tenant has a channel of its own (`memento:events:<tenant_slug>`), and the stream
+subscribes to exactly those channels rather than to one shared `memento:events` channel: a
+process only receives the tenants it has clients for, and anything else that subscribes to a
+tenant's channel gets the same JSON the WebSocket clients get.

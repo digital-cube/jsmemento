@@ -1,0 +1,55 @@
+---
+/*
+ * One screenshot of an example page, in the site's theme: src/assets/examples/<name>-<theme>.webp,
+ * written by `npm run shots` (scripts/shots.mjs). The examples site has no dark theme yet, so
+ * there is no <name>-dark.webp and the light shot stands in for both themes; once the dark file
+ * exists, the dark theme shows it by itself. A missing light shot fails the build.
+ */
+import { Image } from "astro:assets";
+
+interface Props {
+  /** The page's name in menu.yaml's route, `/examples/<name>`. */
+  name: string;
+  alt: string;
+}
+
+const { name, alt } = Astro.props;
+const shots = import.meta.glob<{ default: ImageMetadata }>("../assets/examples/*.webp", {
+  eager: true,
+});
+const shot = (theme: "light" | "dark") => shots[`../assets/examples/${name}-${theme}.webp`]?.default;
+const light = shot("light");
+if (!light) throw new Error(`no screenshot ${name}-light.webp; run npm run shots -- ${name}`);
+const dark = shot("dark");
+const image = { alt, widths: [640, 1280, 1920], sizes: "(min-width: 72rem) 46rem, 100vw", loading: "lazy" as const };
+---
+
+<figure class="example-shot not-content">
+  {
+    dark ? (
+      <>
+        <Image class="light" src={light} {...image} />
+        <Image class="dark" src={dark} {...image} />
+      </>
+    ) : (
+      <Image src={light} {...image} />
+    )
+  }
+</figure>
+
+<style>
+  .example-shot {
+    margin-block: 1.5rem;
+  }
+  .example-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--memento-rule);
+    border-radius: 4px;
+  }
+  :global([data-theme="light"]) .example-shot img.dark,
+  :global(:root:not([data-theme="light"])) .example-shot img.light {
+    display: none;
+  }
+</style>

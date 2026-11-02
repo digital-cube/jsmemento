@@ -1,9 +1,9 @@
-# Chats (Phase 3)
+# Chats
 
 A chat is an ordinary memento instance: `instance_type = "chat"`, `instance_id = "chat-<id>"`.
 Messages, read markers and joins are **events** of that instance, so everything that works
 for events works for chats: filters, the Filter DSL, entity history, rendering, `?locale`,
-Redis publishing (and the Phase 4 stream). The `memento_chat` row only holds metadata.
+Redis publishing and the WebSocket stream. The `memento_chat` row only holds metadata.
 
 | event type | pushed by | payload | en / sr text |
 |---|---|---|---|

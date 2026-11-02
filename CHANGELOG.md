@@ -23,6 +23,14 @@ share one version.
   is repository files imported raw (`apps/website/snippets/`, `clients/`): requests and answers
   recorded by `npm run capture`, screenshots by `npm run shots`, the snippets compiled by
   `check:snippets` in `typecheck`.
+  The rest of the sidebar: **Concepts** (events and instances, tenants and keys, rendering,
+  streaming, chats, UDC collections, accounts and retention, deployment modes), **Reference**
+  generated from `docs/` by `npm run gen` (the HTTP API, the Filter DSL, streaming, chats, the
+  CLI, the environment variables; not in git, each page naming its file and commit),
+  **Examples** (the examples site, one page per example with its screenshot, the service site),
+  **Clients** (`clients/` rendered at build time: the READMEs and the programs' sources, a page
+  per language) and **Packages** (versions from the workspace, the image tags, which ones you
+  install, the changelog generated from this file).
 
 - **The `/clients` page of the service site** (`apps/service`, [docs/CLIENTS.md](docs/CLIENTS.md#the-clients-page-of-the-service-site)):
   public, a tab per language at `/clients/<lang>` (remembered in localStorage), the two
@@ -180,6 +188,11 @@ share one version.
   (default `/memento/api/health`), so it sits under the `/api/` path like other API endpoints
   behind a proxy. The image's `memento-healthcheck` probe follows it; external monitors and
   load-balancer probes have to be pointed at the new path.
+
+- Docs read as the website's Reference pages: the "(Phase N)" suffixes are gone from the titles,
+  `docs/CLI.md` lists `simulate` (with its own section) and `retention`, `docs/TEMPLATES.md` the
+  `CPU_LOAD` and `APIKEY_*` templates, and `docs/ARCHITECTURE.md` the standalone entry
+  `dist/server.js` and the UDC collections and accounts as implemented.
 
 ## [1.0.0] - 2026-10-31
 

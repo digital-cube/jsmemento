@@ -103,7 +103,7 @@ export interface MementoPluginOptions {
   stream?: StreamOptions;
   /**
    * The UDC collections served under `/udc/<action>` (`@jsudc/server`). Default: memento's
-   * own (`events`, `cpu_load`, see `eventCollections`); pass a registry to serve others,
+   * own (`events`, `cpu_load`, `activity`, see `eventCollections`); pass a registry to serve others,
    * `false` to serve none.
    */
   udc?: CollectionRegistry | false;

@@ -1,0 +1,72 @@
+---
+title: Search
+description: MementoSearch next to the Filter DSL JSON it sends to POST /events/query, the request as curl, the response, and the same filter in UDC.
+sidebar:
+  order: 6
+---
+
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+
+How a search is expressed. On the left, `MementoSearch` from `@memento/react`; on the right,
+under **What was sent**, the request it made — read off the wire, not rebuilt.
+
+<ExampleShot
+  name="search"
+  alt="A search form and its results next to the Filter DSL, the curl request and the response"
+/>
+
+```txt
+MementoSearch ──POST /memento/events/query {filter: <Filter DSL>, limit: 100, locale: en|sr}──▶ memento
+  (type, id, from, to)  ◀── {ok, data: [events, newest first], meta} ──────────────────────────
+        │ the same tree, UDC's op names
+        ▼
+/udc/events?f=<encodeFilterParam(tree)> ──POST /memento/udc/list {collection: events, filter}──▶ memento
+```
+
+## The form is the component's
+
+Instance type, instance id (exact, or a prefix with `*`: `T-1*`), and a from / to day range
+(*to* inclusive). `MementoSearch` turns them into a Filter DSL tree — `eq` or `prefix` per field,
+`occurred_at gte` the first day and `lt` the day after the last — and sends it to
+`POST /memento/events/query`. The results are its table; the Instance cell is a chip that opens
+the instance's [timeline](/examples/entity/). While the range has no end, the results stay live
+on the stream. The DSL itself: [Filter DSL](/reference/filter-dsl/).
+
+## What was sent
+
+The page gives `MementoProvider` a `fetch` that lets every request through and reports each
+`POST …/events/query`. Three read-only panes follow every search:
+
+- the **Filter DSL** JSON of the body, with **Copy** (`null` when the search filters on
+  nothing);
+- the **request** as a `curl` command against the absolute URL, the key masked (`mk_…9f3a`);
+- the **response**: HTTP status, `ok`, `meta` (memento's list envelope has `count` and
+  `next_cursor`, no `total`) and the first row, the rest counted (`… 29 more`).
+
+## The same filter in UDC
+
+The `events` UDC collection takes the same tree in `POST /memento/udc/list` — conditions of
+`field`, `op` and `value` under `and`, `or` and `not` — with three operators spelled UDC's way:
+`prefix` is `starts_with`, `ne` is `neq`, `nin` is `not_in`, and `is_null: false` is
+`is_not_null`. The translated tree is shown under *As a UDC filter*. **Open in the UDC events
+table** goes to `/udc/events?f=…`, the tree encoded with `encodeFilterParam` of
+`@jsudc/react/headless`, so the table opens with the same conditions as its filter chips.
+
+## In the URL, in the header's language
+
+The search is in the URL: `?type=ticket&id=T-1*&from=2026-10-01&to=2026-10-31`. A search
+always writes `type` (`type=` for any type), so a link runs the search on open, and the
+browser's back button restores the previous one, form included.
+
+`MementoProvider` gets the site's locale, so the body carries `locale: "en"` or `"sr"` and
+memento renders `rendered` in it; switching EN / SR sends the search again.
+
+The page: [`apps/examples/src/examples/search/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/search).
+The route: `POST /memento/events/query` in [the API reference](/reference/api/).
+
+<LiveExample
+  path="/examples/search?type=ticket&id=T-1*"
+  title="See it live: a search"
+  description="Every ticket whose id starts with T-1, and the request that found them."
+/>

@@ -1,5 +1,6 @@
-# JSMemento HTTP API (Phases 1–4)
+# HTTP API
 
+Every route `@memento/server` serves, with the scope it needs, its parameters and its answers.
 Base path: `/memento` (configurable with `MEMENTO_API_PREFIX`). All bodies are JSON.
 Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
 (`/memento/chats…`): [CHATS.md](CHATS.md). Real-time WebSocket stream (`/memento/ws`):

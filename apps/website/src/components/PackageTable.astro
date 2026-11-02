@@ -1,0 +1,120 @@
+---
+/*
+ * The Packages page's table: name, description, version, licence and peers of each
+ * packages/*\/package.json, read when the site is built (no network, no registry). Nothing here
+ * names a version; bump the package and the page follows.
+ */
+import cli from "../../../../packages/cli/package.json";
+import core from "../../../../packages/core/package.json";
+import lookups from "../../../../packages/lookups/package.json";
+import react from "../../../../packages/react/package.json";
+import server from "../../../../packages/server/package.json";
+
+const REPO = "https://github.com/digital-cube/jsmemento";
+type Manifest = {
+  name: string;
+  version: string;
+  description?: string;
+  license?: string;
+  peerDependencies?: Record<string, string>;
+  dependencies?: Record<string, string>;
+};
+const rows = (
+  [
+    ["core", core],
+    ["server", server],
+    ["cli", cli],
+    ["react", react],
+    ["lookups", lookups],
+  ] as [string, Manifest][]
+).map(([dir, pkg]) => ({
+  dir,
+  name: pkg.name,
+  version: pkg.version,
+  license: pkg.license ?? "unlicensed",
+  // "JSMemento server: Fastify app, …" — the page names the package already.
+  description: (pkg.description ?? "").replace(/^JSMemento [^:]*:\s*/, ""),
+  peers: Object.entries(pkg.peerDependencies ?? {}).map(([n, v]) => `${n} ${v}`),
+  uses: Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith("@memento/")),
+}));
+const licences = [...new Set(rows.map((r) => r.license))];
+const versions = [...new Set(rows.map((r) => r.version))];
+---
+
+<table class="pkg-table">
+  <thead>
+    <tr>
+      <th scope="col">Package</th>
+      <th scope="col">Version</th>
+      <th scope="col">Uses</th>
+      <th scope="col">Links</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((p) => (
+        <tr>
+          <th scope="row">
+            <code>{p.name}</code>
+            <span class="desc">{p.description}</span>
+          </th>
+          <td>
+            <code>{p.version}</code>
+          </td>
+          <td>
+            {p.uses.length || p.peers.length ? (
+              <>
+                {p.uses.map((u) => (
+                  <code class="dep">{u}</code>
+                ))}
+                {p.peers.map((u) => (
+                  <span class="dep">peer {u}</span>
+                ))}
+              </>
+            ) : (
+              "—"
+            )}
+          </td>
+          <td class="links">
+            <a href={`${REPO}/tree/main/packages/${p.dir}`}>source</a>
+            <a href={`${REPO}/blob/main/packages/${p.dir}/README.md`}>README</a>
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>
+<p class="pkg-note">
+  Read from <code>packages/*/package.json</code> when this site was built:
+  {versions.length === 1 ? `one version, ${versions[0]}, for all five` : `versions ${versions.join(", ")}`}.
+  Licence: {licences.join(", ")}.
+</p>
+
+<style>
+  .pkg-table th[scope="row"] {
+    min-width: 14rem;
+    font-weight: 400;
+  }
+  .pkg-table th[scope="row"] code {
+    font-weight: 600;
+  }
+  .desc {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .dep {
+    display: block;
+    white-space: nowrap;
+    font-size: var(--sl-text-sm);
+  }
+  .links a {
+    display: block;
+    white-space: nowrap;
+  }
+  .pkg-note {
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+</style>

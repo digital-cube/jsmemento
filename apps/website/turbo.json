@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "env": ["SITE_URL", "EXAMPLE_URL", "SERVICE_URL"],
+      "outputs": ["dist/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!src/content/docs/reference/**",
+        "!src/content/docs/packages/changelog.md",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/CHANGELOG.md",
+        "$TURBO_ROOT$/menu.yaml",
+        "$TURBO_ROOT$/packages/*/package.json",
+        "$TURBO_ROOT$/clients/**",
+        "!$TURBO_ROOT$/clients/**/node_modules/**",
+        "!$TURBO_ROOT$/clients/**/target/**",
+        "!$TURBO_ROOT$/clients/**/build/**",
+        "!$TURBO_ROOT$/clients/golang/memento-client"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "env": ["SITE_URL", "EXAMPLE_URL", "SERVICE_URL"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!src/content/docs/reference/**",
+        "!src/content/docs/packages/changelog.md",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/CHANGELOG.md",
+        "$TURBO_ROOT$/clients/**",
+        "!$TURBO_ROOT$/clients/**/node_modules/**",
+        "!$TURBO_ROOT$/clients/**/target/**",
+        "!$TURBO_ROOT$/clients/**/build/**",
+        "!$TURBO_ROOT$/clients/golang/memento-client"
+      ]
+    }
+  }
+}

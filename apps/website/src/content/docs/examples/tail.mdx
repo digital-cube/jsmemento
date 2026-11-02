@@ -1,0 +1,80 @@
+---
+title: Live tail
+description: memento tail in the browser — every frame of /memento/ws as it arrives, with the stream's filters in the URL.
+sidebar:
+  order: 5
+---
+
+import { Code } from "@astrojs/starlight/components";
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+import frames from "../../../../snippets/wire/ws.out.txt?raw";
+
+`memento tail` in the browser. The page opens `GET /memento/ws` and lists every frame the socket
+delivers, as it arrives. This is not a UDC list but the stream itself, to see how it works;
+nothing on the page is persisted. The protocol: [Streaming](/concepts/streaming/) and
+[its reference](/reference/streaming/).
+
+<ExampleShot
+  name="tail"
+  alt="Raw WebSocket frames, one line per event, under the stream's filter form"
+/>
+
+```txt
+memento simulate / cpu-monitor ──POST /events──▶ memento ──ws /memento/ws?event_type=…&locale=en──▶ /examples/tail
+                                                          ◀── memento.ping (every heartbeat) ───────  MementoStream
+                                                          ──── memento.welcome · memento.event.new · memento.pong ──▶
+```
+
+## The stream's own client
+
+`MementoStream` from `@memento/core` connects — the key as the subprotocol `bearer.<key>` next to
+`memento.v1`, never in the URL — waits for the welcome and reconnects with backoff. The page
+hands it a `WebSocket` that listens in on the socket it opens, so it sees the raw text of every
+frame, not only the events `MementoStream` passes on. Two frames as the stream sends them, a
+welcome and an event:
+
+<Code code={frames} lang="json" title="/memento/ws?instance_type=user&instance_id=42" />
+
+## Filters
+
+The filter bar is the stream's filters: event types as a multi-select of memento's vocabulary
+(`EVENT_TYPES`, from `lookups.yaml`), instance type, instance id and actor as text (Enter or
+**Apply**). They live in the page's URL (`?event_type=TICKET_CREATED&instance_id=T-3`), so a
+link reproduces them. A stream's filters are fixed for the life of a connection, so every change
+is a new connection and a fresh list. The `ws://…/memento/ws?…` URL the socket opened is shown
+verbatim, to copy.
+
+- The stream takes **one** `event_type`. With several picked the URL has none, every type
+  arrives, and the page keeps the picked ones itself; the others are counted as *left out by
+  the page*.
+- A filter the server would refuse with `422` before the upgrade (for example
+  `instance_type=Ticket`) is not connected; the page says why.
+- `locale` is a parameter, not a filter: the page connects with `?locale=en` or `sr`, so
+  `rendered` arrives in the header's language. Switching EN / SR reconnects.
+
+## Frames
+
+Newest on top, the last 500 kept. Each row is the one-line summary of `memento tail` —
+`[hh:mm:ss] EVENT_TYPE instance/id — rendered` — and opens to the frame's pretty-printed JSON.
+What is not an event is dimmed and can be hidden (**Show control frames**): `memento.welcome`
+(tenant, filter, heartbeat), `memento.pong`, `memento.error`, and the socket closing with its
+code and reason, which is not a frame on the wire.
+
+The server's WebSocket pings are answered by the browser without the page seeing them, so the
+page sends the stream's own `memento.ping` at the welcome's `heartbeat_interval_ms`, and each
+`memento.pong` is a row.
+
+**Pause** keeps receiving and shows *N new while paused*; **Resume** puts them on top; **Clear**
+empties the list. The counters: frames received, events per second over the last 10 s,
+connected since, reconnects. The status dot is amber while connecting, green when live, red when
+closed, with the close code and reason (*Closed 4008 slow consumer*).
+
+The page: [`apps/examples/src/examples/tail/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/tail).
+The same from a terminal: `memento tail` in [the CLI reference](/reference/cli/).
+
+<LiveExample
+  path="/examples/tail"
+  title="See it live: the tail"
+  description="Every frame of the examples tenant's stream, with filters you can link to."
+/>

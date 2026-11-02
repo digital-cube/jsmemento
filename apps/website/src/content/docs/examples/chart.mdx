@@ -1,0 +1,75 @@
+---
+title: Activity chart
+description: Events per minute by type, counted by the server as the activity collection and drawn by @jsudc/react's chart renderer, live.
+sidebar:
+  order: 8
+---
+
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+
+How busy the tenant is, per event type. The server counts the events per minute and per
+`event_type` — the UDC collection `activity` — and the page draws it with `UdcDataView` of
+`@jsudc/react`, whose chart renderer draws a line per type, live.
+
+<ExampleShot
+  name="chart"
+  alt="A line chart of events per minute per event type over the last hour"
+/>
+
+```txt
+memento simulate / cpu-monitor ──POST /events──▶ memento_event
+/examples/chart?w=1h&f=<minute gte …>
+  UdcDataView ──POST /udc/list {collection: activity, filter: minute gte T}──▶ memento
+              ◀── rows (minute, event_type, count, cpu_load, ticket_created, …) ── SELECT date_trunc('minute', occurred_at),
+                                                                                    event_type, count(*) … GROUP BY
+              ◀──ws /memento/ws (no filter) ── refetch, at most once per 5 s
+```
+
+## The collection
+
+One row per (`minute`, `event_type`) bucket of the key's tenant, with its `count`, computed per
+request with a `GROUP BY` — no materialised view, no migration. It covers the last 60 minutes
+unless the filter names `minute`; a top-level `minute` condition also bounds the inner query on
+`occurred_at`, so it reads the tenant and time index instead of every event. Filter DSL on any
+field, sort, offset paging, and `total` is the number of buckets. `CPU_LOAD` is a series like
+the others, and the busiest: about 60 a minute per monitored server.
+
+jsudc's chart takes its series as *fields*, not as the values of one field. So each row also
+carries one integer per event type of `lookups.yaml` (`cpu_load`, `ticket_created`, …, and
+`other` for types outside it): the bucket's count under its own type, 0 under the rest. The
+chart sums each per point, which is that type's count in that minute, or in the wider bucket the
+chart picks when a long window has more minutes than pixels. The table tab shows the same
+columns as a pivot next to `minute`, `event_type` and `count`. The fields:
+[UDC collections](/concepts/udc/).
+
+## The window
+
+The view opens on the chart tab (a line per type, `y` from zero), then the table, with an
+`event_type` select filter. The window selector — 15 min, 1 h, 6 h, 24 h — writes
+`minute gte <start>` into the data view's `?f=`, where it shows as a chip, and the choice into
+`?w=`; chips the visitor added are kept. The start is the last N whole minutes, the current one
+included, and it slides: at every whole minute the page rewrites it, unless the visitor removed
+the chip.
+
+The last point is the current minute, still filling up: its counts grow with every refetch, so
+the lines dip at the right edge, and the page's note says so.
+
+## Live
+
+`useLive` (from `@memento/ui-shell`) follows the whole stream; every event refetches the
+collection's lists, at most once per 5 s. A bucket changes once a minute, so the 250 ms of the
+other pages are not needed. The same rows open as a plain table from the sidebar's Collections
+branch, `/udc/activity`.
+
+The service site draws the same chart for each API key over `api_key_activity`
+([The service site](/examples/service-site/)).
+
+The page: [`apps/examples/src/examples/chart/Chart.tsx`](https://github.com/digital-cube/jsmemento/blob/main/apps/examples/src/examples/chart/Chart.tsx);
+the window helpers are `@memento/ui-shell`'s.
+
+<LiveExample
+  path="/examples/chart?w=1h"
+  title="See it live: the last hour"
+  description="Events per minute of the examples tenant, a line per event type."
+/>

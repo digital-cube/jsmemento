@@ -1,0 +1,36 @@
+---
+/*
+ * A client program's files as clients/<lang>/ has them (src/clients.ts, imported raw at build
+ * time), one tab each when there are several, and where to download the zip the service site
+ * builds from the same directory (apps/service/vite-plugin-clients.ts).
+ */
+import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
+import { clientFile, language } from "../clients";
+
+interface Props {
+  lang: string;
+}
+
+const lang = language(Astro.props.lang);
+const files = lang.files.map(([name, syntax]) => ({
+  name,
+  syntax,
+  code: clientFile(`clients/${lang.id}/${name}`),
+}));
+const [main, ...more] = files;
+if (!main) throw new Error(`clients/${lang.id}: no files listed in src/clients.ts`);
+---
+
+{
+  more.length === 0 ? (
+    <Code code={main.code} lang={main.syntax} title={`${lang.id}/${main.name}`} />
+  ) : (
+    <Tabs>
+      {files.map((f) => (
+        <TabItem label={f.name}>
+          <Code code={f.code} lang={f.syntax} title={`${lang.id}/${f.name}`} />
+        </TabItem>
+      ))}
+    </Tabs>
+  )
+}

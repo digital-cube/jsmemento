@@ -1,4 +1,4 @@
-# Templates & Lookups (Phase 2)
+# Templates & Lookups
 
 Events are machine records (`USER_LOGIN` on `user/42` by `igor`); people read text. Memento
 turns every event into a `rendered` sentence with a **Handlebars** template chosen per
@@ -58,6 +58,9 @@ the built-in format is used: rendering never fails a push or a query.
 | `CHAT_MESSAGE_SENT` | `sender_user_id` (else `actor_id`), `content` (cut at 200 chars) | `igor sent a message: "Pozdrav!"` |
 | `CHAT_MESSAGE_SEEN` | `user_id` (else `actor_id`) | `marko read the messages` |
 | `CHAT_PARTICIPANT_ADDED` | `user_id` | `ana was added to the chat` |
+| `CPU_LOAD` | `load_1min`, `load_5min`, `load_15min` | `Server backend-01 — CPU: 2.77, 3.1, 2.86` |
+| `APIKEY_CREATED` · `_DISABLED` · `_ENABLED` · `_DELETED` | `name` | `ana@example.com created API key "backend" (ab12cd34).` (paused, resumed, deleted) |
+| `APIKEY_LIMIT_CHANGED` | `name`, `previous`, `daily_limit` (`null`: the default) | `ana@example.com changed the daily limit of API key "backend" (ab12cd34) from the default to 5000 events.` |
 | `_generic` | — (uses the lookup labels) | `Ticket closed: ticket T-7 (by igor).` |
 | `NOTE` | `text` (required) | verbatim |
 

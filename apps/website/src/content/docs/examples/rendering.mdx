@@ -1,0 +1,80 @@
+---
+title: Rendering & translations
+description: One event, its bundled EN and SR templates, and the sentence the server renders from each, side by side.
+sidebar:
+  order: 7
+---
+
+import { Code } from "@astrojs/starlight/components";
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+import closedEn from "../../../../../../packages/server/templates/TICKET_CLOSED.en.hbs?raw";
+import closedSr from "../../../../../../packages/server/templates/TICKET_CLOSED.sr.hbs?raw";
+
+How memento turns an event into a sentence. Pick an event type and the page shows the tenant's
+latest event of it, the bundled `.en.hbs` and `.sr.hbs` templates, and the sentence the
+**server** renders from each, side by side. The rules behind it:
+[Rendering and translations](/concepts/rendering/).
+
+<ExampleShot
+  name="rendering"
+  alt="A TICKET_CLOSED event with its English and Serbian templates and the two rendered sentences"
+/>
+
+```txt
+packages/server/templates/*.hbs ──import.meta.glob(?raw), at build time──▶ templates.ts (type → {en, sr})
+/examples/rendering?type=TICKET_CLOSED
+  latest event   ──POST /udc/list {collection: events, filter: event_type eq T, limit 1}──▶ memento
+  rendered (en)  ──POST /udc/read {collection: events, id}  X-Memento-Locale: en ─────────▶ memento
+  rendered (sr)  ──POST /udc/read {collection: events, id}  X-Memento-Locale: sr ─────────▶ memento
+```
+
+## The templates are the server's files
+
+The page imports every `packages/server/templates/*.hbs` with Vite's `import.meta.glob` as text
+when it is built, and maps them by event type and locale (`_generic` apart). There is no
+endpoint that serves template sources. A tenant's own template lives in the database
+(`memento_template`) and is not visible here; the page says so and shows the command that would
+create one, `pnpm memento create-template --tenant <tenant> --event-type T --locale sr --file T.sr.hbs`.
+
+The two templates of `TICKET_CLOSED`, as the page shows them:
+
+<Code code={closedEn} lang="handlebars" title="packages/server/templates/TICKET_CLOSED.en.hbs" />
+
+<Code code={closedSr} lang="handlebars" title="packages/server/templates/TICKET_CLOSED.sr.hbs" />
+
+## Three columns
+
+- **The latest event of the type**: its fields, the instance linking to its
+  [timeline](/examples/entity/), the payload pretty-printed. It is a one-row list of the `events`
+  collection, `event_type eq T`, sorted `occurred_at desc`.
+- **Per locale, the template and the sentence.** The sentences are not a Handlebars run in the
+  browser: the page reads the same event twice with `POST /udc/read`, through two `UdcClient`s
+  whose `X-Memento-Locale` is `en` and `sr`. Both are always shown, whatever the header's
+  language.
+- **Highlighted keys**: every `payload.<key>` inside a `{{…}}` of either template — output, `#if`,
+  a helper's argument — is marked in the template and in the payload pane, so it is visible which
+  members of the payload the sentence uses.
+
+Under them, where the template comes from: the lookup chain for both locales
+(`T.sr → T.en → _generic.sr → _generic.en →` the built-in line), with the step the bundled files
+answer marked; at every step a tenant's own template beats the bundled one. And `_generic`: its
+EN and SR source and when it is used, for any event type without a template of its own. `NOTE`
+does not go through it: its text is `payload.text`, stored verbatim, the same in every locale.
+
+## The selector
+
+Exactly the types with a bundled template, alphabetical, each with how many events of it the
+tenant has (the `total` of a one-row `events` list); the empty ones are greyed but still open
+their templates. The type is in the URL (`?type=`), `TICKET_CREATED` by default.
+
+`useLive` (from `@memento/ui-shell`) follows the stream filtered by the picked `event_type`; a
+new event of the type refetches the column and the counts, at most once per 250 ms.
+
+The page: [`apps/examples/src/examples/rendering/`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples/src/examples/rendering).
+
+<LiveExample
+  path="/examples/rendering?type=TICKET_CLOSED"
+  title="See it live: TICKET_CLOSED in English and Serbian"
+  description="The latest closed ticket of the simulated desk, both templates and both sentences."
+/>

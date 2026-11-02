@@ -178,6 +178,9 @@ docker run -d -p 3000:3000 \
 
 ## Environment variables
 
+What the server reads when it starts; the CLI in the image reads the same `DATABASE_URL` and
+`REDIS_URL`. The defaults are the image's.
+
 | variable | default (image) | |
 |---|---|---|
 | `DATABASE_URL` | `postgresql://jsmemento:jsmemento@localhost:5432/jsmemento` | PostgreSQL connection string. **Set it.** |

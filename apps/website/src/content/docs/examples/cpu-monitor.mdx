@@ -1,0 +1,76 @@
+---
+title: CPU monitor
+description: The whole stack on one screen — the CLI pushes load averages, the cpu_load collection serves them, UdcDataView draws them, the stream refreshes.
+sidebar:
+  order: 1
+---
+
+import { Code } from "@astrojs/starlight/components";
+import ExampleShot from "../../../components/ExampleShot.astro";
+import LiveExample from "../../../components/LiveExample.astro";
+import request from "../../../../snippets/wire/udc-list.json?raw";
+import answer from "../../../../snippets/wire/udc-list.out.json?raw";
+
+The first example is memento end to end — auth, event push, UDC, the WebSocket, React — on one
+screen. `memento cpu-monitor` pushes this machine's CPU load averages every second, the server
+stores them per tenant and serves them as the `cpu_load` UDC collection, and the page draws them
+with `UdcDataView`, as a table and a chart. The stream tells the page when there is a new
+sample, so the table refreshes without a reload.
+
+<ExampleShot
+  name="cpu-monitor"
+  alt="A live table of CPU_LOAD samples of server/stage, with the stream's Live badge"
+/>
+
+```txt
+memento cpu-monitor ──POST /memento/events──▶ memento server ──POST /memento/udc/list──▶ UdcDataView
+   (os.loadavg, 1/s)       (API key, write)      (PostgreSQL)   ◀──ws /memento/ws────── (refetch on event)
+```
+
+## The pusher
+
+Every `--interval` seconds `memento cpu-monitor` reads `os.loadavg()` and pushes
+`POST /events` with `event_type: "CPU_LOAD"`, the instance (`server/<host name>` unless
+`--instance-type` / `--instance-id` say otherwise) and
+`payload: {load_1min, load_5min, load_15min}`, rounded to two decimals. A network failure is
+retried with the next sample; a refused push (bad key, missing scope) stops it with exit code 1.
+In the Docker stack it is the `cpu-monitor` service of the `demo` profile, pushing for
+`server/stage`. Options and output: [the CLI reference](/reference/cli/).
+
+## The collection
+
+`cpu_load` holds `CPU_LOAD` events only, with `payload.load_1min`, `load_5min` and
+`load_15min` as decimal columns, and a view with a table and a chart. Filtering, sorting and
+paging are the jsudc filter DSL. One sample of the examples instance, read with its demo key:
+
+<Code code={request} lang="json" title="POST /memento/udc/list" />
+
+<Code code={answer} lang="json" title="200 OK" />
+
+The bar above the table switches the collection to `events` (every event of the tenant) and
+sets the `instance_type` the view opens with, `server` by default. That condition is the data
+view's own filter: the page writes it into the `?f=` parameter `UdcDataView` reads its filter
+tree from, so it shows as a chip, where it can be changed or removed like any other filter.
+
+## How it is drawn
+
+- **Rows come only from UDC.** The app's `UdcProvider` has a `UdcClient` with
+  `httpUrl: "/memento"` and the key as `Authorization: Bearer`, so `UdcDataView` from
+  `@jsudc/react` calls `POST /memento/udc/describe` and `POST /memento/udc/list`. There is no
+  hand-written fetch of list data.
+- **The stream only says "refetch".** `useLive` (from `@memento/ui-shell`, on `MementoStream` of
+  `@memento/core`) subscribes to `/memento/ws?event_type=CPU_LOAD&instance_type=server` — the
+  `event_type` only while the collection is `cpu_load` — and every event invalidates the
+  collection's list queries, at most once per 250 ms.
+- **The status bar**: green **Live** when the stream is connected and the server healthy, amber
+  while connecting, red when offline (the reason on the right); the time of the last event and
+  the events per second.
+
+The page: [`apps/examples/src/examples/cpu-monitor/CpuMonitor.tsx`](https://github.com/digital-cube/jsmemento/blob/main/apps/examples/src/examples/cpu-monitor/CpuMonitor.tsx).
+The collection: [UDC collections](/concepts/udc/). The stream: [Streaming](/concepts/streaming/).
+
+<LiveExample
+  path="/examples/cpu-monitor"
+  title="See it live: the CPU monitor"
+  description="The stage server's load, one sample a second, as a table and a chart."
+/>

@@ -6,7 +6,10 @@
  * (snippets/, clients/), never typed into a page. This keeps it that way:
  *
  *   1. no code fence in the home page or under get-started/, and no ts/tsx/js/jsx fence in any
- *      page: their code comes from snippets/;
+ *      page: their code comes from snippets/ (the pages scripts/gen-*.mjs writes from docs/ and
+ *      CHANGELOG.md are those files, so they are left out);
+ *   1b. every clients/<lang>/ with a README.md has its page, src/content/docs/clients/<lang>.mdx,
+ *      and every such page a directory: a ninth language cannot be left off the site;
  *   2. snippets/wire/: every file is valid JSON (ws.out.txt: frames separated by a blank line)
  *      and every request body `<name>.json` has the answer `<name>.out.json` scripts/capture.mjs
  *      recorded for it;
@@ -34,12 +37,28 @@ for (const file of walk(DOCS)) {
   const path = relative(DOCS, file);
   const strict = path === "index.mdx" || path.startsWith("get-started/");
   const text = readFileSync(file, "utf8");
+  if (/^<!-- Written by scripts\/gen-/m.test(text)) continue;
   for (const m of text.matchAll(/^\s*```(\w*)/gm)) {
     if (!strict && !/^(ts|tsx|js|jsx|typescript|javascript)$/.test(m[1] ?? "")) continue;
     const line = text.slice(0, m.index).split("\n").length;
     failures.push(`src/content/docs/${path}:${line}: a \`\`\`${m[1]} fence; put it in snippets/`);
   }
 }
+
+// --- 1b. a page per client program ------------------------------------------------------
+const CLIENTS = join(ROOT, "..", "..", "clients");
+const languages = readdirSync(CLIENTS, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && existsSync(join(CLIENTS, e.name, "README.md")))
+  .map((e) => e.name);
+const clientPages = readdirSync(join(DOCS, "clients"))
+  .filter((f) => f.endsWith(".mdx") && f !== "index.mdx")
+  .map((f) => f.replace(/\.mdx$/, ""));
+for (const lang of languages)
+  if (!clientPages.includes(lang))
+    failures.push(`clients/${lang}/: no page src/content/docs/clients/${lang}.mdx`);
+for (const page of clientPages)
+  if (!languages.includes(page))
+    failures.push(`src/content/docs/clients/${page}.mdx: no clients/${page}/README.md`);
 
 // --- 2. the recorded requests and answers ------------------------------------------------
 const wire = readdirSync(WIRE);

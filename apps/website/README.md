@@ -12,14 +12,43 @@ From the repository root (Node 24, pnpm from `packageManager`):
 
 ```sh
 pnpm install
+pnpm --filter @memento/website gen         # the generated pages (below); dev, build and typecheck run it first
 pnpm --filter @memento/website dev         # http://localhost:4321
 pnpm --filter @memento/website build       # apps/website/dist; fails on a broken internal link
 pnpm --filter @memento/website preview     # serves dist/
-pnpm --filter @memento/website typecheck   # astro check + check:snippets (also in the root `pnpm typecheck`)
+pnpm --filter @memento/website typecheck   # gen + astro check + check:snippets (also in the root `pnpm typecheck`)
 ```
 
 `.astro` and `.mdx` files are not linted by Biome (the root `biome.json` skips them); the rest
 of `src/` is. The build needs no network.
+
+## Where each section comes from
+
+| section | pages | source |
+|---|---|---|
+| Get started | `src/content/docs/get-started/*.mdx` | hand-written; the code from `snippets/` and `clients/` (below) |
+| Concepts | `src/content/docs/concepts/*.mdx` | hand-written from `docs/` (PHILOSOPHY, ARCHITECTURE, API, TEMPLATES, STREAMING, CHATS, DEPLOYMENT) and the code; the shown code from `snippets/wire`, `lookups.yaml`, `packages/server/templates`, `packages/server/drizzle` |
+| Reference | `src/content/docs/reference/*.md` — **generated, not in git** | `scripts/gen-reference.mjs`: `docs/API.md`, the Filter DSL section of `docs/ARCHITECTURE.md`, `docs/STREAMING.md`, `docs/CHATS.md`, `docs/CLI.md`, the environment-variable table of `docs/DEPLOYMENT.md` |
+| Examples | `src/content/docs/examples/*.mdx` | hand-written from `apps/examples/README.md` and the pages' code (one page per `menu.yaml` example, plus the service site); `<ExampleShot>` shows `src/assets/examples/<page>-<theme>.webp` |
+| Clients | `src/content/docs/clients/*.mdx` | `clients/README.md` and `clients/<lang>/README.md` rendered at build time (`<ClientReadme>`), the programs imported raw (`<ClientSource>`, the file list in `src/clients.ts`) |
+| Packages | `src/content/docs/packages/index.mdx`, `changelog.md` — **the changelog generated, not in git** | `<PackageTable>` reads `packages/*/package.json`; `scripts/gen-changelog.mjs` turns `CHANGELOG.md` into the changelog page |
+
+### `npm run gen`: the generated pages
+
+`scripts/gen-reference.mjs` and `scripts/gen-changelog.mjs` (shared code in
+`scripts/repo-markdown.mjs`) write the Reference section and Packages › Changelog from the
+repository's markdown; `dev`, `build` and `typecheck` run them first, and the output is
+git-ignored. A page's title is the file's H1 (or the section's heading), its description the
+first sentence of the opening paragraph, and a note on top names the file and the commit it was
+last changed in. Links between the docs become links between the pages (anchors included,
+checked by the links validator); other repository links go to GitHub, and a link to a file that
+does not exist fails `gen`. A doc that reads wrong as a public page is fixed in `docs/`, not in
+the generator. The list of pages is `REFERENCE` in `scripts/repo-markdown.mjs`, in the order of
+the sidebar in `astro.config.mjs`. No network.
+
+**Clients cannot drift either:** the pages render `clients/` itself, and `check:snippets` fails
+when a `clients/<lang>/` with a README has no `src/content/docs/clients/<lang>.mdx` (or a page
+has no directory).
 
 ## Content: the code is files, the pictures are shots
 
@@ -64,16 +93,18 @@ pnpm --filter @memento/website shots                               # or: shots -
 `scripts/shots.mjs` (Playwright + sharp) opens each of the eight example pages on `EXAMPLE_URL`
 (`SHOTS_BASE` overrides it) at 1280×800, device scale 2, waits for its data, and writes
 `src/assets/examples/<page>-light.webp`. Commit the webp files; the build only reads them.
-**Dark:** the examples site follows `@jsudc/react`'s theme (`html.dark` from localStorage
+The Examples pages show the same files through `<ExampleShot name="<page>">`. **Dark:** the
+examples site follows `@jsudc/react`'s theme (`html.dark` from localStorage
 `udc-theme`, which the script sets), but `@memento/ui-shell` has no dark tokens yet, so the
 script takes the light theme only and the home page shows it in both of its own themes. Add
-`"dark"` to `THEMES` once the examples site has a dark theme; `Examples.astro` picks up
-`<page>-dark.webp` by itself.
+`"dark"` to `THEMES` once the examples site has a dark theme; `Examples.astro` and `ExampleShot.astro` pick up
+`<page>-dark.webp` by themselves.
 
 ### `npm run check:snippets` (part of `typecheck`)
 
 `scripts/check-snippets.mjs` fails on a code fence in the home page or Get started (and on a
-`ts`/`js` fence anywhere), on a `snippets/wire` file that is not JSON or a request without its
+`ts`/`js` fence anywhere but the generated pages, which are `docs/` itself), on a client program
+without its page, on a `snippets/wire` file that is not JSON or a request without its
 recorded answer, and runs `tsc -p snippets`: `server.ts`, `tail.ts` and `App.tsx` compile
 against the workspace's `@memento/server`, `@memento/core` and `@memento/react`, from their
 sources (`@memento/source`), so a renamed option breaks the check, not the reader.
