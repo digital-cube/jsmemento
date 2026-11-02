@@ -92,6 +92,8 @@ const resolve = (link: string) =>
 <style>
   .hero {
     display: grid;
+    /* minmax(0, …): the nowrap install line scrolls inside its box, never widens the page */
+    grid-template-columns: minmax(0, 1fr);
     gap: 3rem;
     padding-block: 3rem 2rem;
   }
@@ -148,6 +150,7 @@ const resolve = (link: string) =>
     border-radius: 4px;
   }
   .install code {
+    min-width: 0;
     font-family: var(--sl-font-mono);
     font-size: 0.8125rem;
     color: var(--sl-color-gray-1);
