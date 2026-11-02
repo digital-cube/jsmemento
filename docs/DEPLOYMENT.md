@@ -308,6 +308,59 @@ heavier ones. Without accounts there are no limits and no metering.
   stream seconds, bytes in, per key and hour) every 5 s and on shutdown. The table grows by at
   most one row per active key per hour.
 
+## The website
+
+`https://stage.memento-service.org/` is `apps/website` (`@memento/website`): memento's own
+website, Astro + Starlight, static files served by nginx on the stage VM like
+`stage.jsudc.dev`. It is **not part of the image** (the Dockerfile's turbo filters leave it
+out) and has no server: one build, swapped in under a symlink.
+
+The build reads three variables (`apps/website/src/site.mjs`); the defaults are production's:
+
+| variable | | default | stage |
+|---|---|---|---|
+| `SITE_URL` | the site's own origin (canonical links, sitemap) | `https://memento-service.org` | `https://stage.memento-service.org` |
+| `EXAMPLE_URL` | the examples site ("Open the live example") | `https://examples.stage.memento-service.org` | the same |
+| `SERVICE_URL` | the service site ("Get an API key") | `https://service.stage.memento-service.org` | the same |
+
+No production examples or service instance exists yet, so the last two default to stage; the
+defaults move when one does.
+
+On the stage VM, from any copy of the repository:
+
+```bash
+deploy/website/stage.sh --install                    # once: links the vhost, nginx -t, reload, deploy
+deploy/website/stage.sh                              # every deploy: builds origin/main and swaps it in
+deploy/website/stage.sh --branch <name>              # a branch before review
+REPO_URL=/home/digital/work/jsmemento deploy/website/stage.sh --branch main   # commits not pushed yet
+```
+
+It clones or fetches the repository into `/home/digital/sites/stage.memento-service.org/src`,
+checks out `origin/<branch>`, installs `@memento/website` and its dependencies only
+(`pnpm install --frozen-lockfile --filter @memento/website...`, pnpm from `packageManager`
+through corepack, Node 24 from nvm), builds with the stage variables, copies
+`apps/website/dist` to `releases/<short sha>/`, repoints `current` atomically, keeps three
+releases, and fails unless `/` answers 200 and a missing page the site's 404 through nginx on
+127.0.0.1, and `/` answers this build through the edge. The same commit with the same variables
+rebuilds nothing. `deploy/website/stage.sh --help` has the options and exit codes.
+
+The vhost is `deploy/website/nginx/stage.memento-service.org.conf`, linked into
+`/etc/nginx/sites-enabled/stage.memento-service.org` from the deployed checkout: `:80` only
+(TLS ends at the edge), `root …/current`, `/_astro/` cached for a year (content-hashed), the
+rest `no-cache`, `error_page 404 /404.html`, `absolute_redirect off`.
+
+**The name was taken.** The old Python mementoservice app's vhost,
+`/etc/nginx/sites-available/nginx-stage.memento-service.org.conf` (a copy of
+`deploy/nginx-stage.memento-service.org.conf` in the mementoservice repository), served
+`server_name stage.memento-service.org *.stage.memento-service.org;` with a
+`stage.memento-service.org` line in its `map $host`. Two server blocks with the same exact name
+make nginx warn and take the first, so the bare name was removed from that `server_name` and
+from the `map` on the VM (by hand, with sudo). The wildcard stays: the old app's tenant hosts
+(`developer.`, `admin.`, `digitalcube.`, … `.stage.memento-service.org`) keep working, and
+`examples.` / `service.` have exact vhosts of their own (`memento-stage`,
+`memento-service-stage`) that win over a wildcard. The same edit is still owed to the
+mementoservice repository's copy; a redeploy of that vhost from there would take the name back.
+
 ## Retention
 
 `memento retention` archives (sets `archived_at`, the one change the immutability trigger

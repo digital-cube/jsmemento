@@ -9,6 +9,15 @@ share one version.
 
 ### Added
 
+- **The website** (`apps/website`, `@memento/website`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#the-website)):
+  Astro + Starlight with memento's own identity (ink and bone, the red thread, Bodoni Moda),
+  dark and light, Pagefind search, a home hero (one `USER_LOGIN` and its EN / SR sentence),
+  the sidebar Get started / Concepts / Reference / Examples / Clients / Packages (an index each
+  for now) and its own 404. `SITE_URL`, `EXAMPLE_URL`, `SERVICE_URL` at build time;
+  `starlight-links-validator` fails the build on a broken internal link (CI job *Website
+  build*). Served at `stage.memento-service.org` by `deploy/website/stage.sh`
+  (build-and-swap, nginx vhost in `deploy/website/nginx/`). Not part of the image.
+
 - **The `/clients` page of the service site** (`apps/service`, [docs/CLIENTS.md](docs/CLIENTS.md#the-clients-page-of-the-service-site)):
   public, a tab per language at `/clients/<lang>` (remembered in localStorage), the two
   environment lines with this origin and a `mk_…` placeholder (Copy; the hint links to `/keys`),
