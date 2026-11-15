@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Fastify from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { DatabaseHandle } from "../src/db/client.js";
+import type { DatabaseHandle } from "../src/db/index.js";
 import { uiRoutes } from "../src/ui.js";
 import { type Fixture, setupApp, testDatabase } from "./helpers.js";
 

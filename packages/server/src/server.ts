@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { Redis } from "ioredis";
 import { type AccountsOptions, buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { connect, runMigrations } from "./db/client.js";
+import { connect, runMigrations } from "./db/index.js";
 import { DemoKeyError } from "./demo.js";
 import { emptyLookups, initLookups, type Lookups } from "./lookups.js";
 import { BrevoMailer } from "./mail/mailer.js";

@@ -22,7 +22,7 @@ const run = (...argv: string[]) => runCli(argv, { db: () => handle.db, io });
 beforeEach(async () => {
   out = [];
   err = [];
-  await handle.pool.query(
+  await handle.db.execute(
     "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant, memento_user cascade",
   );
 });
@@ -264,7 +264,7 @@ describe("memento retention", () => {
   it("archives events past a tenant's retention_days; --dry-run only counts", async () => {
     await run("create-tenant", "acme", "--name", "Acme");
     await run("create-tenant", "keep", "--name", "Keep");
-    await handle.pool.query(
+    await handle.db.execute(
       `insert into memento_event (tenant_id, occurred_at, event_type, instance_type, instance_id)
        select id, now() - make_interval(days => d), 'NOTE', 'ticket', 'T-' || d
        from memento_tenant, unnest(array[10, 10, 0]) as d where slug = 'acme'`,
@@ -272,7 +272,7 @@ describe("memento retention", () => {
     out = [];
     expect(await run("retention")).toBe(0);
     expect(out).toEqual(["no tenant has retention_days: nothing archived"]);
-    await handle.pool.query("update memento_tenant set retention_days = 7 where slug = 'acme'");
+    await handle.db.execute("update memento_tenant set retention_days = 7 where slug = 'acme'");
     out = [];
     expect(await run("retention", "--tenant", "acme", "--dry-run")).toBe(0);
     expect(out[0]).toMatch(/^acme: would archive 2 events older than 7 days \(before .+\)$/);
@@ -281,7 +281,10 @@ describe("memento retention", () => {
     expect(JSON.parse(out[0] as string)).toEqual([
       expect.objectContaining({ tenant: "acme", retention_days: 7, archived: 2 }),
     ]);
-    const live = await handle.pool.query("select id from memento_event where archived_at is null");
+    // node-postgres' result (the test database is PostgreSQL).
+    const live = (await handle.db.execute(
+      "select id from memento_event where archived_at is null",
+    )) as unknown as { rowCount: number };
     expect(live.rowCount).toBe(1);
     out = [];
     expect(await run("retention", "--tenant", "keep")).toBe(0);

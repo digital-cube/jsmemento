@@ -16,12 +16,20 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { uuidv7 } from "./uuid.js";
+
+/**
+ * A UUID primary key. The application generates it (`uuidv7()`, time-ordered), so no insert
+ * depends on the database for its id; `gen_random_uuid()` stays the column default for rows
+ * written by hand in SQL (and keeps the migrations unchanged).
+ */
+const id = () => uuid("id").primaryKey().defaultRandom().$defaultFn(uuidv7);
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
 /** A tenant: every other row belongs to exactly one, and queries never cross the boundary. */
 export const tenants = pgTable("memento_tenant", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: id(),
   slug: varchar("slug", { length: 63 }).notNull().unique(),
   name: varchar("name", { length: 200 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
@@ -38,7 +46,7 @@ export const tenants = pgTable("memento_tenant", {
 export const apiKeys = pgTable(
   "memento_apikey",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -75,7 +83,7 @@ export const apiKeys = pgTable(
 export const events = pgTable(
   "memento_event",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "restrict" }),
@@ -156,7 +164,7 @@ export const stars = pgTable(
 export const templates = pgTable(
   "memento_template",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -176,7 +184,7 @@ export const templates = pgTable(
 export const chats = pgTable(
   "memento_chat",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -222,7 +230,7 @@ export const chatParticipants = pgTable(
 export const users = pgTable(
   "memento_user",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     /** Stored trimmed and lower-cased. */
     email: varchar("email", { length: 320 }).notNull().unique(),
     passwordHash: text("password_hash").notNull(),
@@ -284,7 +292,7 @@ export const sessions = pgTable(
 export const userTokens = pgTable(
   "memento_user_token",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: id(),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

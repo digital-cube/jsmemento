@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { FREE_TEXT_EVENT_TYPES, GENERIC_TEMPLATE } from "@memento/core";
 import { LookupRegistry } from "@memento/lookups";
 import { and, eq, inArray } from "drizzle-orm";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { templates } from "../db/schema.js";
 import { type RenderContext, TemplateEngine } from "./engine.js";
 

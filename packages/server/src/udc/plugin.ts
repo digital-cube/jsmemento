@@ -12,7 +12,7 @@ import {
   sessionCookie,
 } from "../auth.js";
 import type { TenantContext } from "../context.js";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { MementoError } from "../errors.js";
 import { authenticateApiKey } from "../services/apikeys.js";
 import type { UsageMeter } from "../usage.js";

@@ -1,7 +1,7 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type { TenantContext } from "./context.js";
-import type { Database } from "./db/client.js";
+import { type Database, dialect } from "./db/index.js";
 import { type ApiKeyRow, apiKeys, apiKeyUsage, tenantUsers, users } from "./db/schema.js";
 import { MementoError } from "./errors.js";
 import type { Mailer } from "./mail/mailer.js";
@@ -105,7 +105,7 @@ export class QuotaGuard {
       .where(
         and(
           sql`${apiKeyUsage.apiKeyId} in (${sql.join(
-            apiKeyIds.map((id) => sql`${id}::uuid`),
+            apiKeyIds.map((id) => dialect.uuid(id)),
             sql`, `,
           )})`,
           gte(apiKeyUsage.hour, dayStartOf(now)),
@@ -184,7 +184,7 @@ export class QuotaGuard {
     const claimed = await this.options.db
       .update(apiKeys)
       .set(set)
-      .where(and(eq(apiKeys.id, apiKeyId), sql`${column} is distinct from ${today}::date`))
+      .where(and(eq(apiKeys.id, apiKeyId), dialect.isDistinctFrom(column, dialect.date(today))))
       .returning({ id: apiKeys.id });
     return claimed.length > 0;
   }

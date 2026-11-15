@@ -1,7 +1,7 @@
 import { type ViewConfigInput, ViewConfigSchema } from "@jsudc/core";
 import { EVENT_TYPES } from "@memento/core";
 import { eq } from "drizzle-orm";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { events } from "../db/schema.js";
 import type { EventRenderer } from "../templates/renderer.js";
 import {

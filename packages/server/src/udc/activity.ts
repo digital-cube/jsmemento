@@ -13,7 +13,7 @@ import type { Source, SourceListRequest } from "@jsudc/server";
 import { EVENT_TYPES } from "@memento/core";
 import { and, count, eq, gte, isNull, lt, type SQL, sql } from "drizzle-orm";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
+import { type Database, dialect } from "../db/index.js";
 import { apiKeys, events } from "../db/schema.js";
 import {
   coerce,
@@ -35,7 +35,7 @@ const MINUTE_MS = 60_000;
 const column = (name: string): SQL => sql`${sql.identifier(ALIAS)}.${sql.identifier(name)}`;
 
 /** The bucket of an event: its `occurred_at` cut to the minute. */
-const minuteOf = sql`date_trunc('minute', ${events.occurredAt})`;
+const minuteOf = dialect.truncateToMinute(events.occurredAt);
 
 /** The field of the chart series of one event type: `CPU_LOAD` → `cpu_load`. */
 export const seriesField = (eventType: string): string => eventType.toLowerCase();
@@ -219,19 +219,18 @@ export class ActivityCollectionSource implements Source {
         ...(this.byApiKey ? { api_key: sql<string>`${apiKeys.prefix}`.as("api_key") } : {}),
         minute: sql<Date>`${minuteOf}`.as("minute"),
         event_type: sql<string>`${events.eventType}`.as("event_type"),
-        count: sql<number>`count(*)::int`.as("count"),
+        count: dialect.int(sql`count(*)`).as("count"),
         ...Object.fromEntries(
           EVENT_TYPES.map((type) => [
             seriesField(type),
-            sql<number>`(case when ${events.eventType} = ${type} then count(*) else 0 end)::int`.as(
-              seriesField(type),
-            ),
+            dialect
+              .int(sql`(case when ${events.eventType} = ${type} then count(*) else 0 end)`)
+              .as(seriesField(type)),
           ]),
         ),
-        [OTHER_SERIES_FIELD]:
-          sql<number>`(case when ${events.eventType} in (${known}) then 0 else count(*) end)::int`.as(
-            OTHER_SERIES_FIELD,
-          ),
+        [OTHER_SERIES_FIELD]: dialect
+          .int(sql`(case when ${events.eventType} in (${known}) then 0 else count(*) end)`)
+          .as(OTHER_SERIES_FIELD),
       })
       .from(events)
       .$dynamic();

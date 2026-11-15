@@ -21,11 +21,9 @@ import {
   eq,
   gt,
   gte,
-  ilike,
   inArray,
   isNotNull,
   isNull,
-  like,
   lt,
   lte,
   ne,
@@ -37,8 +35,8 @@ import {
   sql,
 } from "drizzle-orm";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
 import { escapeLike } from "../db/filter.js";
+import { type Database, dialect } from "../db/index.js";
 import { apiKeys, type EventRow, events } from "../db/schema.js";
 import { localizeEvents, serializeEvent } from "../services/events.js";
 import type { EventRenderer } from "../templates/renderer.js";
@@ -93,9 +91,7 @@ export const EVENT_SOURCE_CAPABILITIES: Capabilities = {
 
 /** A numeric member of `payload`, NULL when it is missing or not a number. */
 export function payloadNumber(key: string): SQL<number | null> {
-  return sql<
-    number | null
-  >`(case when jsonb_typeof(${events.payload} -> ${key}) = 'number' then (${events.payload} ->> ${key})::numeric end)`;
+  return dialect.jsonNumber(events.payload, key);
 }
 
 /**
@@ -274,7 +270,7 @@ export class SqlFilterCompiler {
       if (sortable === false) {
         throw new UdcError("validation_error", `field "${field}" cannot be sorted`, { field });
       }
-      return dir === "desc" ? sql`${expr} desc nulls last` : sql`${expr} asc nulls last`;
+      return dialect.nullsLast(expr, dir === "desc" ? "desc" : "asc");
     });
     return [...keys, ...tiebreak(sort.at(-1)?.dir === "desc" ? "desc" : "asc")];
   }
@@ -306,7 +302,7 @@ export class SqlFilterCompiler {
         throw new UdcError("validation_error", `"${c.op}" needs a text field, not ${c.field}`);
       }
       const value = pattern(escapeLike(String(c.value ?? "")));
-      return c.case_insensitive ? ilike(expr as never, value) : like(expr as never, value);
+      return c.case_insensitive ? dialect.ilike(expr, value) : dialect.like(expr, value);
     };
     // drizzle's operators take any SQL expression; the casts only quiet the column typing.
     const e = expr as never;

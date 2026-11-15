@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { type BuildAppOptions, buildApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
-import { connect, type DatabaseHandle } from "../src/db/client.js";
+import { connect, type DatabaseHandle } from "../src/db/index.js";
 import { MemoryPublisher } from "../src/publisher.js";
 import { createApiKey } from "../src/services/apikeys.js";
 import { createTenant } from "../src/services/tenants.js";

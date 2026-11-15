@@ -17,8 +17,8 @@ import {
 } from "@memento/core";
 import { and, asc, desc, eq, gt, isNull, lt, or, type SQL } from "drizzle-orm";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
 import { compileFilter } from "../db/filter.js";
+import type { Database } from "../db/index.js";
 import { type EventRow, events } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { type Lookups, recordCandidates, unknownLookups } from "../lookups.js";

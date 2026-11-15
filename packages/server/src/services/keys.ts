@@ -8,7 +8,7 @@ import {
 import { and, count, eq, isNull } from "drizzle-orm";
 import type { LimitsConfig } from "../config.js";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { type ApiKeyRow, apiKeys, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import type { QuotaGuard } from "../quota.js";

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { Database } from "./db/client.js";
+import type { Database } from "./db/index.js";
 import { apiKeyUsage } from "./db/schema.js";
 
 /** The counters of `memento_apikey_usage`, as the meter takes them. */

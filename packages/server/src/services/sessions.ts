@@ -1,6 +1,6 @@
 import { eq, lt } from "drizzle-orm";
 import type { TenantContext } from "../context.js";
-import type { Database, Executor } from "../db/client.js";
+import type { Database, Executor } from "../db/index.js";
 import { sessions, tenants, type UserRow, users } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { newSecret, sha256Hex } from "./secrets.js";

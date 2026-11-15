@@ -7,11 +7,10 @@ import {
 } from "@memento/core";
 import { LookupRegistry } from "@memento/lookups";
 import { and, asc, eq } from "drizzle-orm";
-import type { Database } from "../db/client.js";
+import { type Database, dialect } from "../db/index.js";
 import { templates } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { TemplateEngine, TemplateSyntaxError } from "../templates/engine.js";
-import { isUniqueViolation } from "./pg.js";
 import { getTenantBySlug } from "./tenants.js";
 
 type TemplateRow = typeof templates.$inferSelect;
@@ -74,7 +73,7 @@ export async function saveTemplate(
     const [row] = await db.insert(templates).values(values).returning();
     return { template: serializeTemplate(row as TemplateRow), created: true };
   } catch (error) {
-    if (!isUniqueViolation(error)) throw error;
+    if (!dialect.isUniqueViolation(error)) throw error;
     if (!options.replace) {
       throw new MementoError(
         "conflict",

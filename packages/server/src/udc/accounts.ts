@@ -1,7 +1,7 @@
 import { type ViewConfigInput, ViewConfigSchema } from "@jsudc/core";
 import { and, count, eq, isNotNull, isNull, type SQL, type SQLWrapper, sql } from "drizzle-orm";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
+import { type Database, dialect } from "../db/index.js";
 import { apiKeys, apiKeyUsage, events, tenants, tenantUsers, users } from "../db/schema.js";
 import type { QuotaGuard } from "../quota.js";
 import { APIKEY_INSTANCE_TYPE } from "../services/keys.js";
@@ -42,14 +42,14 @@ const bool = (expr: SQL, description: string): TableField => ({
 /** `revoked` > `expired` > `disabled` > `active`, as `keyStatus` says. */
 const keyStatusSql = sql<string>`(case
   when ${apiKeys.revokedAt} is not null then 'revoked'
-  when ${apiKeys.expiresAt} is not null and ${apiKeys.expiresAt} <= now() then 'expired'
+  when ${apiKeys.expiresAt} is not null and ${apiKeys.expiresAt} <= ${dialect.now()} then 'expired'
   when ${apiKeys.disabledAt} is not null then 'disabled'
   else 'active' end)`;
 
 /** Live events the key wrote in the last 24 hours (the `memento_event_apikey_idx` index). */
-const events24hSql = sql<number>`(select count(*)::int from ${events}
+const events24hSql = sql<number>`(select ${dialect.int(sql`count(*)`)} from ${events}
   where ${events.tenantId} = ${apiKeys.tenantId} and ${events.apiKeyId} = ${apiKeys.id}
-  and ${events.occurredAt} > now() - interval '24 hours' and ${events.archivedAt} is null)`;
+  and ${events.occurredAt} > ${dialect.hoursAgo(24)} and ${events.archivedAt} is null)`;
 
 /** The fields of a key, as its owner sees them. */
 function apiKeyFields(defaultDailyLimit: number): Record<string, TableField> {
@@ -59,7 +59,7 @@ function apiKeyFields(defaultDailyLimit: number): Record<string, TableField> {
     scopes: {
       def: { type: "string_array", description: "read, write" },
       kind: "text",
-      expr: sql`array_to_string(${apiKeys.scopes}, ',')`,
+      expr: dialect.joinStrings(apiKeys.scopes),
       select: apiKeys.scopes,
       sortable: false,
     },
@@ -74,7 +74,7 @@ function apiKeyFields(defaultDailyLimit: number): Record<string, TableField> {
       expr: keyStatusSql,
     },
     daily_limit: integer(
-      sql`coalesce(${apiKeys.dailyLimit}, ${defaultDailyLimit}::int)`,
+      sql`coalesce(${apiKeys.dailyLimit}, ${dialect.int(defaultDailyLimit)})`,
       "Events the key may write per UTC day",
     ),
     used_today: {
@@ -153,7 +153,7 @@ export function apiKeyUsageSource(db: Database): TableCollectionSource {
       bytes_in: counter(apiKeyUsage.bytesIn, "Request bytes it sent"),
     },
     // One key and hour per row: the id joins both.
-    id: sql`(${apiKeyUsage.apiKeyId}::text || '|' || to_char(${apiKeyUsage.hour} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:00:00"Z"'))`,
+    id: sql`(${dialect.text(apiKeyUsage.apiKeyId)} || '|' || ${dialect.utcHourIso(apiKeyUsage.hour)})`,
     select: (selection) =>
       db
         .select(selection as never)
@@ -174,7 +174,7 @@ export function apiKeyUsageSource(db: Database): TableCollectionSource {
 
 /** `admin_users`: every self-service user with their (owned) tenant and its live keys. */
 export function adminUsersSource(db: Database): TableCollectionSource {
-  const liveKeys = sql<number>`(select count(*)::int from ${apiKeys}
+  const liveKeys = sql<number>`(select ${dialect.int(sql`count(*)`)} from ${apiKeys}
     where ${apiKeys.tenantId} = ${tenants.id} and ${apiKeys.deletedAt} is null
     and ${apiKeys.revokedAt} is null)`;
   const join = <Q extends ReturnType<typeof base>>(q: Q) =>

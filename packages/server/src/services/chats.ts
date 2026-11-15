@@ -24,7 +24,7 @@ import {
 import { and, asc, desc, eq, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { requireTenant } from "../context.js";
-import type { Database } from "../db/client.js";
+import { type Database, dialect } from "../db/index.js";
 import { chatParticipants, chats, events } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import {
@@ -34,7 +34,6 @@ import {
   type PushOptions,
   pushEvent,
 } from "./events.js";
-import { isUniqueViolation } from "./pg.js";
 
 type ChatRow = typeof chats.$inferSelect;
 type ParticipantRow = typeof chatParticipants.$inferSelect;
@@ -153,7 +152,7 @@ export async function createChat(db: Database, input: ChatCreateInput): Promise<
       return serializeChat(chat, participants);
     });
   } catch (error) {
-    if (isUniqueViolation(error)) {
+    if (dialect.isUniqueViolation(error)) {
       throw new MementoError("conflict", `chat "${instanceId}" already exists`);
     }
     throw error;
@@ -260,7 +259,10 @@ export async function sendMessage(
   await db
     .update(chats)
     .set({
-      lastMessageAt: sql`greatest(coalesce(${chats.lastMessageAt}, ${occurredAt}::timestamptz), ${occurredAt}::timestamptz)`,
+      lastMessageAt: dialect.later(
+        sql`coalesce(${chats.lastMessageAt}, ${dialect.timestamp(occurredAt)})`,
+        dialect.timestamp(occurredAt),
+      ),
     })
     .where(eq(chats.id, chat.row.id));
   return { event_id: event.id, message: event, rendered: event.rendered };
@@ -318,7 +320,7 @@ export async function markSeen(
         eq(chatParticipants.userId, data.user_id),
         or(
           isNull(chatParticipants.lastSeenAt),
-          sql`(${chatParticipants.lastSeenAt}, ${chatParticipants.lastSeenEventId}) < (${at}::timestamptz, ${message.id}::uuid)`,
+          sql`(${chatParticipants.lastSeenAt}, ${chatParticipants.lastSeenEventId}) < (${dialect.timestamp(at)}, ${dialect.uuid(message.id)})`,
         ),
       ),
     )

@@ -5,7 +5,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import { acceptEmptyJson, clearSessionCookie, sessionCookie, setSessionCookie } from "../auth.js";
 import type { LimitsConfig } from "../config.js";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import type { TenantRow, UserRow } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import type { AccountMails } from "../mail/account-mails.js";

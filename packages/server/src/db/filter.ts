@@ -1,15 +1,14 @@
 import type { Condition, Filter, FilterField } from "@memento/core";
 import {
+  type AnyColumn,
   and,
   between,
   eq,
   gt,
   gte,
-  ilike,
   inArray,
   isNotNull,
   isNull,
-  like,
   lt,
   lte,
   ne,
@@ -18,11 +17,11 @@ import {
   or,
   type SQL,
 } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
 import { MementoError } from "../errors.js";
+import { dialect } from "./index.js";
 import { events } from "./schema.js";
 
-const COLUMNS: Record<FilterField, PgColumn> = {
+const COLUMNS: Record<FilterField, AnyColumn> = {
   event_type: events.eventType,
   instance_type: events.instanceType,
   instance_id: events.instanceId,
@@ -63,9 +62,9 @@ function condition(c: Condition): SQL {
     case "gte":
       return gte(column, toValue(c.field, c.value));
     case "prefix":
-      return like(column, `${escapeLike(String(c.value))}%`);
+      return dialect.like(column, `${escapeLike(String(c.value))}%`);
     case "contains":
-      return ilike(column, `%${escapeLike(String(c.value))}%`);
+      return dialect.ilike(column, `%${escapeLike(String(c.value))}%`);
     case "in":
       return inArray(
         column,

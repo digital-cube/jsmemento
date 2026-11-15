@@ -1,5 +1,5 @@
 import { and, asc, count, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { events, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 

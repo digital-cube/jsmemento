@@ -1,9 +1,8 @@
 import { type Tenant, type TenantCreate, TenantCreateSchema } from "@memento/core";
 import { asc, eq } from "drizzle-orm";
-import type { Database } from "../db/client.js";
+import { type Database, dialect } from "../db/index.js";
 import { type TenantRow, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
-import { isUniqueViolation } from "./pg.js";
 
 export function serializeTenant(row: TenantRow): Tenant {
   return {
@@ -21,7 +20,7 @@ export async function createTenant(db: Database, input: TenantCreate): Promise<T
     const [row] = await db.insert(tenants).values(data).returning();
     return serializeTenant(row as TenantRow);
   } catch (error) {
-    if (isUniqueViolation(error)) {
+    if (dialect.isUniqueViolation(error)) {
       throw new MementoError("conflict", `tenant "${data.slug}" already exists`);
     }
     throw error;

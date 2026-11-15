@@ -10,7 +10,7 @@ import {
 } from "@memento/core";
 import { and, eq, isNull } from "drizzle-orm";
 import type { TenantContext } from "../context.js";
-import type { Database } from "../db/client.js";
+import type { Database } from "../db/index.js";
 import { type ApiKeyRow, apiKeys, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { getTenantBySlug } from "./tenants.js";

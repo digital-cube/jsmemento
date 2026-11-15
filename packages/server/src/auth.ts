@@ -2,7 +2,7 @@ import type {} from "@fastify/cookie";
 import { extractApiKey, extractSubprotocolKey, hasScope, type Scope } from "@memento/core";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { runWithTenant, type TenantContext } from "./context.js";
-import type { Database } from "./db/client.js";
+import type { Database } from "./db/index.js";
 import { MementoError } from "./errors.js";
 import { authenticateApiKey } from "./services/apikeys.js";
 import {

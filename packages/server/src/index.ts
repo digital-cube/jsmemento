@@ -26,15 +26,20 @@ export {
   parseMailFrom,
 } from "./config.js";
 export { currentTenant, requireTenant, runWithTenant, type TenantContext } from "./context.js";
+export { compileFilter, escapeLike } from "./db/filter.js";
 export {
   connect,
   type Database,
   type DatabaseHandle,
+  type Dialect,
+  type DialectCapabilities,
+  dialect,
   type Executor,
   MIGRATIONS_FOLDER,
   runMigrations,
-} from "./db/client.js";
-export { compileFilter, escapeLike } from "./db/filter.js";
+  type Transaction,
+  uuidv7,
+} from "./db/index.js";
 export * as schema from "./db/schema.js";
 export { type DemoKey, DemoKeyError, resolveDemoKey } from "./demo.js";
 export { MementoError } from "./errors.js";

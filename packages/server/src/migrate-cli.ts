@@ -1,5 +1,5 @@
 import { loadConfig } from "./config.js";
-import { connect, runMigrations } from "./db/client.js";
+import { connect, runMigrations } from "./db/index.js";
 
 // `MIGRATE_TARGET=test` points the same migrations at the test database.
 const config = loadConfig();

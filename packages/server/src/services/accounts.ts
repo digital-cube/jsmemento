@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { Database, Executor } from "../db/client.js";
+import { type Database, dialect, type Executor } from "../db/index.js";
 import {
   type TenantRow,
   tenants,
@@ -308,7 +308,7 @@ export async function verifyEmail(db: Database, token: string, now = new Date())
     const [user] = await tx
       .update(users)
       .set({
-        emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, ${now.toISOString()}::timestamptz)`,
+        emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, ${dialect.timestamp(now)})`,
       })
       .where(eq(users.id, userId))
       .returning();
@@ -461,7 +461,7 @@ export async function setUserDisabled(
 export async function markUserVerified(db: Database, email: string): Promise<UserRow> {
   const [row] = await db
     .update(users)
-    .set({ emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, now())` })
+    .set({ emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, ${dialect.now()})` })
     .where(eq(users.email, normalizeEmail(email)))
     .returning();
   if (!row) throw new MementoError("not_found", `no user "${normalizeEmail(email)}"`);

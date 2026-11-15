@@ -300,7 +300,7 @@ describe("memento simulate", () => {
   beforeEach(async () => {
     out = [];
     err = [];
-    await handle.pool.query(
+    await handle.db.execute(
       "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
     );
     await createTenant(handle.db, { slug: "demo", name: "Demo" });

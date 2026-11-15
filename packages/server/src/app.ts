@@ -19,7 +19,7 @@ import Fastify, {
 import type { Redis } from "ioredis";
 import { installAuth } from "./auth.js";
 import type { LimitsConfig } from "./config.js";
-import type { Database } from "./db/client.js";
+import type { Database } from "./db/index.js";
 import { resolveDemoKey } from "./demo.js";
 import { MementoError } from "./errors.js";
 import { emptyLookups, type Lookups } from "./lookups.js";
