@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { eq, sql } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +13,7 @@ import { authenticateApiKey, createApiKey, revokeApiKey } from "../src/services/
 import { applyRetention } from "../src/services/retention.js";
 import { createTenant } from "../src/services/tenants.js";
 import { hourOf, UsageMeter, type UsageRow, utcDay } from "../src/usage.js";
-import { auth, type Fixture, push, setupApp, testDatabase } from "./helpers.js";
+import { auth, type Fixture, onSqlite, push, setupApp, testDatabase } from "./helpers.js";
 
 const handle = testDatabase();
 const SERVICE_URL = "https://service.test";
@@ -392,7 +392,7 @@ describe("daily quota", () => {
     expect(row?.quotaExceededOn).toBe(utcDay(new Date()));
     // Nothing past the limit was stored.
     const [stored] = await handle.db
-      .select({ n: sql<number>`count(*)::int` })
+      .select({ n: count() })
       .from(events)
       .where(eq(events.apiKeyId, apiKeyId));
     expect(stored?.n).toBe(5);
@@ -403,7 +403,8 @@ describe("daily quota", () => {
     await exercise(key, api_key.id);
   });
 
-  it("with Redis: counts in memento:quota:<key>:<day>", async () => {
+  // Skipped on SQLite: that run has no Redis (REDIS_URL is empty), by design of the run.
+  it.skipIf(onSqlite)("with Redis: counts in memento:quota:<key>:<day>", async () => {
     redis = new Redis(loadConfig().redisUrl ?? "redis://localhost:6379/0", {
       maxRetriesPerRequest: 1,
     });

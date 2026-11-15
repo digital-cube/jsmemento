@@ -8,6 +8,7 @@ import {
   loadConfig,
 } from "@memento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { reset } from "../../server/test/helpers.js";
 import { clock, makeUi, runCli, tailLine, tailQuery } from "../src/index.js";
 
 const handle = connect(loadConfig().testDatabaseUrl, { max: 2 });
@@ -44,9 +45,7 @@ async function until(predicate: () => boolean, ms = 5000): Promise<void> {
 beforeEach(async () => {
   out = [];
   err = [];
-  await handle.db.execute(
-    "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
-  );
+  await reset(handle);
   await createTenant(handle.db, { slug: "acme", name: "Acme" });
   keys = {
     read: (await createApiKey(handle.db, { tenant: "acme", name: "r", scopes: "read" })).key,

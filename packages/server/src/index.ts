@@ -33,10 +33,13 @@ export {
   type DatabaseHandle,
   type Dialect,
   type DialectCapabilities,
+  describeDatabase,
   dialect,
+  dialectOf,
   type Executor,
   MIGRATIONS_FOLDER,
   runMigrations,
+  SQLITE_MIGRATIONS_FOLDER,
   type Transaction,
   uuidv7,
 } from "./db/index.js";

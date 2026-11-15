@@ -34,8 +34,8 @@ const MINUTE_MS = 60_000;
 /** A column of the aggregate subquery. */
 const column = (name: string): SQL => sql`${sql.identifier(ALIAS)}.${sql.identifier(name)}`;
 
-/** The bucket of an event: its `occurred_at` cut to the minute. */
-const minuteOf = dialect.truncateToMinute(events.occurredAt);
+/** The bucket of an event: its `occurred_at` cut to the minute (built per query). */
+const minuteOf = () => dialect.truncateToMinute(events.occurredAt);
 
 /** The field of the chart series of one event type: `CPU_LOAD` → `cpu_load`. */
 export const seriesField = (eventType: string): string => eventType.toLowerCase();
@@ -217,7 +217,7 @@ export class ActivityCollectionSource implements Source {
     const query = this.db
       .select({
         ...(this.byApiKey ? { api_key: sql<string>`${apiKeys.prefix}`.as("api_key") } : {}),
-        minute: sql<Date>`${minuteOf}`.as("minute"),
+        minute: sql<Date>`${minuteOf()}`.as("minute"),
         event_type: sql<string>`${events.eventType}`.as("event_type"),
         count: dialect.int(sql`count(*)`).as("count"),
         ...Object.fromEntries(
@@ -243,10 +243,10 @@ export class ActivityCollectionSource implements Source {
       return query
         .innerJoin(apiKeys, eq(apiKeys.id, events.apiKeyId))
         .where(where)
-        .groupBy(minuteOf, events.eventType, apiKeys.prefix)
+        .groupBy(minuteOf(), events.eventType, apiKeys.prefix)
         .as(ALIAS);
     }
-    return query.where(where).groupBy(minuteOf, events.eventType).as(ALIAS);
+    return query.where(where).groupBy(minuteOf(), events.eventType).as(ALIAS);
   }
 
   /**

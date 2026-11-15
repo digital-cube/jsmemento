@@ -5,7 +5,7 @@ import { PgDialect } from "drizzle-orm/pg-core";
 import pg from "pg";
 import { type Dialect, errorCode } from "./dialect.js";
 import type { Database, DatabaseHandle } from "./index.js";
-import * as schema from "./schema.js";
+import * as schema from "./schema-postgres.js";
 
 /** SQLSTATE of a unique violation. */
 const UNIQUE_VIOLATION = "23505";

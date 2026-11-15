@@ -19,6 +19,7 @@ import {
   TemplateEngine,
 } from "@memento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { reset } from "../../server/test/helpers.js";
 import {
   BOT,
   CAST,
@@ -300,9 +301,7 @@ describe("memento simulate", () => {
   beforeEach(async () => {
     out = [];
     err = [];
-    await handle.db.execute(
-      "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
-    );
+    await reset(handle);
     await createTenant(handle.db, { slug: "demo", name: "Demo" });
     const key = async (scopes: string) =>
       (await createApiKey(handle.db, { tenant: "demo", name: scopes, scopes })).key;

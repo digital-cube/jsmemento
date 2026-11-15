@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { Redis } from "ioredis";
 import { type AccountsOptions, buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { connect, runMigrations } from "./db/index.js";
+import { connect, describeDatabase, runMigrations } from "./db/index.js";
 import { DemoKeyError } from "./demo.js";
 import { emptyLookups, initLookups, type Lookups } from "./lookups.js";
 import { BrevoMailer } from "./mail/mailer.js";
@@ -104,6 +104,8 @@ const app = await buildApp({
   await database.close();
   process.exit(1);
 });
+// The file or host and database, never the rest of the URL (it may carry a password).
+app.log.info({ database: describeDatabase(config.databaseUrl) }, "database migrated and open");
 app.log.info(
   { path: config.lookups.path, sections: lookups.registry.sectionNames(), strict: lookups.strict },
   "lookups loaded",

@@ -48,10 +48,18 @@ export interface TableSpec {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** ISO text of a timestamp the driver handed back as a Date or a string; `null` stays. */
+/**
+ * ISO text of a timestamp the driver handed back as a Date, a string or (SQLite, an
+ * expression no column decodes) epoch milliseconds; `null` stays.
+ */
 export function isoOf(value: unknown): string | null {
   if (value === null || value === undefined) return null;
-  const date = value instanceof Date ? value : new Date(String(value));
+  const date =
+    value instanceof Date
+      ? value
+      : typeof value === "number"
+        ? new Date(value)
+        : new Date(String(value));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
@@ -64,16 +72,20 @@ export class TableCollectionSource implements Source {
   readonly capabilities = EVENT_SOURCE_CAPABILITIES;
   private readonly schema: SchemaDoc;
   private readonly compiler: SqlFilterCompiler;
-  private readonly selection: Record<string, SQLWrapper>;
 
   constructor(private readonly spec: TableSpec) {
     this.schema = schemaOf(spec.fields);
     this.compiler = new SqlFilterCompiler(spec.fields);
-    this.selection = { __id: spec.id };
-    for (const [name, field] of Object.entries(spec.fields)) {
+  }
+
+  /** What a query selects: the id and every field's expression, read when it is built. */
+  private get selection(): Record<string, SQLWrapper> {
+    const selection: Record<string, SQLWrapper> = { __id: this.spec.id };
+    for (const [name, field] of Object.entries(this.spec.fields)) {
       const select = field.select ?? field.expr;
-      if (select) this.selection[name] = select;
+      if (select) selection[name] = select;
     }
+    return selection;
   }
 
   async describe(): Promise<SchemaDoc> {
@@ -141,7 +153,12 @@ export class TableCollectionSource implements Source {
       const row: Row = { __meta: { id: String(record.__id), version: 1 } };
       for (const [name, field] of Object.entries(this.spec.fields)) {
         const raw = field.value ? field.value(record) : (record[name] ?? null);
-        row[name] = field.def.type === "datetime" ? isoOf(raw) : raw;
+        row[name] =
+          field.def.type === "datetime"
+            ? isoOf(raw)
+            : field.kind === "bool" && raw !== null
+              ? Boolean(raw)
+              : raw;
       }
       return row;
     });

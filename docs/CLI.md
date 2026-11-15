@@ -8,7 +8,9 @@ pnpm memento --help                 # every command, examples, environment
 pnpm memento <command> --help       # options and examples of one command
 ```
 
-The admin commands talk to PostgreSQL directly (`DATABASE_URL`). `tail`, `cpu-monitor` and
+The admin commands talk to the database directly (`DATABASE_URL`: PostgreSQL, or a SQLite
+`file:<path>` — also while a server runs on the same file: a command waits, up to 10 s, for
+the server's write in progress, and the server keeps serving meanwhile). `tail`, `cpu-monitor` and
 `simulate` talk to a running server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
 machine-readable output.
 
@@ -187,6 +189,7 @@ hint: start it with `pnpm db:up`, or point DATABASE_URL at a running server
 | wrong user or password | `PostgreSQL at … rejected the user or password` |
 | database missing | `the database in DATABASE_URL (…) does not exist` |
 | not migrated | `the database has no memento tables yet` → `run memento migrate first` |
+| SQLite file busy for more than 10 s | `SQLite /path/memento.db is busy: another process held its write lock too long` → `retry in a moment` |
 | domain errors | the API's own message, e.g. `tenant "acme" already exists` |
 | anything else | `unexpected failure: …` → `set MEMENTO_DEBUG=1 to see the stack trace` |
 

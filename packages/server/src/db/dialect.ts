@@ -9,12 +9,12 @@ export type Expr = AnyColumn | SQL | SQLWrapper;
  * Services, routes and UDC sources write their queries with drizzle's query builder and reach
  * for this interface for the rest — error classification, casts of parameters, and the
  * handful of expressions every database spells differently. One implementation per supported
- * database (today only `./postgres.ts`); nothing outside `db/` imports a driver or a dialect
- * module.
+ * database (`./postgres.ts`, `./sqlite.ts`); nothing outside `db/` imports a driver or a
+ * dialect module.
  */
 export interface Dialect {
   /** Name of the database, for logs and error messages. */
-  readonly name: "postgres";
+  readonly name: "postgres" | "sqlite";
   /** What this database can do that another might not. */
   readonly capabilities: DialectCapabilities;
 
@@ -52,7 +52,7 @@ export interface Dialect {
   truncateToMinute(timestamp: Expr): SQL<Date>;
   /** `timestamp`'s hour in UTC as `YYYY-MM-DDTHH:00:00Z` (the id of a usage row). */
   utcHourIso(timestamp: Expr): SQL<string>;
-  /** The later of two timestamps (neither is null). */
+  /** The later of two timestamps; a NULL one is skipped (`greatest`), NULL only when both are. */
   later(a: Expr, b: Expr): SQL<Date>;
 
   /** Null-safe `a <> b`: true when exactly one is null, false when both are. */
@@ -66,7 +66,7 @@ export interface Dialect {
   render(query: SQL): { sql: string; params: unknown[] };
 }
 
-/** What this database can do that another might not. No flag yet: PostgreSQL does it all. */
+/** What this database can do that another might not. No flag yet: both do all the server needs. */
 export type DialectCapabilities = Record<never, boolean>;
 
 /** The driver's error `code` of `error`, or of the driver error drizzle wrapped in its `cause`. */

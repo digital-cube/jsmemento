@@ -32,6 +32,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "tsx --conditions=@memento/source src/main.ts",
     "test": "vitest run",
+    "test:pg": "MEMENTO_TEST_DIALECT=postgres vitest run",
+    "test:sqlite": "MEMENTO_TEST_DIALECT=sqlite vitest run",
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {

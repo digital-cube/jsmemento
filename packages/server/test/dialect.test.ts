@@ -5,7 +5,7 @@ import { connect, type DatabaseHandle, dialect, uuidv7 } from "../src/db/index.j
 import { apiKeys, apiKeyUsage, chatParticipants, chats, events, users } from "../src/db/schema.js";
 import { createApiKey } from "../src/services/apikeys.js";
 import { createTenant } from "../src/services/tenants.js";
-import { reset } from "./helpers.js";
+import { onSqlite, reset } from "./helpers.js";
 
 const render = (query: SQL) => dialect.render(query);
 const text = (query: SQL) => render(sql`${query}`).sql;
@@ -17,31 +17,36 @@ const text = (query: SQL) => render(sql`${query}`).sql;
 const same = (after: SQL, before: SQL) => expect(render(after)).toEqual(render(before));
 
 describe("connect", () => {
-  it.each(["sqlite:///var/memento.db", "mysql://memento:secret@localhost/memento", "file:m.db"])(
-    "refuses %s with an error naming only the scheme",
-    (url) => {
-      let error: unknown;
-      try {
-        connect(url);
-      } catch (e) {
-        error = e;
-      }
-      expect(error).toBeInstanceOf(Error);
-      const message = (error as Error).message;
-      expect(message).toContain(`unsupported scheme "${url.split(":")[0]}:"`);
-      expect(message).toContain("postgres://, postgresql://");
-      expect(message).not.toContain("secret");
-    },
-  );
+  it.each([
+    "sqlite:///var/memento.db",
+    "mysql://memento:secret@localhost/memento",
+    "redis://memento:secret@localhost:6379",
+  ])("refuses %s with an error naming only the scheme", (url) => {
+    let error: unknown;
+    try {
+      connect(url);
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(Error);
+    const message = (error as Error).message;
+    expect(message).toContain(`unsupported scheme "${url.split(":")[0]}:"`);
+    expect(message).toContain("postgres://, postgresql://, file:<path>, :memory:");
+    expect(message).not.toContain("secret");
+  });
 
   it("refuses a URL without a scheme", () => {
     expect(() => connect("/var/memento.db")).toThrow(/database URL: no scheme/);
   });
 
-  it.each([
-    "postgres://memento:memento@localhost:5432/memento",
-    "POSTGRESQL://memento:memento@localhost:5432/memento",
-  ])("opens %s as PostgreSQL (lazily: no connection until a query)", async (url) => {
+  // Skipped on SQLite: that process speaks SQLite, and one process speaks one dialect
+  // (test/sqlite.test.ts checks that a PostgreSQL URL is refused there).
+  it
+    .skipIf(onSqlite)
+    .each([
+      "postgres://memento:memento@localhost:5432/memento",
+      "POSTGRESQL://memento:memento@localhost:5432/memento",
+    ])("opens %s as PostgreSQL (lazily: no connection until a query)", async (url) => {
     const handle = connect(url, { max: 1 });
     expect(handle.dialect).toBe(dialect);
     expect(handle.dialect.name).toBe("postgres");
@@ -50,7 +55,9 @@ describe("connect", () => {
   });
 });
 
-describe("postgres dialect", () => {
+// The PostgreSQL spelling and evaluation of the seam. Skipped on SQLite, where the process
+// speaks the other dialect: test/sqlite.test.ts holds the SQLite twins of these tests.
+describe.skipIf(onSqlite)("postgres dialect", () => {
   it("has a capabilities object", () => {
     expect(dialect.capabilities).toEqual({});
   });
@@ -178,7 +185,7 @@ describe("uuidv7", () => {
   });
 });
 
-describe("postgres dialect against the database", () => {
+describe.skipIf(onSqlite)("postgres dialect against the database", () => {
   let handle: DatabaseHandle;
   beforeAll(() => {
     handle = connect(loadConfig().testDatabaseUrl, { max: 2 });

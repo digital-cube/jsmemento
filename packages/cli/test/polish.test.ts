@@ -1,5 +1,6 @@
 import { connect, loadConfig, schema } from "@memento/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { onSqlite, reset } from "../../server/test/helpers.js";
 import {
   buildProgram,
   type CliOptions,
@@ -21,9 +22,7 @@ const run = (argv: string[], options: Partial<CliOptions> = {}) =>
 beforeEach(async () => {
   out = [];
   err = [];
-  await handle.db.execute(
-    "truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant cascade",
-  );
+  await reset(handle);
 });
 afterAll(() => handle.close());
 
@@ -87,7 +86,9 @@ describe("friendly errors", () => {
   });
   const coded = (message: string, code: string) => Object.assign(new Error(message), { code });
 
-  it("explains an unreachable database instead of a stack trace", async () => {
+  // Skipped on SQLite: that process speaks SQLite and cannot open a PostgreSQL URL (one
+  // dialect per process); the SQLite messages are checked below.
+  it.skipIf(onSqlite)("explains an unreachable database instead of a stack trace", async () => {
     const down = connect("postgresql://memento:secret@127.0.0.1:1/jsmemento", { max: 1 });
     try {
       const code = await run(["list-tenants"], {

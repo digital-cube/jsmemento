@@ -41,8 +41,11 @@ import { apiKeys, type EventRow, events } from "../db/schema.js";
 import { localizeEvents, serializeEvent } from "../services/events.js";
 import type { EventRenderer } from "../templates/renderer.js";
 
-/** How a field's filter values are coerced before they reach SQL. */
-export type FieldKind = "text" | "time" | "number" | "json";
+/**
+ * How a field's filter values are coerced before they reach SQL. A `bool` field's value is a
+ * boolean (`true`, `"true"`, `false`, `"false"`) and reads back as one (SQLite answers 0/1).
+ */
+export type FieldKind = "text" | "time" | "number" | "json" | "bool";
 
 /** A field filters and sorts can name: its UDC definition and the SQL they compare. */
 export interface SqlField {
@@ -358,6 +361,11 @@ export function coerce(field: string, kind: FieldKind, value: unknown): unknown 
       throw new UdcError("validation_error", `${field} needs a timestamp, got ${String(value)}`);
     }
     return date;
+  }
+  if (kind === "bool") {
+    if (value === true || value === "true") return true;
+    if (value === false || value === "false") return false;
+    throw new UdcError("validation_error", `${field} needs true or false, got ${String(value)}`);
   }
   if (kind === "number") {
     const number = typeof value === "string" && value.trim() !== "" ? Number(value) : value;

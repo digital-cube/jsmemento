@@ -4,7 +4,7 @@ const url = process.env.DATABASE_URL ?? "postgresql://jsmemento:jsmemento@localh
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/schema.ts",
+  schema: "./src/db/schema-postgres.ts",
   out: "./drizzle",
   dbCredentials: { url },
 });

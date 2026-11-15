@@ -7,7 +7,7 @@ import { escapeLike } from "../src/db/filter.js";
 import { runMigrations } from "../src/db/index.js";
 import { MemoryPublisher, NoopPublisher, RedisPublisher } from "../src/publisher.js";
 import { createTenant, getTenantBySlug, listTenants } from "../src/services/tenants.js";
-import { reset, testDatabase } from "./helpers.js";
+import { onSqlite, reset, testDatabase } from "./helpers.js";
 
 const handle = testDatabase();
 beforeEach(() => reset(handle));
@@ -129,7 +129,8 @@ describe("publishers", () => {
 
   const redisUrl = process.env.REDIS_URL || "redis://localhost:6379/0";
 
-  it("publishes JSON on memento:events:<tenant> in Redis", async () => {
+  // Skipped on SQLite: that run has no Redis (REDIS_URL is empty), by design of the run.
+  it.skipIf(onSqlite)("publishes JSON on memento:events:<tenant> in Redis", async () => {
     const subscriber = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
     try {
       await subscriber.connect();

@@ -9,6 +9,31 @@ share one version.
 
 ### Added
 
+- **SQLite as a database option** for installations that must not depend on a database
+  service (the first user: a customer's local machine with neither PostgreSQL nor Redis):
+  `DATABASE_URL=file:<path>` (or `file:///abs/path`, `:memory:` for tests) instead of
+  `postgresql://…`. PostgreSQL stays the default. Every feature works on SQLite — events,
+  queries, rendering, chats, UDC collections with the same answers, the `/ws` stream, accounts,
+  quotas, usage, retention, the CLI — with one limit: **one server process on one host** per
+  file. Redis is optional there as on PostgreSQL and not needed at all: without it the stream
+  runs on the in-process bus and the quota counter reads the usage table.
+  - The driver is Node's built-in `node:sqlite` under drizzle's `sqlite-proxy`, no native
+    dependency. One writer connection behind an in-process FIFO gate (every transaction
+    `BEGIN IMMEDIATE`, a nested one a savepoint), a read-only second connection for reads, WAL,
+    `foreign_keys = ON`; another process holding the write lock (a `memento` CLI command next to
+    the server) is waited for on a timer, up to 10 s, without stopping the server.
+  - Its own migration set, `packages/server/drizzle-sqlite/` (with the event immutability
+    triggers), shipped in the package next to `drizzle/`; `pnpm db:generate` writes both, the
+    server at start and `memento migrate` apply the set of the URL's database.
+  - Features by database in the README and `docs/DEPLOYMENT.md`, which also has "Running on
+    SQLite": the file, the WAL files, backups with `VACUUM INTO`, restore.
+- `DATABASE_URL` / `TEST_DATABASE_URL` accept `file:<path>`, `file:///abs/path` and `:memory:`.
+  The tables of `db/schema.ts` are those of the connected database (`db/schema-postgres.ts` or
+  `db/schema-sqlite.ts`, the same row types, checked at compile time); a process speaks one
+  dialect. New exports: `dialectOf`, `describeDatabase`, `SQLITE_MIGRATIONS_FOLDER`.
+- The server and CLI suites run on both databases (vitest projects, `MEMENTO_TEST_DIALECT`,
+  `test:pg` / `test:sqlite`); `test/parity.test.ts` pins what both must answer alike.
+
 - **The website** (`apps/website`, `@memento/website`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#the-website)):
   Astro + Starlight with memento's own identity (ink and bone, the red thread, Bodoni Moda),
   dark and light, Pagefind search, a home hero (one `USER_LOGIN` and its EN / SR sentence),
@@ -177,6 +202,13 @@ share one version.
   (`Server {{instance_id}} — CPU: …`).
 
 ### Changed
+
+- **`@memento/server`**: the PostgreSQL schema moved from `db/schema.ts` to
+  `db/schema-postgres.ts` (the `schema` export stays, now the tables of the connected
+  database); the UDC field maps (`EVENTS_FIELDS`, `CPU_LOAD_FIELDS`, `API_KEY_EVENT_FIELD`)
+  read their columns when a query is built. A boolean UDC field (`is_admin`, …) filters on
+  `true` / `false` and refuses anything else with `validation_error`; `isoOf` takes epoch
+  milliseconds too.
 
 - The CLI's `send-message` writes with `apiKeyId: null` (was the placeholder `"cli"`): events
   now reference `memento_apikey`, and the CLI uses no key.

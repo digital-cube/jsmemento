@@ -1,6 +1,9 @@
+import { describeDatabase } from "@memento/server";
+
 /**
  * Plain-language messages for the failures a CLI user actually meets — the database is down
- * or not migrated, the credentials are wrong — instead of a driver's stack trace.
+ * or not migrated, the credentials are wrong, the SQLite file is busy — instead of a driver's
+ * stack trace.
  */
 
 export interface FriendlyError {
@@ -20,9 +23,16 @@ function chain(error: unknown): (Error & { code?: unknown })[] {
   return errors;
 }
 
-/** Where `DATABASE_URL` points, without the password. */
+/** Where `DATABASE_URL` points, without the password: PostgreSQL's host, or the SQLite file. */
 export function describeDatabaseUrl(url: string | undefined): string {
   if (!url) return "the database";
+  if (url === ":memory:" || /^file:/i.test(url)) {
+    try {
+      return describeDatabase(url);
+    } catch {
+      return "the database";
+    }
+  }
   try {
     const parsed = new URL(url);
     return `${parsed.hostname}:${parsed.port || "5432"}${parsed.pathname}`;
@@ -61,6 +71,19 @@ export function friendlyError(error: unknown, databaseUrl?: string): FriendlyErr
           message: "the database has no memento tables yet",
           hint: "run `memento migrate` first",
         };
+      case "SQLITE_BUSY":
+      case "SQLITE_BUSY_SNAPSHOT":
+        return {
+          message: `${where} is busy: another process held its write lock too long`,
+          hint: "retry in a moment",
+        };
+    }
+    // SQLite names a missing table in the message only (result code 1, SQLITE_ERROR).
+    if (/^no such table: memento_/.test(e.message)) {
+      return {
+        message: "the database has no memento tables yet",
+        hint: "run `memento migrate` first",
+      };
     }
   }
   return null;

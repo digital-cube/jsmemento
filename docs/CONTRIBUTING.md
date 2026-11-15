@@ -54,6 +54,17 @@ pnpm test:e2e         # builds the server, starts two processes, tests over HTTP
   the `coverage` artifact of the *Lint, type check, test* job and a table in the job summary.
 - Server and CLI tests use the database at `TEST_DATABASE_URL` and **truncate it** per file;
   they run one file at a time. Never point it at data you want to keep.
+- **Both databases.** `@memento/server` and `@memento/cli` run every suite twice, as the vitest
+  projects `server` / `server-sqlite` (`cli` / `cli-sqlite`): on PostgreSQL at
+  `TEST_DATABASE_URL`, and on a SQLite file in the temporary directory that the run creates,
+  migrates and removes, with no Redis. One of them: `MEMENTO_TEST_DIALECT=sqlite pnpm test`,
+  or in the package `pnpm test:pg` / `pnpm test:sqlite` (the SQLite run needs neither
+  PostgreSQL nor Redis); one file on one: `pnpm --filter @memento/server exec vitest run
+  --project server-sqlite test/chats.test.ts`. A test that cannot run on SQLite is skipped by
+  name with `it.skipIf(onSqlite)` (`test/helpers.ts`) and a comment with the reason; what the
+  two must answer alike goes into `test/parity.test.ts`. After a schema change,
+  `pnpm db:generate` writes both migration sets (`drizzle/`, `drizzle-sqlite/`); a new column
+  of `memento_event` also goes into the SQLite trigger `memento_event_archive_only`.
 - Redis tests use `REDIS_URL` (default `redis://localhost:6379/0`) and are skipped with a
   warning when it is not reachable. The E2E suite requires it.
 

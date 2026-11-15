@@ -21,14 +21,23 @@ import { MementoError } from "../errors.js";
 import { dialect } from "./index.js";
 import { events } from "./schema.js";
 
-const COLUMNS: Record<FilterField, AnyColumn> = {
-  event_type: events.eventType,
-  instance_type: events.instanceType,
-  instance_id: events.instanceId,
-  actor_id: events.actorId,
-  occurred_at: events.occurredAt,
-  received_at: events.receivedAt,
-};
+/** The column of a filter field, of the connected dialect's schema (read per query). */
+function columnOf(field: FilterField): AnyColumn {
+  switch (field) {
+    case "event_type":
+      return events.eventType;
+    case "instance_type":
+      return events.instanceType;
+    case "instance_id":
+      return events.instanceId;
+    case "actor_id":
+      return events.actorId;
+    case "occurred_at":
+      return events.occurredAt;
+    case "received_at":
+      return events.receivedAt;
+  }
+}
 
 const TIME_FIELDS = new Set<FilterField>(["occurred_at", "received_at"]);
 
@@ -47,7 +56,7 @@ function toValue(field: FilterField, value: string | number | boolean): unknown 
 }
 
 function condition(c: Condition): SQL {
-  const column = COLUMNS[c.field];
+  const column = columnOf(c.field);
   switch (c.op) {
     case "eq":
       return eq(column, toValue(c.field, c.value));

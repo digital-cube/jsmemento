@@ -11,8 +11,46 @@ export function testDatabase(): DatabaseHandle {
   return connect(loadConfig().testDatabaseUrl, { max: 4 });
 }
 
-/** Empties every memento table (TRUNCATE bypasses the event immutability trigger). */
+/**
+ * The suite runs on SQLite (the `server-sqlite` vitest project, `MEMENTO_TEST_DIALECT`). A test
+ * that cannot run there is skipped by name with `it.skipIf(onSqlite)` and says why.
+ */
+export const onSqlite = process.env.MEMENTO_TEST_DIALECT === "sqlite";
+
+/** The memento tables, children before parents (SQLite's reset deletes in this order). */
+const TABLES = [
+  "memento_seen",
+  "memento_star",
+  "memento_chat_participant",
+  "memento_chat",
+  "memento_template",
+  "memento_event",
+  "memento_apikey_usage",
+  "memento_session",
+  "memento_user_token",
+  "memento_tenant_user",
+  "memento_apikey",
+  "memento_tenant",
+  "memento_user",
+];
+
+/**
+ * Empties every memento table. PostgreSQL: TRUNCATE, which bypasses the event immutability
+ * trigger. SQLite has no TRUNCATE: one transaction drops the triggers of `memento_event`,
+ * deletes every row and creates the triggers again from their own SQL.
+ */
 export async function reset(handle: DatabaseHandle): Promise<void> {
+  if (handle.dialect.name === "sqlite") {
+    await handle.db.transaction(async (tx) => {
+      const triggers = (await tx.execute(
+        sql`select name, sql from sqlite_master where type = 'trigger' and tbl_name = 'memento_event'`,
+      )) as unknown as { rows: { name: string; sql: string }[] };
+      for (const t of triggers.rows) await tx.execute(sql.raw(`drop trigger "${t.name}"`));
+      for (const table of TABLES) await tx.execute(sql.raw(`delete from "${table}"`));
+      for (const t of triggers.rows) await tx.execute(sql.raw(t.sql));
+    });
+    return;
+  }
   await handle.db.execute(
     sql`truncate memento_seen, memento_star, memento_template, memento_chat_participant, memento_chat, memento_event, memento_apikey, memento_tenant, memento_user cascade`,
   );

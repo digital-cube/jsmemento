@@ -182,7 +182,8 @@ export function buildProgram(options: CliOptions): Command {
       )}
 
 Environment:
-  DATABASE_URL     PostgreSQL the admin commands use
+  DATABASE_URL     the database of the admin commands: postgresql://… or file:<path> (SQLite;
+                   safe to use while a server runs on the same file)
   MEMENTO_TENANT   default --tenant for chat commands
   MEMENTO_URL      server for \`tail\`, \`cpu-monitor\` and \`simulate\` (default ${DEFAULT_SERVER_URL})
   MEMENTO_API_KEY  key for \`tail\`, \`cpu-monitor\` and \`simulate\`

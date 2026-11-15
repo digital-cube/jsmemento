@@ -5,7 +5,8 @@
 
 Self-hosted activity ledger: applications push machine events, memento keeps them as an
 immutable, tenant-isolated audit trail and serves them back per entity, per actor, as a feed.
-TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis).
+TypeScript port of Memento (Fastify + Drizzle + PostgreSQL + Redis — or, for one server process
+on one host, a SQLite file and nothing else).
 
 | package | |
 |---|---|
@@ -32,6 +33,27 @@ curl localhost:3000/memento/api/health
 
 Image: `ghcr.io/digital-cube/jsmemento:<version>` (`latest`, `main`). Environment variables,
 volumes, reverse proxy and scaling: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Features by database
+
+PostgreSQL is the default and scales out. A SQLite file (`DATABASE_URL=file:<path>`) runs the
+same server without a database service and without Redis, for one server process on one host:
+
+| | PostgreSQL (default) | SQLite (`file:<path>`) |
+|---|---|---|
+| events, Filter DSL, entity history, templates and rendering, chats, tenants, API keys, lookups, the CLI | yes | yes |
+| UDC collections (filters, sorts, paging, the activity chart, the service site's collections) | yes | yes — the same answers |
+| the `/ws` stream, self-service accounts, mails, daily quotas, usage per hour, retention | yes | yes |
+| Redis (`REDIS_URL`) | optional | optional — not needed |
+| several server processes (or hosts) on one database | yes | **no** — one server process |
+
+How to run on SQLite, and how to back it up:
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#running-on-sqlite).
+
+```bash
+DATABASE_URL=file:var/memento.db pnpm dev     # no PostgreSQL, no Redis: the file is created and migrated
+DATABASE_URL=file:var/memento.db pnpm memento create-tenant acme --name "Acme Inc"
+```
 
 ## Quick start (development)
 
@@ -103,7 +125,7 @@ and [Demo key](docs/DEPLOYMENT.md#demo-key-examples-site).
 | | |
 |---|---|
 | `pnpm build` / `pnpm typecheck` | Turbo over all packages |
-| `pnpm test` / `pnpm test:coverage` | Vitest (server + CLI need PostgreSQL at `TEST_DATABASE_URL`); coverage ≥ 80 % per package, HTML in `packages/*/coverage/` |
+| `pnpm test` / `pnpm test:coverage` | Vitest; server + CLI run every suite twice, on PostgreSQL at `TEST_DATABASE_URL` and on a temporary SQLite file (`MEMENTO_TEST_DIALECT=postgres\|sqlite`, or `pnpm test:pg` / `test:sqlite` in the package, for one); coverage ≥ 80 % per package, HTML in `packages/*/coverage/` |
 | `pnpm test:e2e` | builds the server, runs two processes against PostgreSQL + Redis, tests HTTP + WebSocket |
 | `pnpm lint` / `pnpm format` | Biome |
 | `pnpm db:generate` | new Drizzle migration after editing `packages/server/src/db/schema.ts` |

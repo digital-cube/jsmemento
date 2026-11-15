@@ -34,20 +34,19 @@ const integer = (expr: SQLWrapper, description: string): TableField => ({
 });
 const bool = (expr: SQL, description: string): TableField => ({
   def: { type: "bool", index: true, description },
-  // `eq true/false` compares the boolean SQL with a coerced string, which Postgres casts.
-  kind: "text",
+  kind: "bool",
   expr,
 });
 
 /** `revoked` > `expired` > `disabled` > `active`, as `keyStatus` says. */
-const keyStatusSql = sql<string>`(case
+const keyStatusSql = () => sql<string>`(case
   when ${apiKeys.revokedAt} is not null then 'revoked'
   when ${apiKeys.expiresAt} is not null and ${apiKeys.expiresAt} <= ${dialect.now()} then 'expired'
   when ${apiKeys.disabledAt} is not null then 'disabled'
   else 'active' end)`;
 
 /** Live events the key wrote in the last 24 hours (the `memento_event_apikey_idx` index). */
-const events24hSql = sql<number>`(select ${dialect.int(sql`count(*)`)} from ${events}
+const events24hSql = () => sql<number>`(select ${dialect.int(sql`count(*)`)} from ${events}
   where ${events.tenantId} = ${apiKeys.tenantId} and ${events.apiKeyId} = ${apiKeys.id}
   and ${events.occurredAt} > ${dialect.hoursAgo(24)} and ${events.archivedAt} is null)`;
 
@@ -71,7 +70,7 @@ function apiKeyFields(defaultDailyLimit: number): Record<string, TableField> {
         description: "active, disabled (paused), revoked, expired",
       },
       kind: "text",
-      expr: keyStatusSql,
+      expr: keyStatusSql(),
     },
     daily_limit: integer(
       sql`coalesce(${apiKeys.dailyLimit}, ${dialect.int(defaultDailyLimit)})`,
@@ -81,7 +80,7 @@ function apiKeyFields(defaultDailyLimit: number): Record<string, TableField> {
       def: { type: "integer", min: 0, description: "Events it wrote today (UTC)" },
       kind: "number",
     },
-    events_24h: integer(events24hSql, "Events it wrote in the last 24 hours"),
+    events_24h: integer(events24hSql(), "Events it wrote in the last 24 hours"),
     created_at: time(apiKeys.createdAt, "When it was created"),
     last_used_at: time(apiKeys.lastUsedAt, "When it last authenticated a request"),
     expires_at: time(apiKeys.expiresAt, "When it stops working; empty: never"),
@@ -297,7 +296,10 @@ export const API_KEY_EVENT_FIELD: EventField = {
     description: "The prefix of the API key that wrote it (empty: written by a signed-in user)",
   },
   kind: "text",
-  expr: apiKeys.prefix,
+  // Read per query: the column of the connected dialect's schema.
+  get expr() {
+    return apiKeys.prefix;
+  },
   sortable: false,
   value: (e) => e.api_key,
 };

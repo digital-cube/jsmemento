@@ -1,7 +1,7 @@
 {
   "name": "@memento/server",
   "version": "1.0.0",
-  "description": "JSMemento server: Fastify app, Drizzle/PostgreSQL storage, tenant isolation, API key auth.",
+  "description": "JSMemento server: Fastify app, Drizzle storage on PostgreSQL or SQLite, tenant isolation, API key auth.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,6 +24,7 @@
   "files": [
     "dist",
     "drizzle",
+    "drizzle-sqlite",
     "templates",
     "mail"
   ],
@@ -32,10 +33,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx watch --conditions=@memento/source src/server.ts",
     "start": "node dist/server.js",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle-sqlite.config.ts",
     "db:migrate": "tsx --conditions=@memento/source src/migrate-cli.ts",
     "db:migrate:test": "MIGRATE_TARGET=test tsx --conditions=@memento/source src/migrate-cli.ts",
     "test": "vitest run",
+    "test:pg": "MEMENTO_TEST_DIALECT=postgres vitest run",
+    "test:sqlite": "MEMENTO_TEST_DIALECT=sqlite vitest run",
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {

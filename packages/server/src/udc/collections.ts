@@ -21,46 +21,81 @@ import { EventCollectionSource, type EventField, payloadNumber } from "./source.
 /** The memento event types the CPU monitor demo pushes. */
 export const CPU_LOAD_EVENT_TYPE = "CPU_LOAD";
 
+/**
+ * The fields' expressions are getters: each reads the column of the connected dialect's
+ * schema when a query is built (`db/schema.ts`), never at import.
+ */
 const occurredAt: EventField = {
   def: { type: "datetime", index: true, description: "When it happened at the producer" },
   kind: "time",
-  expr: events.occurredAt,
+  get expr() {
+    return events.occurredAt;
+  },
   value: (e) => e.occurred_at,
 };
 const text = (
-  expr: EventField["expr"],
+  expr: () => NonNullable<EventField["expr"]>,
   value: EventField["value"],
   description: string,
-): EventField => ({ def: { type: "string", index: true, description }, kind: "text", expr, value });
+): EventField => ({
+  def: { type: "string", index: true, description },
+  kind: "text",
+  get expr() {
+    return expr();
+  },
+  value,
+});
 
-const instanceType = text(events.instanceType, (e) => e.instance_type, "user, ticket, server, …");
-const instanceId = text(events.instanceId, (e) => e.instance_id, "Which instance");
+const instanceType = text(
+  () => events.instanceType,
+  (e) => e.instance_type,
+  "user, ticket, server, …",
+);
+const instanceId = text(
+  () => events.instanceId,
+  (e) => e.instance_id,
+  "Which instance",
+);
 const rendered: EventField = {
   def: { type: "text", description: "Human-readable text of the event" },
   kind: "text",
-  expr: events.rendered,
+  get expr() {
+    return events.rendered;
+  },
   value: (e) => e.rendered,
 };
 
 /** Every event of the tenant: the generic activity log. */
 export const EVENTS_FIELDS: Record<string, EventField> = {
   occurred_at: occurredAt,
-  event_type: text(events.eventType, (e) => e.event_type, "USER_LOGIN, CPU_LOAD, …"),
+  event_type: text(
+    () => events.eventType,
+    (e) => e.event_type,
+    "USER_LOGIN, CPU_LOAD, …",
+  ),
   instance_type: instanceType,
   instance_id: instanceId,
-  actor_id: text(events.actorId, (e) => e.actor_id, "Who did it"),
+  actor_id: text(
+    () => events.actorId,
+    (e) => e.actor_id,
+    "Who did it",
+  ),
   rendered,
   payload: {
     def: { type: "json", description: "Event-specific data" },
     kind: "json",
-    expr: events.payload,
+    get expr() {
+      return events.payload;
+    },
     sortable: false,
     value: (e) => e.payload,
   },
   received_at: {
     def: { type: "datetime", description: "When memento stored it" },
     kind: "time",
-    expr: events.receivedAt,
+    get expr() {
+      return events.receivedAt;
+    },
     value: (e) => e.received_at,
   },
   api_key: API_KEY_EVENT_FIELD,
@@ -69,7 +104,9 @@ export const EVENTS_FIELDS: Record<string, EventField> = {
 const load = (key: string, description: string): EventField => ({
   def: { type: "decimal", min: 0, index: true, description },
   kind: "number",
-  expr: payloadNumber(key),
+  get expr() {
+    return payloadNumber(key);
+  },
   value: (e) => {
     const v = e.payload[key];
     return typeof v === "number" && Number.isFinite(v) ? v : null;

@@ -11,7 +11,7 @@ import WebSocket from "ws";
 import { buildApp, selectSubprotocol } from "../src/app.js";
 import { RedisPublisher } from "../src/publisher.js";
 import { LocalBus, RedisFeed } from "../src/stream/feed.js";
-import { auth, type Fixture, push, setupApp, testDatabase } from "./helpers.js";
+import { auth, type Fixture, onSqlite, push, setupApp, testDatabase } from "./helpers.js";
 
 const handle = testDatabase();
 let fx: Fixture | null = null;
@@ -310,7 +310,9 @@ describe("GET /memento/ws — streaming", () => {
   });
 });
 
-describe("Redis Pub/Sub", () => {
+// Skipped on SQLite: that run has no Redis (REDIS_URL is empty), by design of the run. The
+// stream without Redis (LocalBus) is covered by the rest of this file on both databases.
+describe.skipIf(onSqlite)("Redis Pub/Sub", () => {
   it("streams events pushed through RedisPublisher → RedisFeed", async () => {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379/0";
     const probe = new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 0 });
