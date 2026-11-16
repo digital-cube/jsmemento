@@ -1,7 +1,12 @@
+import type { SchemaDoc } from "@jsudc/core";
+import type { Source } from "@jsudc/server";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
 import { events } from "../src/db/schema.js";
+import { MemoryMailer } from "../src/mail/mailer.js";
+import { eventCollections } from "../src/udc/collections.js";
+import { DEFAULT_MENU_PATH } from "../src/udc/menu.js";
 import { actionOf, scopeForAction } from "../src/udc/plugin.js";
 import { auth, type Fixture, push, setupApp, testDatabase } from "./helpers.js";
 
@@ -152,6 +157,36 @@ describe("UDC collections", () => {
     });
     expect(response.statusCode).toBe(404);
     await app.close();
+  });
+
+  // @jsudc/server 0.3: `udcPlugin` checks every lookup and `row_link` against the served
+  // collections at startup. memento's fields hold lookups.yaml values as plain strings (no
+  // `lookup` field), so it keeps that check on (TCKWRUY7D5).
+  it("starts with every collection under @jsudc/server's lookup and row_link check", async () => {
+    const app = await buildApp({
+      db: handle.db,
+      logger: false,
+      accounts: { serviceUrl: "https://service.test", mailer: new MemoryMailer() },
+      menu: DEFAULT_MENU_PATH,
+    });
+    await app.ready();
+    await app.close();
+  });
+
+  it("does not start when a lookup names a collection it does not serve", async () => {
+    const registry = eventCollections({ db: handle.db });
+    const schema = {
+      fields: { owner: { type: "lookup", lookup: { collection: "users", label_field: "name" } } },
+    } as unknown as SchemaDoc;
+    registry.register({
+      name: "tickets",
+      label: "Tickets",
+      source: { describe: async () => schema } as unknown as Source,
+      view: {} as never,
+    });
+    await expect(buildApp({ db: handle.db, logger: false, udc: registry })).rejects.toThrow(
+      /tickets\.owner: lookup target users is not a served collection/,
+    );
   });
 });
 

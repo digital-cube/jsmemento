@@ -297,7 +297,10 @@ curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \
 
 `GET /memento/healthz` (the UDC plugin's own liveness, no key) answers `{"ok":true}`.
 Embedding the plugin: `mementoPlugin`'s `udc` option takes your own `CollectionRegistry`, or
-`false` to serve none.
+`false` to serve none. Built with `@jsudc/*` 0.3, like memento's own. At startup
+`@jsudc/server` checks every `lookup` field and `row_link` of the registry against the
+collections it serves, and a lookup into a collection that is not served stops the start
+(memento's collections have neither).
 
 ## Accounts (`MEMENTO_ACCOUNTS=true`)
 

@@ -96,6 +96,6 @@ useEffect(() => {
 
 Pin to these and bump deliberately (verify with `npm view <pkg> version`):
 
-- `@jsudc/core` 0.2.0
-- `@jsudc/server` 0.2.1
-- `@jsudc/react` 0.2.1
+- `@jsudc/core` 0.3.0
+- `@jsudc/server` 0.3.0
+- `@jsudc/react` 0.3.1

@@ -15,8 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@jsudc/core": "0.2.0",
-    "@jsudc/react": "0.2.1",
+    "@jsudc/core": "0.3.0",
+    "@jsudc/react": "0.3.1",
     "@memento/core": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
     "lucide-react": "^1.65.0"
