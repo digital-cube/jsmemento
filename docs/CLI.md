@@ -10,14 +10,16 @@ pnpm memento <command> --help       # options and examples of one command
 
 The admin commands talk to the database directly (`DATABASE_URL`: PostgreSQL, or a SQLite
 `file:<path>` — also while a server runs on the same file: a command waits, up to 10 s, for
-the server's write in progress, and the server keeps serving meanwhile). `tail`, `cpu-monitor` and
+the server's write in progress, and the server keeps serving meanwhile; see
+[SQLITE.md § The CLI next to a running server](SQLITE.md#the-cli-next-to-a-running-server),
+including `memento retention` from cron). `tail`, `cpu-monitor` and
 `simulate` talk to a running server (`MEMENTO_URL`, `MEMENTO_API_KEY`). Add `--json` before the command for
 machine-readable output.
 
 | command | |
 |---|---|
 | `setup` | first run, step by step: migrate, create a tenant, create its first key (terminal only) |
-| `migrate` | apply pending migrations |
+| `migrate` | apply pending migrations (the server does this at start too); on a SQLite `file:` URL it creates the file and its directory |
 | `create-tenant [slug] --name` | create a tenant |
 | `list-tenants` | list tenants |
 | `create-key --tenant --scopes --name [--expires-in-days]` | create an API key (printed once) |

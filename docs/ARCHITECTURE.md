@@ -2,8 +2,8 @@
 
 > Implemented: the core API and multitenancy, Handlebars templates with locale fallback and
 > YAML/CSV lookups ([TEMPLATES.md](TEMPLATES.md)), chats as first-class instances
-> ([CHATS.md](CHATS.md)), WebSocket streaming `/memento/ws` over Redis Pub/Sub
-> ([STREAMING.md](STREAMING.md)), the `@memento/react` UI and the CLI ([REACT.md](REACT.md),
+> ([CHATS.md](CHATS.md)), WebSocket streaming `/memento/ws` (in one process, or across processes over Redis Pub/Sub;
+> [STREAMING.md](STREAMING.md)), the `@memento/react` UI and the CLI ([REACT.md](REACT.md),
 > [CLI.md](CLI.md)), UDC collections (`packages/server/src/udc/`, [API.md](API.md#post-mementoudcaction--udc-collections))
 > and self-service accounts ([API.md](API.md#accounts-memento_accountstrue)). Per-event seen/star
 > endpoints come later; their tables already exist.
@@ -88,7 +88,8 @@ FilterField = event_type | instance_type | instance_id | actor_id | occurred_at 
 The server runs on PostgreSQL (the default, any number of processes) or on a SQLite file (one
 server process on one host, no Redis needed); `DATABASE_URL`'s scheme picks it
 (`postgres(ql)://` or `file:<path>` / `file:///abs/path` / `:memory:`). A process speaks one
-dialect: the first `connect` decides it.
+dialect: the first `connect` decides it. How to run on SQLite, and what it cannot do:
+[SQLITE.md](SQLITE.md).
 
 Source of truth: `packages/server/src/db/schema-postgres.ts`, and its twin
 `db/schema-sqlite.ts` (the same tables, columns, CHECKs, unique and partial indexes, and a
@@ -266,7 +267,8 @@ publisher that feeds the WebSocket hub directly).
 
 `GET /ws` (WebSocket) → `onRequest` auth (the key may also come as subprotocol
 `bearer.<key>`) → `preValidation` parses the filter → upgrade → `StreamHub.add`: the first
-connection of a tenant subscribes `RedisFeed` to `memento:events:<tenant_slug>` → welcome.
+connection of a tenant subscribes the feed — `RedisFeed` on `memento:events:<tenant_slug>`, or
+the `LocalBus` without Redis — → welcome.
 Each message from the feed is dispatched in order to the tenant's connections whose filter
 matches (re-rendered once per `?locale`). Per connection, messages not yet flushed to the
 socket are counted; at 1000 the client is closed (`4008`) as a slow consumer. One 30 s

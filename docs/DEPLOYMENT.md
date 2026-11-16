@@ -1,9 +1,9 @@
 # Deploying JSMemento
 
-JSMemento ships as one Docker image, `ghcr.io/digital-cube/jsmemento`, that needs a
-PostgreSQL database and (for more than one process, or for real-time delivery between
-processes) Redis — or, for one server process on one host, nothing but a SQLite file
-([Running on SQLite](#running-on-sqlite)).
+JSMemento ships as one Docker image, `ghcr.io/digital-cube/jsmemento`, that runs on a
+PostgreSQL database (with Redis when more than one process shares it) or, for one server
+process on one host, on a SQLite file and nothing else ([SQLITE.md](SQLITE.md)). This file
+covers what both have in common and the PostgreSQL stack of `docker-compose.yaml`.
 
 | tag | built from |
 |---|---|
@@ -184,9 +184,9 @@ What the server reads when it starts; the CLI in the image reads the same `DATAB
 
 | variable | default (image) | |
 |---|---|---|
-| `DATABASE_URL` | `postgresql://jsmemento:jsmemento@localhost:5432/jsmemento` | The database. **Set it.** `postgresql://user:password@host:5432/db` (or `postgres://…`): PostgreSQL, any number of processes. `file:<path>` (relative to the working directory) or `file:///abs/path.db`: SQLite, one server process — see [Running on SQLite](#running-on-sqlite). `:memory:`: SQLite in memory, for tests. The server migrates it at start; the CLI uses the same. |
+| `DATABASE_URL` | `postgresql://jsmemento:jsmemento@localhost:5432/jsmemento` | The database. **Set it.** `postgresql://user:password@host:5432/db` (or `postgres://…`): PostgreSQL, any number of processes. `file:<path>` (relative to the working directory) or `file:///abs/path.db`: SQLite, one server process — see [SQLITE.md](SQLITE.md). `:memory:`: SQLite in memory, for tests. The server migrates it at start; the CLI uses the same. |
 | `TEST_DATABASE_URL` | `postgresql://jsmemento:jsmemento@localhost:5432/jsmemento_test` | The test suites only (the same forms). |
-| `REDIS_URL` | *(unset)* | Redis for publishing events and cross-process streaming. Unset: one process, in-memory stream. |
+| `REDIS_URL` | *(unset)* | Redis for publishing events and cross-process streaming, and for the shared rate-limit and quota counters. Unset: one process, in-memory stream, counters in the process. Optional on both databases; on SQLite it does not allow a second process. |
 | `REDIS_CHANNEL_PREFIX` | `memento:events` | Channels are `<prefix>:<tenant_slug>`. |
 | `HOST` | `0.0.0.0` | Listen address. |
 | `PORT` | `3000` | Listen port (the code default outside the image is 8000). |
@@ -268,6 +268,10 @@ every user and key. It is a **second container of the same image**, `service` in
 | accounts | `ACCOUNTS` (empty: off) | always on, `TRUST_PROXY` on |
 | demo key | `DEMO_API_KEY` | none |
 | host port | `MEMENTO_PORT` (3000) | `SERVICE_PORT` (8201) |
+
+On SQLite there is one server process per file, so no second container: that process serves
+the service site *instead of* the examples site, with the same variables
+([SQLITE.md § Accounts and the service site](SQLITE.md#accounts-and-the-service-site)).
 
 Both share `DATABASE_URL`, `REDIS_URL` and the lookups, so a key created on the service site
 pushes events to either container (`MEMENTO_URL=https://service.stage.memento-service.org/memento`
@@ -392,6 +396,9 @@ docker compose -f docker-compose.yaml exec memento memento retention --dry-run
 psql … -c "update memento_tenant set retention_days = 30 where slug = 'acme'"
 ```
 
+On SQLite the same `UPDATE` goes through `sqlite3` or Node, and cron runs the command next to
+the server ([SQLITE.md § Retention from cron](SQLITE.md#retention-from-cron)).
+
 The `retention` service of `docker-compose.yaml` (profile `demo`, same image) runs it once a
 day: `sh -c 'while true; do memento retention; sleep 86400; done'`. Harmless while no tenant has
 `retention_days`.
@@ -420,68 +427,18 @@ location /memento/ {
 Run any number of memento processes against the same PostgreSQL and Redis: each publishes
 what it stores to Redis and streams every tenant its clients follow, so a client connected to
 one process sees events pushed to another (the E2E suite checks exactly this). Without
-`REDIS_URL`, run a single process. On SQLite, always one server process (below).
-
-## Features by database
-
-PostgreSQL is the default and scales out. A SQLite file (`DATABASE_URL=file:<path>`) runs the
-same server without a database service, for one server process on one host:
-
-| | PostgreSQL (default) | SQLite (`file:<path>`) |
-|---|---|---|
-| events (push, batch, query, Filter DSL, entity history, archive), templates and rendering, chats and read markers, seen / stars, tenants, API keys, lookups, the CLI | yes | yes |
-| UDC collections (`events`, `cpu_load`, `activity`, `menu`, the service site's collections), filters, sorts, paging | yes | yes — the same answers |
-| the `/ws` stream | yes | yes (one process: the in-process bus) |
-| self-service accounts, sessions, mails, daily quotas, usage per hour, retention | yes | yes |
-| Redis (`REDIS_URL`) for pub/sub, rate limits and quota counters | optional | optional — not needed; without it the stream, the rate limits and the quotas work in the process |
-| several server processes (or hosts) on one database | yes | **no** — one server process, one writer at a time |
-| a `memento` CLI command next to the running server | yes | yes, on the same host (it waits up to 10 s for the writer) |
-| moving data to the other database | — | no: pick one when you install |
+`REDIS_URL`, run a single process. On SQLite, always one server process, with or without
+Redis ([SQLITE.md](SQLITE.md#without-redis-and-with-it)).
 
 ## Running on SQLite
 
-For an installation that must not depend on a database service — one machine, one server
-process, no PostgreSQL and no Redis. Point `DATABASE_URL` at a file and leave `REDIS_URL`
-unset:
-
-```sh
-DATABASE_URL=file:/var/lib/memento/memento.db   # or file:var/memento.db, relative to the working directory
-# REDIS_URL unset: the stream, rate limits and quota counters live in the one process
-```
-
-- **The file.** The server creates it (and its directory) at the first start and applies the
-  SQLite migrations (`drizzle-sqlite/` in `@memento/server`) to it, as it does on PostgreSQL;
-  `memento migrate` does the same. Keep it on a local disk — in the image, under the `/data`
-  volume (`file:/data/memento.db`); not on NFS or another network filesystem, where SQLite's
-  locking is not reliable.
-- **WAL.** The database runs in WAL mode: next to `memento.db` you will see `memento.db-wal`
-  and `memento.db-shm` while it is open. They are part of the database — never delete them
-  while the server runs, and copy them with the file when you copy it stopped.
-- **One process.** One server process opens the file. Its writes take turns at one writer
-  connection (every transaction `BEGIN IMMEDIATE`, in arrival order); reads outside a
-  transaction go to a second, read-only connection and do not wait. A `memento` CLI command
-  may run next to the server: it waits (up to 10 s) for the writer without stopping the
-  server. Do not start a second server process on the same file, and do not put the file on a
-  share two hosts open. `REDIS_URL` is accepted (pub/sub and counters stay optional, as on
-  PostgreSQL), but it does not make several processes on one file possible.
-- **Immutable events.** The same rule as on PostgreSQL: triggers refuse `DELETE` on
-  `memento_event` and every `UPDATE` except archiving.
-- **Search.** `contains` and other case-insensitive matches fold every letter, not only ASCII
-  (`Ž` matches `ž`); `starts_with` / `prefix` are case-sensitive, as on PostgreSQL.
-
-**Backup.** Either stop the server and copy `memento.db` with its `-wal` and `-shm` files, or
-take a consistent copy of the running database with `VACUUM INTO` — with the `sqlite3` tool,
-or with the Node.js the server already runs on:
-
-```sh
-sqlite3 /var/lib/memento/memento.db "VACUUM INTO '/backup/memento-$(date +%F).db'"
-# without sqlite3:
-node -e 'const { DatabaseSync } = require("node:sqlite"); const [file, to] = process.argv.slice(1); new DatabaseSync(file).prepare("VACUUM INTO ?").run(to)' \
-  /var/lib/memento/memento.db /backup/memento-$(date +%F).db
-```
-
-To restore, stop the server, put the copy in place as `memento.db` (with no stale `-wal` /
-`-shm` next to it) and start the server.
+For an installation that must not depend on a database service (one machine, one server
+process, no PostgreSQL and no Redis), point `DATABASE_URL` at a file and leave `REDIS_URL`
+unset: `DATABASE_URL=file:/data/memento.db` in the image, with `/data` on a volume. The server
+creates and migrates the file at start; the `memento` CLI works next to it. Which database fits
+(a feature-by-feature table), the quick start, the image and a Compose file without `postgres`
+and `redis`, embedding, accounts and the service site, the CLI next to the server, backups with
+`VACUUM INTO`, and the limits are in the guide: **[SQLITE.md](SQLITE.md)**.
 
 ## Checking a deployment
 
@@ -499,6 +456,6 @@ it on a staging database, not on production.
 ## Backups
 
 Everything durable is in the database — PostgreSQL (`pg_dump`) or the SQLite file
-([Running on SQLite](#running-on-sqlite): `VACUUM INTO`); Redis only carries live pub/sub
+([SQLITE.md § Operations](SQLITE.md#operations): `VACUUM INTO`); Redis only carries live pub/sub
 traffic, and `/data/candidates` is review material. Events are immutable: a trigger refuses `DELETE` on
 `memento_event` and every `UPDATE` except archiving (setting `archived_at` once).

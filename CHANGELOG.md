@@ -12,11 +12,16 @@ share one version.
 - **SQLite as a database option** for installations that must not depend on a database
   service (the first user: a customer's local machine with neither PostgreSQL nor Redis):
   `DATABASE_URL=file:<path>` (or `file:///abs/path`, `:memory:` for tests) instead of
-  `postgresql://…`. PostgreSQL stays the default. Every feature works on SQLite — events,
+  `postgresql://…`. PostgreSQL stays the default. On SQLite everything works — events,
   queries, rendering, chats, UDC collections with the same answers, the `/ws` stream, accounts,
   quotas, usage, retention, the CLI — with one limit: **one server process on one host** per
-  file. Redis is optional there as on PostgreSQL and not needed at all: without it the stream
-  runs on the in-process bus and the quota counter reads the usage table.
+  file, so that process serves either the examples site or the service site, not both. Redis
+  is optional there as on PostgreSQL and not needed at all: without it the stream runs on the
+  in-process bus, the quota counter reads the usage table and the rate limits live in memory;
+  with it, still one server process. The guide, from an empty directory to a running server
+  (which database fits, the quick start, the image and a Compose file without `postgres` and
+  `redis`, embedding, accounts, the CLI next to the server, backups and the limits), is
+  [docs/SQLITE.md](docs/SQLITE.md); the README and `docs/DEPLOYMENT.md` link to it.
   - The driver is Node's built-in `node:sqlite` under drizzle's `sqlite-proxy`, no native
     dependency. One writer connection behind an in-process FIFO gate (every transaction
     `BEGIN IMMEDIATE`, a nested one a savepoint), a read-only second connection for reads, WAL,
@@ -25,14 +30,13 @@ share one version.
   - Its own migration set, `packages/server/drizzle-sqlite/` (with the event immutability
     triggers), shipped in the package next to `drizzle/`; `pnpm db:generate` writes both, the
     server at start and `memento migrate` apply the set of the URL's database.
-  - Features by database in the README and `docs/DEPLOYMENT.md`, which also has "Running on
-    SQLite": the file, the WAL files, backups with `VACUUM INTO`, restore.
-- `DATABASE_URL` / `TEST_DATABASE_URL` accept `file:<path>`, `file:///abs/path` and `:memory:`.
-  The tables of `db/schema.ts` are those of the connected database (`db/schema-postgres.ts` or
-  `db/schema-sqlite.ts`, the same row types, checked at compile time); a process speaks one
-  dialect. New exports: `dialectOf`, `describeDatabase`, `SQLITE_MIGRATIONS_FOLDER`.
-- The server and CLI suites run on both databases (vitest projects, `MEMENTO_TEST_DIALECT`,
-  `test:pg` / `test:sqlite`); `test/parity.test.ts` pins what both must answer alike.
+  - `DATABASE_URL` / `TEST_DATABASE_URL` accept `file:<path>`, `file:///abs/path` and
+    `:memory:`. The tables of `db/schema.ts` are those of the connected database
+    (`db/schema-postgres.ts` or `db/schema-sqlite.ts`, the same row types, checked at compile
+    time); a process speaks one dialect. New exports: `dialectOf`, `describeDatabase`,
+    `SQLITE_MIGRATIONS_FOLDER`.
+  - The server and CLI suites run on both databases (vitest projects, `MEMENTO_TEST_DIALECT`,
+    `test:pg` / `test:sqlite`); `test/parity.test.ts` pins what both must answer alike.
 
 - **The website** (`apps/website`, `@memento/website`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#the-website)):
   Astro + Starlight with memento's own identity (ink and bone, the red thread, Bodoni Moda),

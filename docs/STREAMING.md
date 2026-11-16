@@ -140,7 +140,8 @@ Reconnect after any close, with backoff; fetch what you missed with
   tenants it has clients for on one dedicated connection (`RedisFeed`). An event stored by any
   process reaches the clients of every process.
 - **Without `REDIS_URL`** a `LocalBus` is both publisher and feed: one process streams its
-  own events in memory.
+  own events in memory. This is how a SQLite installation streams
+  ([SQLITE.md](SQLITE.md#without-redis-and-with-it)).
 - **Embedded:** pass `stream: { feed }` to `mementoPlugin` (`heartbeatIntervalMs`,
   `maxBufferedMessages` optional). Without `stream` there is no `/ws` route and `/describe`
   reports `realtime: false`. If the host app already registered `@fastify/websocket` it is

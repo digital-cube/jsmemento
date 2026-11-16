@@ -3,7 +3,9 @@
 ## Dev setup
 
 Requires **Node 24+**, **pnpm** (the version in `package.json` → `packageManager`; `corepack
-enable` picks it up) and Docker or Podman for PostgreSQL + Redis.
+enable` picks it up) and Docker or Podman for PostgreSQL + Redis — or, to run the server and
+the SQLite half of the tests, nothing else: no database service and no Redis
+([SQLITE.md](SQLITE.md); `MEMENTO_TEST_DIALECT=sqlite`, [below](#running-checks)).
 
 ```bash
 git clone https://github.com/digital-cube/jsmemento.git && cd jsmemento
@@ -66,7 +68,8 @@ pnpm test:e2e         # builds the server, starts two processes, tests over HTTP
   name with `it.skipIf(onSqlite)` (`test/helpers.ts`) and a comment with the reason; what the
   two must answer alike goes into `test/parity.test.ts`. After a schema change,
   `pnpm db:generate` writes both migration sets (`drizzle/`, `drizzle-sqlite/`); a new column
-  of `memento_event` also goes into the SQLite trigger `memento_event_archive_only`.
+  of `memento_event` also goes into the SQLite trigger `memento_event_archive_only`. Running
+  memento on SQLite (not testing it) is [SQLITE.md](SQLITE.md).
 - Redis tests use `REDIS_URL` (default `redis://localhost:6379/0`) and are skipped with a
   warning when it is not reachable. The E2E suite requires it.
 

@@ -32,7 +32,9 @@ curl localhost:3000/memento/api/health
 ```
 
 Image: `ghcr.io/digital-cube/jsmemento:<version>` (`latest`, `main`). Environment variables,
-volumes, reverse proxy and scaling: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+volumes, reverse proxy and scaling: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). That stack is
+PostgreSQL + Redis; the image on one SQLite file, with no other service, is in
+[docs/SQLITE.md](docs/SQLITE.md#the-image-on-sqlite).
 
 ## Features by database
 
@@ -43,28 +45,33 @@ same server without a database service and without Redis, for one server process
 |---|---|---|
 | events, Filter DSL, entity history, templates and rendering, chats, tenants, API keys, lookups, the CLI | yes | yes |
 | UDC collections (filters, sorts, paging, the activity chart, the service site's collections) | yes | yes — the same answers |
-| the `/ws` stream, self-service accounts, mails, daily quotas, usage per hour, retention | yes | yes |
+| the `/ws` stream, self-service accounts, mails, daily quotas, usage per hour, retention | yes | yes — in the one process |
+| the examples site and the service site side by side | yes — two containers | no — one process serves one of them |
 | Redis (`REDIS_URL`) | optional | optional — not needed |
 | several server processes (or hosts) on one database | yes | **no** — one server process |
 
-How to run on SQLite, and how to back it up:
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#running-on-sqlite).
-
-```bash
-DATABASE_URL=file:var/memento.db pnpm dev     # no PostgreSQL, no Redis: the file is created and migrated
-DATABASE_URL=file:var/memento.db pnpm memento create-tenant acme --name "Acme Inc"
-```
+Which one fits, a quick start on a SQLite file, the image without `postgres` and `redis`,
+embedding, accounts and the service site, backups and the limits:
+**[docs/SQLITE.md](docs/SQLITE.md)**.
 
 ## Quick start (development)
 
-Requires Node 24+ and pnpm. Details, tests and the release process:
+Requires Node 24+ and pnpm, and a database: PostgreSQL + Redis in containers (the default,
+what the test suites use), or a SQLite file and no service at all
+([docs/SQLITE.md](docs/SQLITE.md)). Details, tests and the release process:
 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ```bash
 cp .env.example .env            # adjust if needed; the server/CLI read the environment
-docker compose up -d            # PostgreSQL + Redis (creates jsmemento and jsmemento_test)
 pnpm install
+
+# the database, either PostgreSQL + Redis in containers …
+docker compose up -d            # PostgreSQL + Redis (creates jsmemento and jsmemento_test)
 pnpm db:migrate && pnpm db:migrate:test
+# … or one SQLite file, no containers. An absolute path: `pnpm dev` and `pnpm memento` run in
+# different package directories, so a relative file: URL would name two different files.
+export DATABASE_URL=file://$HOME/.local/share/memento/dev.db
+pnpm db:migrate
 
 pnpm memento create-tenant acme --name "Acme Inc"
 pnpm memento create-key --tenant acme --scopes read,write --name local   # prints mk_… once
@@ -134,6 +141,7 @@ and [Demo key](docs/DEPLOYMENT.md#demo-key-examples-site).
 ## Docs
 
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Docker image, `docker-compose.yaml`, environment variables
+- [docs/SQLITE.md](docs/SQLITE.md) — running on a SQLite file: SQLite or PostgreSQL, the quick start, the image, embedding, accounts, backups, limits
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — dev setup, running tests, coverage, E2E, releasing
 - [CHANGELOG.md](CHANGELOG.md) — releases
 - [docs/API.md](docs/API.md) — endpoints with examples
