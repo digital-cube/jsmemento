@@ -383,6 +383,35 @@ from the `map` on the VM (by hand, with sudo). The wildcard stays: the old app's
 `memento-service-stage`) that win over a wildcard. The same edit is still owed to the
 mementoservice repository's copy; a redeploy of that vhost from there would take the name back.
 
+## The stage stack
+
+`examples.stage.memento-service.org` and `service.stage.memento-service.org` are the Compose
+project `jsmemento` of `docker-compose.yaml` on the stage VM (rootless podman, `podman compose`,
+profile `demo`, ports 8200 / 8201, `.env` next to the file). It stays on **PostgreSQL**: two
+server containers (`memento` and `service`) share one database, which SQLite's one process per
+file does not allow, and it is the one long-running installation on real data, so it is the
+regression check for the database layer on PostgreSQL ([SQLITE.md](SQLITE.md) is the other
+option, for a single process).
+
+**After a reboot** the stack comes back through a systemd user unit,
+[`deploy/stage/jsmemento-stage.service`](../deploy/stage/jsmemento-stage.service), with
+lingering on. The restart policy alone does not do it: podman has no daemon, and its boot-time
+`podman-restart.service` starts only containers with `restart: always`, not the file's
+`unless-stopped`. The unit starts `memento` and waits until it is healthy, then the rest
+(`service` after it: both run the migrations at start, without a lock). Install it once:
+
+```bash
+cp deploy/stage/jsmemento-stage.service ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now jsmemento-stage.service
+systemctl --user restart jsmemento-stage.service   # what a reboot does: stop, then start
+```
+
+**A redeploy**, from the checkout the unit names: `pg_dump` first (`podman exec
+jsmemento-postgres-1 sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > …`), tag the
+running image for rollback, `podman build -t ghcr.io/digital-cube/jsmemento:latest -t
+ghcr.io/digital-cube/jsmemento:<short sha> .`, then `podman compose -f docker-compose.yaml up -d
+--wait memento` and `podman compose -f docker-compose.yaml up -d --wait`.
+
 ## Retention
 
 `memento retention` archives (sets `archived_at`, the one change the immutability trigger

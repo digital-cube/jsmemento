@@ -1,0 +1,29 @@
+# The stage stack (examples.stage / service.stage.memento-service.org) on the VM, brought up
+# on boot. Rootless podman with lingering: install as a systemd USER unit —
+#   cp deploy/stage/jsmemento-stage.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now jsmemento-stage.service
+# (`loginctl enable-linger "$USER"` once per box). docs/DEPLOYMENT.md "Stage".
+#
+# Why a unit and not the restart policy: podman has no daemon, and its boot-time
+# podman-restart.service only starts containers with `restart: always`; the compose file's
+# `unless-stopped` is not brought back after a reboot (stage stayed down 11 days, TCK7W7P9HK).
+#
+# `memento` first and healthy, the rest after it: both server containers run the database
+# migrations at startup, without a lock, and two of them on pending migrations race.
+[Unit]
+Description=jsmemento stage stack (examples :8200, service :8201)
+Wants=podman.socket
+After=podman.socket
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/digital/work/jsmemento/.worktrees/jsmemento
+ExecStart=/usr/bin/podman compose -f docker-compose.yaml up -d --wait memento
+ExecStart=/usr/bin/podman compose -f docker-compose.yaml up -d --wait
+ExecStop=/usr/bin/podman compose -f docker-compose.yaml stop
+TimeoutStartSec=600
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target
