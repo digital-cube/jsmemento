@@ -45,7 +45,9 @@ pnpm test:coverage    # Vitest + V8 coverage, ≥ 80 % lines/statements/function
 pnpm test:e2e         # builds the server, starts two processes, tests over HTTP + WebSocket
 ```
 
-- `pnpm test` is the same as `test:coverage` without coverage.
+- `pnpm test` is the same as `test:coverage` without coverage. `pnpm test:full` runs
+  `test:coverage` and `test:e2e` in one go with one merged coverage file
+  ([§ The full suite](#the-full-suite)).
 - One package: `pnpm --filter @memento/server test`, one file:
   `pnpm --filter @memento/server exec vitest run test/chats.test.ts`, watch mode:
   `pnpm --filter @memento/core exec vitest`.
@@ -67,6 +69,45 @@ pnpm test:e2e         # builds the server, starts two processes, tests over HTTP
   of `memento_event` also goes into the SQLite trigger `memento_event_archive_only`.
 - Redis tests use `REDIS_URL` (default `redis://localhost:6379/0`) and are skipped with a
   warning when it is not reachable. The E2E suite requires it.
+
+### The full suite
+
+`pnpm test:full` (`sh tools/test-full.sh` → `node tools/test-full.mjs`) is the whole suite as
+one command: every package's `test:cov` (`@memento/server` and `@memento/cli` on PostgreSQL
+**and** SQLite, both Vitest projects in one run, so one coverage map per package), then
+`test:e2e`, then every package's coverage merged into **`coverage/coverage.json`** at the
+repository root (git-ignored), with a per-package table at the end. It is what the thilo
+board's Testing engine runs: [`thilo.toml`](../thilo.toml) `[testing]` has
+`command = "sh tools/test-full.sh"` (which first puts the newest Node ≥ 24 from `$NVM_DIR` on
+`PATH` when there is none) and `coverage_json = "coverage/coverage.json"`.
+
+- **Needs**: `pnpm install`, PostgreSQL with the test database and Redis — the `compose.yaml`
+  ones (`pnpm db:up`) or any others. `TEST_DATABASE_URL`, `REDIS_URL` (and
+  `MEMENTO_E2E_DATABASE_URL`, `DATABASE_URL`) come from the environment, then `.env` (only
+  these names are read from it), then the defaults of `.env.example`. When either service does
+  not answer, the command says which and exits `2` before running anything.
+- **Safe by construction**: it exits `2` without running anything when `TEST_DATABASE_URL` is
+  not PostgreSQL, when its database name does not say *test* (`jsmemento_test`,
+  `test_memento`, `memento-test2`), when it is the same database as `DATABASE_URL`, or when
+  `MEMENTO_E2E_DATABASE_URL` is another database. Inside the run `DATABASE_URL` and
+  `MEMENTO_E2E_DATABASE_URL` are set to the test database, `MEMENTO_E2E_URL` and
+  `MEMENTO_TEST_DIALECT` are dropped — the E2E step always tests this checkout's build.
+- **Exit status**: `0` only when every suite passed and every package met its coverage
+  threshold (as in CI); otherwise the first failing step's status. The coverage file is written
+  either way (`reportOnFailure` in each Vitest config), so a red run still has numbers.
+- **Coverage file**: coverage.py's JSON format (`files`, `totals`, line numbers per file —
+  what the thilo runner reads), built from Vitest's `coverage-final.json` with istanbul's line
+  rule, plus `packages` with each package's totals (and Vitest's own lines / statements /
+  functions / branches percentages, the ones the thresholds check).
+- **Workers and memory**: every Vitest run gets `--maxWorkers=2` and Turbo runs two packages at
+  a time, unless told otherwise — a full run was once killed for memory (exit 137). Change it
+  with `MEMENTO_TEST_WORKERS=4` (or `off` for one worker without file parallelism, `auto` for
+  Vitest's default of one per core) and `MEMENTO_TEST_CONCURRENCY=3`. A thilo test ticket's
+  `workers` arrives as pytest-xdist's `-n 4` in `PYTEST_ADDOPTS` and is read the same way. The
+  database suites run their files one at a time regardless (`fileParallelism: false`).
+- `--no-e2e` (or `MEMENTO_TEST_E2E=0`) skips the E2E step.
+- CI does not call it: the workflow runs the same steps (`test:coverage`, `test:e2e`) as
+  separate steps with its own service containers, and reports per package.
 
 ### E2E
 

@@ -26,7 +26,9 @@ export default defineConfig({
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/main.tsx", "src/vite-env.d.ts"],
-      reporter: ["text", "html", "json-summary"],
+      reporter: ["text", "html", "json-summary", "json"],
+      // A red run still reports (tools/test-full.mjs merges it for the thilo Testing tab).
+      reportOnFailure: true,
     },
   },
 });
