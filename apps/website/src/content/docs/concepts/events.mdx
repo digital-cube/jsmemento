@@ -73,17 +73,21 @@ never deleted.
 
 - **The database enforces it.** Migration `0001_event_immutability.sql` puts the trigger
   `memento_event_immutable` on `memento_event`. It refuses every `DELETE`, and every `UPDATE`
-  except one: setting `archived_at`, once, from `NULL`.
+  except one: setting `archived_at`, once, from `NULL`. On SQLite the same rule is two
+  triggers of `drizzle-sqlite/0001_event_immutability.sql`, `memento_event_no_delete` and
+  `memento_event_archive_only`.
 - **Archiving is the only removal.** An archived event disappears from every list, query, UDC
   collection and the stream, but its row stays. `GET /memento/events?include_archived=true`
   still shows it. [Retention](/concepts/accounts/#retention) archives old events per tenant.
 - **The text is a snapshot.** The sentence memento renders at push is stored with the event.
   A request in another locale renders a new one for the response only; the row is not updated.
 
-<Code code={guard} lang="sql" title="packages/server/drizzle/0001_event_immutability.sql" />
+<Code code={guard} lang="sql" title="packages/server/drizzle/0001_event_immutability.sql (PostgreSQL)" />
 
 `TRUNCATE` is not a row operation and is not affected; the test suites use it. For backups this
-means everything durable is in PostgreSQL, and a `pg_dump` holds it all.
+means everything durable is in the database: on PostgreSQL a `pg_dump` holds it all, on SQLite
+the one file does (`VACUUM INTO` copies it while the server runs, see
+[the SQLite guide](/reference/sqlite/#operations)).
 
 <Aside>
 A correction is a new event, not an edit: `TICKET_MODIFIED` after `TICKET_CREATED`, a

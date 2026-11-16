@@ -1,0 +1,5 @@
+{"level":30,…,"database":"SQLite …/my-memento/data/memento.db","msg":"database migrated and open"}
+{"level":30,…,"path":"…/my-memento/node_modules/lookups.yaml","sections":[],"strict":false,"msg":"lookups loaded"}
+{"level":40,…,"msg":"…/my-memento/node_modules/lookups.yaml not found: lookups disabled"}
+{"level":40,…,"msg":"…/my-memento/node_modules/menu.yaml not found: no menu UDC collection"}
+{"level":30,…,"msg":"Server listening at http://127.0.0.1:9300"}

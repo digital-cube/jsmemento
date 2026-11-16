@@ -14,7 +14,9 @@ The <a href={EXAMPLE_URL}>examples site</a> is
 [`apps/examples`](https://github.com/digital-cube/jsmemento/tree/main/apps/examples): a Vite +
 React 19 app on `@jsudc/react` with every memento example behind one sidebar. The Docker image
 serves the built site at `/` and at `/en/` (`MEMENTO_UI_DIR=/app/ui`), on the same origin as the
-API; `/` opens the first example, the CPU monitor.
+API; `/` opens the first example, the CPU monitor. The live examples and the service site run
+side by side on the stage stack, which is PostgreSQL; on a SQLite file one process serves one
+of the two ([Deployment modes](/concepts/deployment-modes/#postgresql-or-sqlite)).
 
 Every list on every page comes from a UDC collection (`POST /memento/udc/list`), and every page
 follows the live stream (`/memento/ws`). The two exceptions say why: the chat reads memento's

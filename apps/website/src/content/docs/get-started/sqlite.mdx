@@ -1,0 +1,99 @@
+---
+title: Run it on a SQLite file
+description: The server on one SQLite file with Node 24, without Docker, a database service or Redis — a tenant, a key, the first event and its sentence.
+sidebar:
+  order: 2
+---
+
+import { Aside, Code, Steps } from "@astrojs/starlight/components";
+import install from "../../../../snippets/sqlite/1-install.sh?raw";
+import env from "../../../../snippets/sqlite/2-env.sh?raw";
+import migrateOut from "../../../../snippets/sqlite/3-migrate.out.txt?raw";
+import migrate from "../../../../snippets/sqlite/3-migrate.sh?raw";
+import keyOut from "../../../../snippets/sqlite/4-key.out.txt?raw";
+import key from "../../../../snippets/sqlite/4-key.sh?raw";
+import serveOut from "../../../../snippets/sqlite/5-serve.out.txt?raw";
+import serve from "../../../../snippets/sqlite/5-serve.sh?raw";
+import eventOut from "../../../../snippets/sqlite/6-event.out.txt?raw";
+import event from "../../../../snippets/sqlite/6-event.sh?raw";
+
+memento runs on PostgreSQL or on a single SQLite file. On SQLite the server needs Node 24 and a
+local disk, nothing else: no Docker, no database service, no Redis. The driver is Node's
+built-in `node:sqlite`, and the `memento` command line opens the same file directly.
+
+<Aside type="caution" title="Not on npm yet">
+SQLite support is in the changelog's [Unreleased](/packages/changelog/) section; the first
+release with it is planned as 1.1.0, and until then no npm package and no image tag has it.
+Build the packages from a clone and install the
+tarballs (`pnpm install && pnpm --filter "@memento/cli..." build`, then `pnpm pack` in
+`packages/core`, `lookups`, `server` and `cli`), as [Embedded in Node](/get-started/embedded/)
+shows. The commands below were run that way.
+</Aside>
+
+<Steps>
+
+1. Make a directory and install the server and the command line (Node 24 or newer, `curl` and
+   `jq`):
+
+   <Code code={install} lang="sh" />
+
+2. Point memento at a database file. A relative `file:` path is relative to the working
+   directory; `file:///var/lib/memento/memento.db` is an absolute one. Leave `REDIS_URL` unset:
+
+   <Code code={env} lang="sh" />
+
+3. Create the database. The server would also migrate at start; `memento migrate` creates the
+   file and its directory now:
+
+   <Code code={migrate} lang="sh" />
+   <Code code={migrateOut} lang="txt" title="What it printed" />
+
+4. Make a tenant and an API key of it. No server has to be running, because each command opens
+   the file. The `mk_…` secret is printed once; only a hash of it is stored:
+
+   <Code code={key} lang="sh" />
+   <Code code={keyOut} lang="txt" title="What it printed" />
+
+5. Start the server. Its log is JSON on stdout, with no Redis line and no PostgreSQL line. The
+   warnings about `lookups.yaml` and `menu.yaml` are expected for an npm install: both files are
+   optional, the image bundles them, and events still render from the templates in the package.
+
+   <Code code={serve} lang="sh" />
+   <Code code={serveOut} lang="txt" title="What it printed" />
+
+6. In a second terminal, in the same directory, push the first event and read the history of
+   `user/42` back, rendered in Serbian:
+
+   <Code code={event} lang="sh" />
+   <Code code={eventOut} lang="txt" title="What it printed" />
+
+   `memento.db-wal` and `memento.db-shm` are part of the database while the server has it open.
+   Stop the server with `Ctrl-C`: it closes the file cleanly, and only `memento.db` remains.
+
+</Steps>
+
+## What SQLite gives up
+
+Events, the Filter DSL, entity history, templates, chats, tenants and keys, the UDC collections
+and the `/ws` stream answer the same as on PostgreSQL. What changes is how far it scales:
+
+- **One server process on the file, on one host.** Your own application counts as that process
+  when it [embeds the plugin](/get-started/embedded/). `memento` CLI commands next to it are
+  fine. For more than one server, use PostgreSQL.
+- **No Redis needed.** The process streams what it stores to its own `/ws` clients, and keeps
+  the rate limits and quota counts itself. `REDIS_URL` is accepted, but it does not allow a
+  second server process.
+- **The examples site or the service site,** one per process, not both side by side.
+- **The file on a local disk.** Never on NFS or SMB, and never opened from two hosts.
+
+[Deployment modes](/concepts/deployment-modes/#postgresql-or-sqlite) has the features by
+database, and the [SQLite guide](/reference/sqlite/) has the rest: the image and Compose on one
+file, accounts and the service site, retention from cron, backups with `VACUUM INTO`, restores,
+upgrades and what not to do with the file.
+
+## Next
+
+- Push from your own code: [the client programs](/get-started/client/) work against this server
+  with `MEMENTO_URL=http://localhost:9300/memento`.
+- Every route, with its answers and error codes: [HTTP API](/reference/api/).
+- Every variable the server reads, `DATABASE_URL` first: [Environment variables](/reference/environment/).

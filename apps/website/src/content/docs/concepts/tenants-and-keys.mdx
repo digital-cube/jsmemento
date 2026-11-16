@@ -30,8 +30,9 @@ Isolation is enforced in the service layer, not in each route:
 - a service called outside a tenant context throws `unauthorized`, so a new route cannot run
   unscoped by accident.
 
-The same holds for the stream: each tenant's events travel on their own Redis channel, and a
-WebSocket client only receives its own tenant's ([Streaming](/concepts/streaming/)).
+The same holds for the stream: each tenant's events are published for that tenant alone (with
+Redis, on their own channel), and a WebSocket client only receives its own tenant's
+([Streaming](/concepts/streaming/)).
 
 ## API keys
 

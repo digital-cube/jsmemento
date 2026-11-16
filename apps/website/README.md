@@ -28,7 +28,7 @@ of `src/` is. The build needs no network.
 |---|---|---|
 | Get started | `src/content/docs/get-started/*.mdx` | hand-written; the code from `snippets/` and `clients/` (below) |
 | Concepts | `src/content/docs/concepts/*.mdx` | hand-written from `docs/` (PHILOSOPHY, ARCHITECTURE, API, TEMPLATES, STREAMING, CHATS, DEPLOYMENT) and the code; the shown code from `snippets/wire`, `lookups.yaml`, `packages/server/templates`, `packages/server/drizzle` |
-| Reference | `src/content/docs/reference/*.md` — **generated, not in git** | `scripts/gen-reference.mjs`: `docs/API.md`, the Filter DSL section of `docs/ARCHITECTURE.md`, `docs/STREAMING.md`, `docs/CHATS.md`, `docs/CLI.md`, the environment-variable table of `docs/DEPLOYMENT.md` |
+| Reference | `src/content/docs/reference/*.md` — **generated, not in git** | `scripts/gen-reference.mjs`: `docs/API.md`, the Filter DSL section of `docs/ARCHITECTURE.md`, `docs/STREAMING.md`, `docs/CHATS.md`, `docs/CLI.md`, the environment-variable table of `docs/DEPLOYMENT.md`, `docs/SQLITE.md` |
 | Examples | `src/content/docs/examples/*.mdx` | hand-written from `apps/examples/README.md` and the pages' code (one page per `menu.yaml` example, plus the service site); `<ExampleShot>` shows `src/assets/examples/<page>-<theme>.webp` |
 | Clients | `src/content/docs/clients/*.mdx` | `clients/README.md` and `clients/<lang>/README.md` rendered at build time (`<ClientReadme>`), the programs imported raw (`<ClientSource>`, the file list in `src/clients.ts`) |
 | Packages | `src/content/docs/packages/index.mdx`, `changelog.md` — **the changelog generated, not in git** | `<PackageTable>` reads `packages/*/package.json`; `scripts/gen-changelog.mjs` turns `CHANGELOG.md` into the changelog page |
@@ -60,13 +60,16 @@ never pasted into a page**, and every screenshot is a real shot of the live exam
 | `OneEvent.astro` — one event, every way to read it | `snippets/wire/push.json` and the answers to it: `push.out.json`, `entity.out.json`, `entity-sr.out.json`, `query.json` → `query.out.json`, `ws.out.txt` |
 | `Examples.astro` — the examples, live | `src/assets/examples/<page>-<theme>.webp` (`npm run shots`); one line per page here, the routes of `menu.yaml` |
 | `Api.astro` — the API | `snippets/wire/udc-list.json` → `udc-list.out.json`, `error.json` → `error.out.json`; the routes table follows `docs/API.md` |
-| `QuickStarts.astro` — start where you are | `snippets/docker/<n>-<step>.sh` + `.out.txt`, `snippets/client/`, `../../clients/javascript/memento.mjs`, `snippets/embedded/server.ts`, `snippets/react/App.tsx` |
+| `QuickStarts.astro` — start where you are | `snippets/docker/<n>-<step>.sh` + `.out.txt`, `snippets/sqlite/<n>-<step>.sh` + `.out.txt`, `snippets/client/`, `../../clients/javascript/memento.mjs`, `snippets/embedded/server.ts`, `snippets/react/App.tsx` |
 | `Packages.astro` — packages | `packages/*/package.json` (name, version) at build time; the image tags of `docs/DEPLOYMENT.md` |
 
 Get started (`src/content/docs/get-started/`) imports the same `snippets/docker`,
-`snippets/client` and `snippets/embedded` files. Every command there was run as written
-(the Docker one in a scratch directory with its own `COMPOSE_PROJECT_NAME` and ports, the client
-against service.stage with a key made there); a `*.out.txt` is what the step printed then.
+`snippets/sqlite`, `snippets/client` and `snippets/embedded` files. Every command there was run
+as written (the Docker one in a scratch directory with its own `COMPOSE_PROJECT_NAME` and ports;
+the SQLite steps and `snippets/embedded/` in an empty directory with a fresh database file and
+`REDIS_URL` unset, the packages installed from `pnpm pack` tarballs until a release has SQLite,
+the server's log lines with time, pid and host as `…`; the client against service.stage with a
+key made there); a `*.out.txt` is what the step printed then.
 
 ### `npm run capture`: the recorded requests and answers
 

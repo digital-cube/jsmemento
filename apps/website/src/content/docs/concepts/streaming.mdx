@@ -16,7 +16,7 @@ is stored after the client was welcomed. History is the job of `GET /memento/eve
 ```txt
 POST /memento/events ─┐                                        ┌─▶ client ?event_type=USER_LOGIN
 POST /memento/chats/… ┤ store ─▶ publish ─▶ feed ─▶ StreamHub ─┼─▶ client ?instance_type=chat&instance_id=chat-123
-                      │  (PG)    Redis: memento:events:<tenant> └─▶ client (no filter: everything)
+                      │  (DB)    Redis: memento:events:<tenant> └─▶ client (no filter: everything)
 ```
 
 ## Connecting
@@ -80,7 +80,8 @@ After any close, reconnect with a backoff and fetch what was missed with
   process reaches the clients of every process — the end-to-end suite checks exactly that with
   two servers.
 - **Without `REDIS_URL`**, a `LocalBus` is both publisher and feed: one process streams its own
-  events in memory.
+  events in memory. That is the usual setup on a SQLite file, where there is only one server
+  process anyway; Redis is not needed for the stream there.
 
 Publishing is best effort. The event is durable before it is published; a Redis failure is
 logged as a warning and does not fail the push.

@@ -1,6 +1,6 @@
 ---
 /*
- * Start where you are: four ways in, as tabs. The code is the snippets/ files Get started shows
+ * Start where you are: five ways in, as tabs. The code is the snippets/ files Get started shows
  * too (the embedded and React ones are type-checked against the workspace packages by
  * scripts/check-snippets.mjs) and the JavaScript client is clients/javascript/memento.mjs itself.
  */
@@ -10,6 +10,8 @@ import clientOutput from "../../../snippets/client/output.txt?raw";
 import clientRun from "../../../snippets/client/run.sh?raw";
 import serverTs from "../../../snippets/embedded/server.ts?raw";
 import appTsx from "../../../snippets/react/App.tsx?raw";
+import sqliteEventOutput from "../../../snippets/sqlite/6-event.out.txt?raw";
+import sqliteEvent from "../../../snippets/sqlite/6-event.sh?raw";
 import { SERVICE_URL } from "../../site.mjs";
 
 // The Docker steps of Get started, one file each (snippets/docker/<n>-<step>.sh and the
@@ -33,14 +35,24 @@ const dockerOutput = join(
     eager: true,
   }),
 );
+// The SQLite steps of Get started up to the running server (snippets/sqlite/[1-5]-*.sh), then
+// the second terminal's event and what it printed.
+const sqliteSh = join(
+  import.meta.glob<string>("../../../snippets/sqlite/[1-5]-*.sh", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  }),
+);
 ---
 
 <section class="home-section start" aria-labelledby="start">
   <header class="not-content">
     <h2 id="start">Start where you are</h2>
     <p>
-      Run your own memento, borrow ours with a key, put it inside the Fastify app you already
-      have, or draw a tenant's events in React. Every command here has been run as written.
+      Run your own memento in Docker or on one SQLite file, borrow ours with a key, put it inside
+      the Fastify app you already have, or draw a tenant's events in React. Every command here
+      has been run as written.
     </p>
   </header>
   <Tabs syncKey="quick-start">
@@ -54,6 +66,20 @@ const dockerOutput = join(
           <li>Docker with Compose. The stack is <code>docker-compose.yaml</code>: memento, PostgreSQL 18, Redis 7, named volumes and health checks.</li>
           <li>The server applies its migrations when it starts; the CLI is in the image (<code>memento …</code>).</li>
           <li>The examples site is served at <code>localhost:3000/</code>, the API under <code>/memento</code>.</li>
+        </ol>
+      </div>
+    </TabItem>
+    <TabItem label="SQLite">
+      <div class="body">
+        <div class="code">
+          <Code code={sqliteSh.trimEnd()} lang="sh" title="Terminal" />
+          <Code code={sqliteEvent.trimEnd()} lang="sh" title="A second terminal" />
+          <Code code={sqliteEventOutput.trimEnd()} lang="txt" title="What it prints" />
+        </div>
+        <ol class="not-content">
+          <li>Node 24 and one file, <code>DATABASE_URL=file:data/memento.db</code>: no Docker, no database service, no Redis.</li>
+          <li>The CLI opens the file directly, so the tenant and the key exist before the server starts.</li>
+          <li>One server process on one host. For more, PostgreSQL: <a href="/get-started/sqlite/">what SQLite gives up</a>.</li>
         </ol>
       </div>
     </TabItem>
@@ -80,7 +106,7 @@ const dockerOutput = join(
         </div>
         <ol class="not-content">
           <li><code>mementoPlugin</code> is the whole API as one encapsulated Fastify plugin: its auth hooks and error handler stay inside <code>/memento</code>.</li>
-          <li>Migrations come with <code>@memento/server</code>; tenants and keys with <code>@memento/cli</code>, against the same <code>DATABASE_URL</code>.</li>
+          <li><code>DATABASE_URL</code> is your PostgreSQL or a SQLite file. Migrations come with <code>@memento/server</code>; tenants and keys with <code>@memento/cli</code>, against the same URL.</li>
           <li><code>stream: {"{"} feed {"}"}</code> turns on <code>/ws</code>. <code>MementoStream</code> from <code>@memento/core</code> follows it from Node or a browser.</li>
         </ol>
       </div>

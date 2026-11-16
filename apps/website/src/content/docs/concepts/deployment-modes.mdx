@@ -1,6 +1,6 @@
 ---
 title: Deployment modes
-description: The same server three ways — a plugin inside your own Fastify app, the standalone container with PostgreSQL and Redis, or the hosted stage service with a key.
+description: The same server three ways — a plugin inside your own Fastify app, the standalone server or container on PostgreSQL or one SQLite file, or the hosted stage service with a key.
 sidebar:
   order: 8
 ---
@@ -11,12 +11,13 @@ import { SERVICE_URL } from "../../../site.mjs";
 
 memento is one Fastify plugin, `mementoPlugin` from `@memento/server`. Where it runs is up to
 you: inside an application you already have, as its own container, or not at all on your side —
-on the stage service, with a key.
+on the stage service, with a key. Where you run it, the database is PostgreSQL or a single
+SQLite file ([below](#postgresql-or-sqlite)).
 
 | | you run | you get |
 | --- | --- | --- |
-| **Embedded** | your Node app, your PostgreSQL | memento's routes under a prefix of your app, its `memento_*` tables in your database |
-| **Standalone** | the image, PostgreSQL, optionally Redis | the server, the CLI, the examples site and the service site |
+| **Embedded** | your Node app, your PostgreSQL or a SQLite file | memento's routes under a prefix of your app, its `memento_*` tables in your database |
+| **Standalone** | the image or `@memento/server`; PostgreSQL (optionally Redis) or a SQLite file | the server, the CLI, the examples site and the service site |
 | **Hosted** | nothing | a tenant on the stage service and keys for it |
 
 ## Embedded
@@ -32,8 +33,8 @@ The options of `mementoPlugin`:
 
 | option | |
 | --- | --- |
-| `db` | the database, from `connect(url)` — the only required one |
-| `publisher` | where stored events are published: a `RedisPublisher` with several processes, a `LocalBus` with one |
+| `db` | the database, from `connect(url)`: `postgresql://…` or `file:<path>` — the only required one |
+| `publisher` | where stored events are published: a `RedisPublisher` with several processes (PostgreSQL), a `LocalBus` with one |
 | `stream` | `{ feed }` enables `/ws` (`heartbeatIntervalMs`, `maxBufferedMessages` optional); without it there is no stream and `/describe` says `realtime: false` |
 | `udc` | the UDC collections: memento's own by default (`events`, `cpu_load`, `activity`), your own `CollectionRegistry`, or `false` for none |
 | `menu` | a menu YAML served as the `menu` collection |
@@ -49,7 +50,8 @@ client on the other end.
 
 One Docker image, `ghcr.io/digital-cube/jsmemento`, multi-arch (amd64, arm64), Node 24, running as
 the unprivileged `node` user. Its entrypoint applies pending migrations, loads the lookups and
-listens on port 3000; `SIGTERM` closes the WebSocket clients, Redis and the pool, then exits.
+listens on port 3000; `SIGTERM` closes the WebSocket clients, Redis if there is one and the
+database, then exits.
 The image also carries:
 
 - `/usr/local/bin/memento`, the [CLI](/reference/cli/), with the same `DATABASE_URL` and
@@ -57,9 +59,10 @@ The image also carries:
 - `memento-healthcheck`, the image's `HEALTHCHECK` (`GET /memento/api/health`);
 - `/app/config/lookups.yaml` and the translations, `/app/config/menu.yaml`, and the built examples
   site (`/app/ui`) and service site (`/app/ui-service`);
-- `/data`, a volume for the lookup candidates.
+- `/data`, a volume for the lookup candidates, and for the database file on SQLite
+  (`DATABASE_URL=file:/data/memento.db`).
 
-The repository's `docker-compose.yaml` is the production-like stack:
+The repository's `docker-compose.yaml` is the production-like stack on PostgreSQL:
 
 | service | |
 | --- | --- |
@@ -70,7 +73,10 @@ The repository's `docker-compose.yaml` is the production-like stack:
 | `cpu-monitor`, `simulator`, `retention` | profile `demo`, off by default: the two pushers the examples site shows, and `memento retention` once a day |
 
 The server is configured by environment variables only ([Environment](/reference/environment/)).
-[Run it with Docker](/get-started/docker/) goes from a clone to the first event.
+[Run it with Docker](/get-started/docker/) goes from a clone to the first event. On SQLite the
+image needs one volume and `DATABASE_URL=file:/data/memento.db`, and no `postgres` or `redis`
+service ([the SQLite guide](/reference/sqlite/#the-image-on-sqlite)); without Docker,
+`@memento/server` from npm runs the same server ([Run it on a SQLite file](/get-started/sqlite/)).
 
 ### One process or many
 
@@ -78,7 +84,49 @@ Without `REDIS_URL` one process stores events and streams them to its own client
 With Redis, run any number of processes against the same PostgreSQL and Redis: each publishes
 what it stores, and a client connected to one sees events pushed to another
 ([Streaming](/concepts/streaming/#across-processes)). Each process applies pending migrations
-when it starts, so roll out one process first.
+when it starts, so roll out one process first. On SQLite there is always one server process,
+with or without Redis.
+
+## PostgreSQL or SQLite
+
+`DATABASE_URL` picks the database by its form, for the server, the CLI and `connect()` alike:
+
+| `DATABASE_URL` | database |
+| --- | --- |
+| `postgresql://user:password@host:5432/db` | PostgreSQL, the default |
+| `file:data/memento.db` | SQLite, relative to the working directory |
+| `file:///var/lib/memento/memento.db` | SQLite, an absolute path |
+| `:memory:` | SQLite in this process's memory: tests only |
+
+The API, the answers and the error codes are the same on both. What differs is what it needs
+and how far it goes:
+
+| | PostgreSQL (default) | SQLite (`file:<path>`) |
+| --- | --- | --- |
+| what it needs | a PostgreSQL service (`docker-compose.yaml`: PostgreSQL 18) | nothing: Node's built-in `node:sqlite` (Node 24+), one file on a local disk |
+| events (push, batch, query, Filter DSL, entity history, archive), templates and rendering, chats, seen / stars, tenants, API keys, lookups, the CLI | yes | yes |
+| UDC collections (`events`, `cpu_load`, `activity`, `menu`, the service site's collections), filters, sorts, paging | yes | yes, with the same answers |
+| the `/ws` stream | yes. With Redis, across processes | yes, from the one process (the in-process bus) |
+| daily quotas and rate limits | yes. Shared through Redis, or per process without it | yes, in the process: the quota from the usage table, rate limits in memory |
+| self-service accounts and the service site | yes. The service site is a second container (`service`) | accounts: yes. The service site: **instead of** the examples site, from the one process |
+| retention | `memento retention` (cron, or the `retention` service) | the same command, next to the running server |
+| Redis (`REDIS_URL`) | optional. Needed for more than one process | optional and not needed. It does **not** allow a second server process |
+| processes | any number of server processes | **one server process**; CLI commands may run next to it |
+| hosts | any | **one** (the file and the server on the same machine) |
+| backup | `pg_dump` | `VACUUM INTO`, or a copy while stopped |
+| scaling | more processes behind a proxy, with Redis | none: one process. Move to PostgreSQL when it is not enough |
+| moving to the other database | no tool | no tool |
+
+**Choose SQLite** for an installation that must not depend on a database service: memento on a
+customer's own machine, an application that embeds memento and ships as one process, a demo, a
+development box. **Choose PostgreSQL** for more than one server process, the examples site and
+the service site side by side, or a database your operations already back up and monitor. The
+stage stack, the examples site and the service site run on PostgreSQL.
+
+Pick the database when you install: there is no tool yet to move an installation from one to
+the other. [Run it on a SQLite file](/get-started/sqlite/) is the shortest way to a server on
+one; the [SQLite guide](/reference/sqlite/) covers the image, embedding, accounts, retention,
+backups and the limits.
 
 ## Hosted
 
@@ -106,5 +154,6 @@ The website you are reading is not part of the image: it is static files, built 
 ## Next
 
 - Every variable of the server and the image: [Environment](/reference/environment/).
+- Running on one SQLite file: the [SQLite guide](/reference/sqlite/).
 - Reverse proxy, scaling, backups:
   [docs/DEPLOYMENT.md](https://github.com/digital-cube/jsmemento/blob/main/docs/DEPLOYMENT.md).

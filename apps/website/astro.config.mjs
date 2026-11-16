@@ -63,6 +63,7 @@ export default defineConfig({
             "reference/chats",
             "reference/cli",
             "reference/environment",
+            "reference/sqlite",
           ],
         },
         { label: "Examples", items: [{ autogenerate: { directory: "examples" } }] },

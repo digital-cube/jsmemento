@@ -13,7 +13,7 @@ import { SERVICE_URL } from "../../site.mjs";
 const REPO = "https://github.com/digital-cube/jsmemento";
 const packages = [
   { pkg: core, dir: "core", text: "The protocol: the event and envelope schemas, the Filter DSL, the HTTP client and MementoStream." },
-  { pkg: server, dir: "server", text: "The Fastify app and plugin: PostgreSQL storage, tenants and keys, templates, /ws, UDC collections, accounts." },
+  { pkg: server, dir: "server", text: "The Fastify app and plugin: storage on PostgreSQL or one SQLite file, tenants and keys, templates, /ws, UDC collections, accounts." },
   { pkg: cli, dir: "cli", text: "memento: migrations, tenants, keys, templates, chats, lookups, a live tail, the CPU monitor and the simulator." },
   { pkg: react, dir: "react", text: "MementoProvider, the live MementoDataView, MementoChat and MementoSearch." },
   { pkg: lookups, dir: "lookups", text: "The vocabulary of lookups.yaml: event, instance and actor types, translations, candidates, codegen." },

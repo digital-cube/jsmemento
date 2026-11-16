@@ -1,0 +1,11 @@
+{"ok":true,"data":{"status":"ok"}}
+{
+  "event_type": "USER_LOGIN",
+  "instance_type": "user",
+  "instance_id": "42",
+  "rendered": "User igor logged in."
+}
+[{"event_type":"USER_LOGIN","actor_id":"igor","rendered":"Korisnik igor se prijavio."}]
+memento.db
+memento.db-shm
+memento.db-wal

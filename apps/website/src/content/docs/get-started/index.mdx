@@ -1,6 +1,6 @@
 ---
 title: Get started
-description: From nothing to your first event and its sentence — run memento with Docker, borrow the stage service with a key, or embed it in your own Fastify app.
+description: From nothing to your first event and its sentence — run memento with Docker or on one SQLite file, borrow the stage service with a key, or embed it in your own Fastify app.
 sidebar:
   order: 0
   label: Overview
@@ -9,14 +9,22 @@ sidebar:
 import { LinkCard } from "@astrojs/starlight/components";
 
 memento is a server your applications push events to and read them back from. There are three
-ways to have one: run it yourself, use the stage service with a key of your own, or put it inside
-a Node application you already have. Each page ends with a `USER_LOGIN` pushed and read back as
-`User igor logged in.` and `Korisnik igor se prijavio.`
+ways to have one: run it yourself (in Docker, or on one SQLite file), use the stage service with
+a key of your own, or put it inside a Node application you already have. Each page ends with a
+`USER_LOGIN` pushed and read back as `User igor logged in.` and `Korisnik igor se prijavio.`
+
+The database is PostgreSQL or a single SQLite file, with the same routes and answers on both;
+[Deployment modes](/concepts/deployment-modes/#postgresql-or-sqlite) says which fits.
 
 <LinkCard
   title="Run it with Docker"
   href="/get-started/docker/"
   description="memento, PostgreSQL and Redis from docker-compose.yaml: a tenant, a key, the first event, the examples site."
+/>
+<LinkCard
+  title="Run it on a SQLite file"
+  href="/get-started/sqlite/"
+  description="Node 24 and one database file: no Docker, no database service, no Redis. A tenant, a key, the first event."
 />
 <LinkCard
   title="Your first event with a client"
@@ -26,18 +34,20 @@ a Node application you already have. Each page ends with a `USER_LOGIN` pushed a
 <LinkCard
   title="Embedded in Node"
   href="/get-started/embedded/"
-  description="mementoPlugin in your own Fastify app, its migrations in your database, MementoStream on the other end."
+  description="mementoPlugin in your own Fastify app, on your PostgreSQL or a SQLite file, MementoStream on the other end."
 />
 
 ## What you need
 
-- **Docker** with Compose, for the first page. The stack brings its own database and Redis.
-- **Node 24** for the embedded server and the JavaScript client (the client runs on Node 22 too);
-  the other seven clients need their own toolchain, nothing else.
-- **PostgreSQL 18** when you run memento outside Docker. Every table it creates is named
-  `memento_*`, so it can share your application's database.
-- **Redis**, optional. One process streams its own events in memory; with more than one, Redis
-  carries every stored event to every process's `/ws` clients.
+- **Docker** with Compose, for the first page. The stack brings its own PostgreSQL and Redis.
+- **Node 24** for the SQLite server, the embedded server and the JavaScript client (the client
+  runs on Node 22 too); the other seven clients need their own toolchain, nothing else.
+- **A database** when you run memento outside Docker: a SQLite file, which needs nothing but
+  Node and a local disk, or PostgreSQL 18. Every table memento creates is named `memento_*`, so
+  it can share your application's database.
+- **Redis**, optional on both databases. One process streams its own events in memory; with
+  more than one process (PostgreSQL only), Redis carries every stored event to every process's
+  `/ws` clients.
 
 Every command on these pages was run as it is written here, against a fresh clone and the stage
 service; what a step prints is what it printed then, with ids shortened where they would only

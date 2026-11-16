@@ -19,6 +19,8 @@ import down from "../../../../snippets/docker/6-down.sh?raw";
 The repository's `docker-compose.yaml` is a production-like stack: memento from the image
 `ghcr.io/digital-cube/jsmemento`, PostgreSQL 18 and Redis 7, with health checks and named
 volumes. The server applies its migrations when it starts, and the CLI is inside the image.
+This is the PostgreSQL stack; without Docker or a database service,
+[run it on a SQLite file](/get-started/sqlite/) instead.
 
 <Steps>
 
@@ -87,3 +89,5 @@ reverse proxy in front of it:
 - Push from your own code: [the client programs](/get-started/client/) work against this server
   with `MEMENTO_URL=http://localhost:3000/memento`.
 - Run memento inside your application instead: [Embedded in Node](/get-started/embedded/).
+- The image on one SQLite file, with a volume and no `postgres` or `redis` service: the
+  [SQLite guide](/reference/sqlite/#the-image-on-sqlite).

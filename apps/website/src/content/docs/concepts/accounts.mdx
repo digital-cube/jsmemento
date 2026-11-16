@@ -29,7 +29,7 @@ out in the user's locale (`en` or `sr`).
   development, not for a public instance. A failed delivery never fails the request.
 - **Rate limits:** register, login, forgot, resend and reset allow 10 requests per client IP per
   15 minutes each, login also 10 per email; past that, `429 rate_limited`. The counters live in
-  Redis when there is one, so every process shares them.
+  Redis when there is one, so every process shares them; without Redis, in the process's memory.
 - Until the address is verified, the service site creates no keys.
 
 ## The session
@@ -66,7 +66,9 @@ one that serves the examples site:
 | demo key | `DEMO_API_KEY` | none |
 
 Both share the database, Redis and the lookups, so a key created on the service site pushes
-events to either. The site reads everything through UDC with the cookie — `api_keys`,
+events to either. That stack runs on PostgreSQL. On a SQLite file, which allows one server
+process, accounts work in full, but the one process serves the service site **instead of** the
+examples site ([the SQLite guide](/reference/sqlite/#accounts-and-the-service-site)). The site reads everything through UDC with the cookie — `api_keys`,
 `api_key_events`, `api_key_history`, `api_key_activity`, `api_key_usage`, `admin_users`,
 `admin_api_keys` and its `menu` ([UDC collections](/concepts/udc/)) — and writes to `/auth/*`,
 `/keys*` and `/admin/*`. It has no live stream: `/memento/ws` takes an API key and the site has

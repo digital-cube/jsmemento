@@ -1,11 +1,13 @@
 ---
 title: Embedded in Node
-description: mementoPlugin inside your own Fastify app — its tables in your database, its migrations, a tenant and a key from the CLI, and MementoStream following what happens.
+description: mementoPlugin inside your own Fastify app — on your PostgreSQL or a SQLite file, its migrations, a tenant and a key from the CLI, and MementoStream following what happens.
 sidebar:
-  order: 3
+  order: 4
 ---
 
 import { Code, Steps } from "@astrojs/starlight/components";
+import checkOut from "../../../../snippets/embedded/check.out.txt?raw";
+import check from "../../../../snippets/embedded/check.sh?raw";
 import install from "../../../../snippets/embedded/install.sh?raw";
 import run from "../../../../snippets/embedded/run.sh?raw";
 import serverTs from "../../../../snippets/embedded/server.ts?raw";
@@ -15,7 +17,8 @@ import tailTs from "../../../../snippets/embedded/tail.ts?raw";
 The memento server is a Fastify plugin before it is a process. Register it in the Fastify app you
 already run and it serves the whole API under a prefix: push, lists, queries, entity history,
 the `/ws` stream and the UDC collections, with its own API keys, its own error handler and its
-own hooks, none of which leak into your routes.
+own hooks, none of which leak into your routes. The database is your PostgreSQL, where its
+tables sit next to yours, or a SQLite file next to the application.
 
 <Steps>
 
@@ -24,19 +27,25 @@ own hooks, none of which leak into your routes.
 
    <Code code={install} lang="sh" title="Terminal" />
 
-   `@memento/server` brings Fastify's WebSocket, cookie and static plugins, Drizzle and `pg`;
+   `@memento/server` brings Fastify's WebSocket, cookie and static plugins, Drizzle and `pg`
+   (SQLite is Node's built-in `node:sqlite`, nothing to install);
    `@memento/cli` is the `memento` command; `@memento/core` is the protocol and its clients.
 
 2. The server, next to whatever your app already serves:
 
    <Code code={serverTs} lang="ts" title="server.ts" />
 
-   - `runMigrations` applies memento's migrations, which ship inside `@memento/server`. Run it
-     on every start: what is applied already is skipped. Every table is `memento_*`.
+   - `DATABASE_URL` picks the database: `file:<path>` for one SQLite file,
+     `postgresql://…` for PostgreSQL. `connect()` takes the driver from the URL; the rest of
+     the code is the same for both.
+   - `runMigrations` applies memento's migrations for that database, which ship inside
+     `@memento/server`. Run it on every start: what is applied already is skipped, and on
+     SQLite the first start creates the file. Every table is `memento_*`.
    - `LocalBus` is both the `publisher` (where stored events go) and the stream's `feed` (where
-     `/ws` takes them from), in memory. With several processes, give each a `RedisPublisher`
-     and a `RedisFeed` on the same `REDIS_URL`: an event stored by one reaches the `/ws` clients
-     of all of them.
+     `/ws` takes them from), in memory. With several processes on PostgreSQL, give each a
+     `RedisPublisher` and a `RedisFeed` on the same `REDIS_URL`: an event stored by one reaches
+     the `/ws` clients of all of them.
+   - The `onClose` hook closes the bus and the database, so `Ctrl-C` stops it cleanly.
    - More options: `lookups` (the vocabulary of `lookups.yaml`), `defaultLocale`, `udc` (your
      own UDC collections next to memento's, or `false`), `menu`, `demoApiKey` and `accounts`
      (the self-service routes). Their meaning is in the `MementoPluginOptions` type.
@@ -55,7 +64,24 @@ own hooks, none of which leak into your routes.
    Node 24 runs the `.ts` files as they are, stripping the types. `npx memento` reads the same
    `DATABASE_URL`; `create-key` prints the `mk_…` secret once, like the Docker page's.
 
+5. Your routes and memento's, side by side, and the database file. This run used SQLite:
+
+   <Code code={check} lang="sh" title="Terminal" />
+   <Code code={checkOut} lang="txt" title="What it printed" />
+
+   `app.db-wal` and `app.db-shm` belong to the database while it is open; after `Ctrl-C`, only
+   `app.db` remains.
+
 </Steps>
+
+## On SQLite
+
+Your application **is** the one server process the file allows: do not also run
+`dist/server.js` on it. `memento` CLI commands next to it are fine. No Redis is needed: the
+`LocalBus` streams what this process stores. A process speaks one database: `connect()` refuses
+a PostgreSQL URL while a SQLite handle is open in it, and the other way round. The rest, with a
+complete application that creates its own tenant and key on the first start, is in the
+[SQLite guide](/reference/sqlite/#embedded-the-plugin-in-your-application).
 
 ## What you get under `/memento`
 
@@ -69,6 +95,6 @@ messages and close codes in
 
 - Draw the events in React: `MementoProvider` and `MementoDataView` from `@memento/react`, the
   **React** tab of [Start where you are](/#start).
-- The standalone server is this plugin too: `packages/server/src/server.ts` adds Redis, the
-  lookups, the menu and the accounts from environment variables
+- The standalone server is this plugin too: `packages/server/src/server.ts` adds the optional
+  Redis, the lookups, the menu and the accounts from environment variables
   ([docs/ARCHITECTURE.md](https://github.com/digital-cube/jsmemento/blob/main/docs/ARCHITECTURE.md#deployment-modes)).
