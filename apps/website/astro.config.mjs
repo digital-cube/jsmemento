@@ -24,6 +24,8 @@ export default defineConfig({
         },
       ],
       components: {
+        // Starlight's footer and, under it, the build line (src/build-info.mjs).
+        Footer: "./src/components/DocsFooter.astro",
         Hero: "./src/components/Hero.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
       },

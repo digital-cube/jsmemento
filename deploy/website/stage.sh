@@ -103,7 +103,9 @@ main() {
     timeout 300 git clone --quiet "$REPO_URL" "$SRC"
   fi
   git -C "$SRC" remote set-url origin "$REPO_URL"
-  timeout 120 git -C "$SRC" fetch --quiet --prune origin
+  # --tags: the footer's release date is the newest v<x.y.z> tag's (apps/website/src/build-info.mjs);
+  # --prune-tags --force: a tag deleted or moved on origin is deleted or moved here too.
+  timeout 120 git -C "$SRC" fetch --quiet --prune --prune-tags --tags --force origin
   git -C "$SRC" rev-parse --verify --quiet "origin/$BRANCH" >/dev/null ||
     { echo "stage.sh: origin has no branch $BRANCH" >&2; exit 1; }
   # sites-enabled links into this checkout: a commit without the vhost would leave nginx a
@@ -138,10 +140,12 @@ main() {
     echo "    unchanged"
   fi
 
-  # What a release was built from; a release is reused only when all of it matches.
-  local stamp release="$RELEASES/$sha"
-  stamp="$(printf 'commit=%s\nsite_url=%s\nexample_url=%s\nservice_url=%s\n' \
-    "$(git -C "$SRC" rev-parse HEAD)" "$SITE_URL" "$EXAMPLE_URL" "$SERVICE_URL")"
+  # What a release was built from; a release is reused only when all of it matches. The tag is
+  # in it because the footer shows its date: a release tag on an already built commit rebuilds.
+  local stamp tag release="$RELEASES/$sha"
+  tag="$(git -C "$SRC" describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*' HEAD 2>/dev/null || true)"
+  stamp="$(printf 'commit=%s\ntag=%s\nsite_url=%s\nexample_url=%s\nservice_url=%s\n' \
+    "$(git -C "$SRC" rev-parse HEAD)" "$tag" "$SITE_URL" "$EXAMPLE_URL" "$SERVICE_URL")"
 
   if ((!FORCE)) && [[ -f "$release/.release" && "$(cat "$release/.release")" == "$stamp" ]]; then
     echo "==> build: releases/$sha already has $sha for these variables, not rebuilding"

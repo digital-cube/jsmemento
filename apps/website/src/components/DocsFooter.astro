@@ -1,0 +1,28 @@
+---
+/*
+ * The docs' footer (astro.config.mjs, `components.Footer`): Starlight's own (pagination) and,
+ * under a rule, the build line. Not on the home page, which has it beside "MIT licence."
+ * at the bottom of its Packages section (home/Packages.astro).
+ */
+import Default from "@astrojs/starlight/components/Footer.astro";
+import BuildLine from "./BuildLine.astro";
+
+const isHome = Astro.locals.starlightRoute.id === "";
+---
+
+<Default><slot /></Default>
+{
+  !isHome && (
+    <div class="docs-build">
+      <BuildLine />
+    </div>
+  )
+}
+
+<style>
+  .docs-build {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--memento-rule);
+  }
+</style>

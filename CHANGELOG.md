@@ -9,6 +9,16 @@ share one version.
 
 ### Added
 
+- **The website says how fresh it is.** The footer of every page (the home page beside
+  "MIT licence.", the docs under Starlight's footer) shows the version, the date of its release
+  tag (the `CHANGELOG.md` heading while there is no tag), when the site was built (UTC) and the
+  commit; the Packages list and table show when each package's newest version went to npm, and
+  that version when it is not the repository's (*not on npm yet* while a package has never been
+  published); beside the image, the release tag's date. Read once per build
+  (`apps/website/src/build-info.mjs`); the registry never fails the build, and `SITE_NPM=off`
+  builds without asking it ([apps/website/README.md](apps/website/README.md#build-info-the-footer-line-and-on-npm)).
+  `deploy/website/stage.sh` fetches the tags and rebuilds when a release tag lands on a built
+  commit.
 - **SQLite as a database option** for installations that must not depend on a database
   service (the first user: a customer's local machine with neither PostgreSQL nor Redis):
   `DATABASE_URL=file:<path>` (or `file:///abs/path`, `:memory:` for tests) instead of

@@ -17,10 +17,13 @@ pnpm --filter @memento/website dev         # http://localhost:4321
 pnpm --filter @memento/website build       # apps/website/dist; fails on a broken internal link
 pnpm --filter @memento/website preview     # serves dist/
 pnpm --filter @memento/website typecheck   # gen + astro check + check:snippets (also in the root `pnpm typecheck`)
+pnpm --filter @memento/website test        # test/*.test.mjs (node --test): src/build-info.mjs, offline
 ```
 
 `.astro` and `.mdx` files are not linted by Biome (the root `biome.json` skips them); the rest
-of `src/` is. The build needs no network.
+of `src/` is. The build needs no network: the one thing it asks the network for, the npm
+registry ([Build info](#build-info-the-footer-line-and-on-npm)), it can do without, and
+`SITE_NPM=off` does not ask it at all. The tests are offline (a fake fetch and a fixture).
 
 ## Where each section comes from
 
@@ -31,7 +34,7 @@ of `src/` is. The build needs no network.
 | Reference | `src/content/docs/reference/*.md` — **generated, not in git** | `scripts/gen-reference.mjs`: `docs/API.md`, the Filter DSL section of `docs/ARCHITECTURE.md`, `docs/STREAMING.md`, `docs/CHATS.md`, `docs/CLI.md`, the environment-variable table of `docs/DEPLOYMENT.md`, `docs/SQLITE.md` |
 | Examples | `src/content/docs/examples/*.mdx` | hand-written from `apps/examples/README.md` and the pages' code (one page per `menu.yaml` example, plus the service site); `<ExampleShot>` shows `src/assets/examples/<page>-<theme>.webp` |
 | Clients | `src/content/docs/clients/*.mdx` | `clients/README.md` and `clients/<lang>/README.md` rendered at build time (`<ClientReadme>`), the programs imported raw (`<ClientSource>`, the file list in `src/clients.ts`) |
-| Packages | `src/content/docs/packages/index.mdx`, `changelog.md` — **the changelog generated, not in git** | `<PackageTable>` reads `packages/*/package.json`; `scripts/gen-changelog.mjs` turns `CHANGELOG.md` into the changelog page |
+| Packages | `src/content/docs/packages/index.mdx`, `changelog.md` — **the changelog generated, not in git** | `<PackageTable>` reads `packages/*/package.json` and asks npm when each was published ([Build info](#build-info-the-footer-line-and-on-npm)); `scripts/gen-changelog.mjs` turns `CHANGELOG.md` into the changelog page |
 
 ### `npm run gen`: the generated pages
 
@@ -61,7 +64,7 @@ never pasted into a page**, and every screenshot is a real shot of the live exam
 | `Examples.astro` — the examples, live | `src/assets/examples/<page>-<theme>.webp` (`npm run shots`); one line per page here, the routes of `menu.yaml` |
 | `Api.astro` — the API | `snippets/wire/udc-list.json` → `udc-list.out.json`, `error.json` → `error.out.json`; the routes table follows `docs/API.md` |
 | `QuickStarts.astro` — start where you are | `snippets/docker/<n>-<step>.sh` + `.out.txt`, `snippets/sqlite/<n>-<step>.sh` + `.out.txt`, `snippets/client/`, `../../clients/javascript/memento.mjs`, `snippets/embedded/server.ts`, `snippets/react/App.tsx` |
-| `Packages.astro` — packages | `packages/*/package.json` (name, version) at build time; the image tags of `docs/DEPLOYMENT.md` |
+| `Packages.astro` — packages | `packages/*/package.json` (name, version) at build time, *on npm* from the registry (`src/build-info.mjs`, below); the image tags of `docs/DEPLOYMENT.md` and the release date of the newest tag; at the bottom the build line |
 
 Get started (`src/content/docs/get-started/`) imports the same `snippets/docker`,
 `snippets/sqlite`, `snippets/client` and `snippets/embedded` files. Every command there was run
@@ -127,6 +130,42 @@ No production examples or service instance exists yet; those two defaults move w
 In frontmatter, which cannot import, the hero writes `{EXAMPLE_URL}` / `{SERVICE_URL}` as a
 link; `src/components/Hero.astro` resolves them and `astro.config.mjs` keeps them out of
 `starlight-links-validator`.
+
+## Build info: the footer line and "On npm"
+
+`src/build-info.mjs` works out, once per build, what the footer shows
+(`src/components/BuildLine.astro`: on the home page beside "MIT licence." at the bottom of
+`home/Packages.astro`, on every other page under Starlight's footer through the `Footer`
+override `DocsFooter.astro`) and what the Packages list and table add:
+
+| shown | where it comes from |
+|---|---|
+| `v1.0.0` | the root `package.json` |
+| `released 2026-10-31` | the commit date of the newest `v<x.y.z>` tag reachable from the built commit (`git describe`, then `git log -1 --format=%cI <tag>`); without git history or without a tag (a tarball, a shallow clone, and this repository until its first tag, `v1.1.0`) the `## [x.y.z] - <date>` heading of `CHANGELOG.md` for that version, said so in the hover. Beside the image on the home page: the tag and its date, or "no release tag yet" and the changelog's date |
+| `built 2026-11-16 17:01 UTC` | the clock of the build, UTC (`SOURCE_DATE_EPOCH` when set) |
+| `38705b6` | `git rev-parse HEAD`, linked to the commit on GitHub; left out without git |
+| *On npm* | `https://registry.npmjs.org/<name>`: `dist-tags.latest` and its `time`, asked once per package in parallel during the build, with npm's version beside the date when it differs from the repository's |
+
+The registry never fails the build. A 404 shows *not on npm yet*; no answer (offline, a timeout,
+an error) leaves that package's cell empty and logs one warning for the build, and when no package
+got an answer the column is not shown. Dates are `<time datetime="…">` with the ISO time in the
+attribute and UTC in the text.
+
+| variable | | default |
+|---|---|---|
+| `SITE_NPM` | `off`: do not ask the registry; a `.json` path (relative to `apps/website`): a fixture `{ "<name>": <registry document> \| null }`, `null` being a 404, a missing name no answer | unset: the registry |
+| `SITE_NPM_TIMEOUT_MS` | how long one registry request may take | `5000` |
+
+```sh
+SITE_NPM=off pnpm --filter @memento/website build                              # offline, no warning
+SITE_NPM=test/fixtures/npm-published.json pnpm --filter @memento/website dev   # published dates, one package behind, one not on npm
+```
+
+CI's *Website build* job builds with `SITE_NPM=off`. Everything is read when the site is built,
+so the dates are as fresh as the build: `deploy/website/stage.sh` rebuilds for a new commit or a
+new release tag on it (or with `--force`; a package published to npm since shows after the next
+rebuild), and a `turbo run build` served from the cache keeps the build time of the cached run.
+`stage.sh` fetches the tags with the branch, so stage's release date comes from git.
 
 ## Deploy: stage
 

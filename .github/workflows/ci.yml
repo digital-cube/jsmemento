@@ -92,8 +92,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter @memento/website...
       # apps/website: Astro + Starlight; starlight-links-validator fails the build on a broken
-      # internal link. Needs no network (astro check runs in the test job's `pnpm typecheck`).
+      # internal link. Needs no network (astro check runs in the test job's `pnpm typecheck`);
+      # SITE_NPM=off: the Packages table does not ask the npm registry (apps/website/README.md).
       - run: pnpm --filter @memento/website build
+        env:
+          SITE_NPM: "off"
+      - run: pnpm --filter @memento/website test
 
   docker:
     name: Docker image + E2E against docker-compose.yaml

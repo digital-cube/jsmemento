@@ -1,16 +1,20 @@
 ---
 /*
  * The Packages page's table: name, description, version, licence and peers of each
- * packages/*\/package.json, read when the site is built (no network, no registry). Nothing here
- * names a version; bump the package and the page follows.
+ * packages/*\/package.json, read when the site is built; and when its newest version went to
+ * npm, asked of the registry by src/build-info.mjs in the same build (a short timeout, never an
+ * error: "not on npm yet" for a 404, an empty cell when the registry did not answer, and no
+ * column at all when it answered for none). Nothing here names a version; bump the package and
+ * the page follows.
  */
 import cli from "../../../../packages/cli/package.json";
 import core from "../../../../packages/core/package.json";
 import lookups from "../../../../packages/lookups/package.json";
 import react from "../../../../packages/react/package.json";
 import server from "../../../../packages/server/package.json";
+import { buildInfo, dateOf, minuteOf } from "../build-info.mjs";
+import { REPO_URL as REPO } from "../site.mjs";
 
-const REPO = "https://github.com/digital-cube/jsmemento";
 type Manifest = {
   name: string;
   version: string;
@@ -39,6 +43,18 @@ const rows = (
 }));
 const licences = [...new Set(rows.map((r) => r.license))];
 const versions = [...new Set(rows.map((r) => r.version))];
+
+const info = await buildInfo();
+const npmOf = (name: string) => info.npm[name] ?? { state: "unknown" as const };
+const table = rows.map((r) => ({ ...r, npm: npmOf(r.name) }));
+const showNpm = table.some((r) => r.npm.state !== "unknown");
+const published = table.filter((r) => r.npm.state === "published").length;
+const npmNote =
+  info.npmSource === "off"
+    ? "not asked of npm for this build (SITE_NPM=off)."
+    : !showNpm
+      ? "the npm registry did not answer during this build."
+      : `the npm registry, asked in the same build${info.npmSource === "fixture" ? " (here a fixture, SITE_NPM)" : ""}: the newest version of each package and when it was published${published === 0 ? "; none is on npm yet" : ""}.`;
 ---
 
 <table class="pkg-table">
@@ -46,13 +62,14 @@ const versions = [...new Set(rows.map((r) => r.version))];
     <tr>
       <th scope="col">Package</th>
       <th scope="col">Version</th>
+      {showNpm && <th scope="col">On npm</th>}
       <th scope="col">Uses</th>
       <th scope="col">Links</th>
     </tr>
   </thead>
   <tbody>
     {
-      rows.map((p) => (
+      table.map((p) => (
         <tr>
           <th scope="row">
             <code>{p.name}</code>
@@ -61,6 +78,23 @@ const versions = [...new Set(rows.map((r) => r.version))];
           <td>
             <code>{p.version}</code>
           </td>
+          {showNpm && (
+            <td class="npm">
+              {p.npm.state === "published" && (
+                <>
+                  <time datetime={p.npm.time} title={`${p.npm.version} published ${minuteOf(p.npm.time)}`}>
+                    {dateOf(p.npm.time)}
+                  </time>
+                  {p.npm.version !== p.version && (
+                    <span class="behind">
+                      <code>{p.npm.version}</code> on npm
+                    </span>
+                  )}
+                </>
+              )}
+              {p.npm.state === "absent" && <span class="none">not on npm yet</span>}
+            </td>
+          )}
           <td>
             {p.uses.length || p.peers.length ? (
               <>
@@ -85,12 +119,31 @@ const versions = [...new Set(rows.map((r) => r.version))];
   </tbody>
 </table>
 <p class="pkg-note">
-  Read from <code>packages/*/package.json</code> when this site was built:
+  Read from <code>packages/*/package.json</code> when this site was built
+  (<time datetime={info.builtAt}>{minuteOf(info.builtAt)}</time>):{" "}
   {versions.length === 1 ? `one version, ${versions[0]}, for all five` : `versions ${versions.join(", ")}`}.
-  Licence: {licences.join(", ")}.
+  Licence: {licences.join(", ")}. On npm: {npmNote}
 </p>
 
 <style>
+  .npm time {
+    display: block;
+    white-space: nowrap;
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-sm);
+  }
+  .npm .behind {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: var(--sl-text-sm);
+    white-space: nowrap;
+    color: var(--sl-color-gray-3);
+  }
+  .npm .none {
+    font-size: var(--sl-text-sm);
+    white-space: nowrap;
+    color: var(--sl-color-gray-3);
+  }
   .pkg-table th[scope="row"] {
     min-width: 14rem;
     font-weight: 400;

@@ -22,3 +22,6 @@ export const SERVICE_URL = origin(
   process.env.SERVICE_URL,
   "https://service.stage.memento-service.org",
 );
+
+/** The repository on GitHub: source links, commits (src/components/BuildLine.astro). */
+export const REPO_URL = "https://github.com/digital-cube/jsmemento";
