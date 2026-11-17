@@ -6,7 +6,7 @@ import { type ApiKeyRow, apiKeys, apiKeyUsage, tenantUsers, users } from "./db/s
 import { MementoError } from "./errors.js";
 import type { Mailer } from "./mail/mailer.js";
 import type { MailTemplates } from "./mail/templates.js";
-import { dayStartOf, type UsageMeter, utcDay } from "./usage.js";
+import { dayStartOf, isMetered, type UsageMeter, utcDay } from "./usage.js";
 
 /** Share of the daily limit at which the warning mail goes out. */
 export const QUOTA_WARNING_RATIO = 0.8;
@@ -38,7 +38,10 @@ export interface QuotaGuardOptions {
   redis?: Redis | null;
   /** The limit of a key without its own. */
   defaultDailyLimit: number;
-  /** `null` → the 80 % / 100 % mails are not sent (the limit still holds). */
+  /**
+   * `null` → the 80 % / 100 % mails are not sent and the day's mail is not claimed, so a
+   * process that can send it still does (the limit holds either way).
+   */
   mail?: QuotaMailOptions | null;
   log: QuotaLog;
   now?: () => Date;
@@ -51,7 +54,8 @@ export type QuotaMailKind = "quota_warning" | "quota_exceeded";
  * The daily event limit of API keys. `check` runs before a key writes events: past the limit
  * it throws `quota_exceeded` (429), at 80 % it sends the warning — each mail once per UTC day
  * per key, claimed with an atomic `UPDATE … WHERE quota_*_on IS DISTINCT FROM today`.
- * `recorded` counts what was stored. Session writes (`apiKeyId: null`) are never limited.
+ * `recorded` counts what was stored. Session writes (`apiKeyId: null`) and keys the auth step
+ * left unmetered (`isMetered`) are never limited.
  */
 export class QuotaGuard {
   private readonly now: () => Date;
@@ -127,7 +131,7 @@ export class QuotaGuard {
    * `{ limit, used, resets_at }`), and sends the warning / exceeded mail the first time a day.
    */
   async check(context: TenantContext, incoming = 1): Promise<void> {
-    if (!context.apiKeyId) return;
+    if (!context.apiKeyId || !isMetered(context)) return;
     const row = await this.options.db.query.apiKeys.findFirst({
       where: eq(apiKeys.id, context.apiKeyId),
     });
@@ -137,7 +141,7 @@ export class QuotaGuard {
     const now = this.now();
     const today = utcDay(now);
     if (used + incoming > limit) {
-      if (await this.claim(row.id, "quota_exceeded", today)) {
+      if (this.options.mail && (await this.claim(row.id, "quota_exceeded", today))) {
         void this.mail(row, "quota_exceeded", { used, limit, now });
       }
       const resetsAt = new Date(dayStartOf(now).getTime() + 86_400_000).toISOString();
@@ -147,7 +151,11 @@ export class QuotaGuard {
         { limit, used, resets_at: resetsAt },
       );
     }
-    if (used + incoming >= QUOTA_WARNING_RATIO * limit && row.quotaWarnedOn !== today) {
+    if (
+      this.options.mail &&
+      used + incoming >= QUOTA_WARNING_RATIO * limit &&
+      row.quotaWarnedOn !== today
+    ) {
       if (await this.claim(row.id, "quota_warning", today)) {
         void this.mail(row, "quota_warning", { used: used + incoming, limit, now });
       }
@@ -156,7 +164,7 @@ export class QuotaGuard {
 
   /** Counts `count` stored events of the key: today's counter and the usage meter. */
   async recorded(context: TenantContext, count = 1): Promise<void> {
-    if (!context.apiKeyId || count <= 0) return;
+    if (!context.apiKeyId || !isMetered(context) || count <= 0) return;
     this.options.usage.add(context.apiKeyId, context.tenantId, { events_written: count });
     const { redis } = this.options;
     if (!redis) return;

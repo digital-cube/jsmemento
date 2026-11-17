@@ -13,7 +13,7 @@ import type { TenantContext } from "../context.js";
 import type { PublishedEvent } from "../publisher.js";
 import { localizeEvents } from "../services/events.js";
 import type { EventRenderer } from "../templates/renderer.js";
-import type { UsageMeter } from "../usage.js";
+import { isMetered, type UsageMeter } from "../usage.js";
 import type { EventFeed } from "./feed.js";
 
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -249,7 +249,8 @@ export class StreamHub {
       this.groups.set(slug, group);
     }
     group.connections.add(connection);
-    if (this.usage && info.tenant.apiKeyId) this.meteredSince.set(connection, this.now());
+    if (this.usage && info.tenant.apiKeyId && isMetered(info.tenant))
+      this.meteredSince.set(connection, this.now());
     socket.on("close", () => this.remove(connection));
     try {
       await group.subscribed;

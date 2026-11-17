@@ -205,13 +205,13 @@ What the server reads when it starts; the CLI in the image reads the same `DATAB
 | `MEMENTO_WS_HEARTBEAT_MS` | `30000` | WebSocket ping interval (min 1000). |
 | `MEMENTO_WS_MAX_BUFFERED` | `1000` | Unwritten messages per connection before it is closed `4008`. |
 | `MEMENTO_ACCOUNTS` | `false` | Self-service accounts: the `/auth/*` routes and the session cookie ([Self-service accounts](#self-service-accounts)). Off → none of it is reachable. Compose: `ACCOUNTS`. |
-| `MEMENTO_SERVICE_URL` | *(unset)* | Public origin of the service site (`https://service.stage.memento-service.org`): the links in verify / reset mails. **Required** with accounts on. Compose: `SERVICE_URL`. |
+| `MEMENTO_SERVICE_URL` | *(unset)* | Public origin of the service site (`https://service.stage.memento-service.org`): the links in verify / reset / quota mails. **Required** with accounts on. Without accounts it turns on the quota mails of that process ([Quotas](#quotas)); unset there → the process sends none. Compose: `SERVICE_URL`. |
 | `MEMENTO_BREVO_API_KEY` | *(unset)* | Brevo transactional mail key. Unset → mails are logged at info level with their full text (`LogMailer`). Compose: `BREVO_API_KEY`. |
 | `MEMENTO_MAIL_FROM` | *(unset)* | `Name <address>`, required with the Brevo key; the address must be a **sender verified in Brevo**. Compose: `MAIL_FROM`. |
 | `MEMENTO_TRUST_PROXY` | `false` | Fastify `trustProxy`: client IP from `X-Forwarded-For` (rate limits), https from `X-Forwarded-Proto` (`Secure` cookie). `true` only behind a proxy that sets them. Compose: `TRUST_PROXY`. |
 | `MEMENTO_SESSION_DAYS` | `30` | Sliding lifetime of a session (and the cookie's `Max-Age`). |
 | `MEMENTO_DEFAULT_MAX_KEYS` | `10` | Live (not deleted, not revoked) API keys a tenant without its own `max_keys` may hold; `POST /keys` past it is `409 limit_reached`. Compose: `DEFAULT_MAX_KEYS`. |
-| `MEMENTO_DEFAULT_DAILY_LIMIT` | `100000` | Events per UTC day of an API key without its own `daily_limit` (accounts on): 80 % mails a warning, past 100 % the key's writes are `429 quota_exceeded` until midnight UTC. Compose: `DEFAULT_DAILY_LIMIT`. |
+| `MEMENTO_DEFAULT_DAILY_LIMIT` | `100000` | Events per UTC day of a limited API key without its own `daily_limit` (every key with accounts on, a self-service tenant's key on any process; [Quotas](#quotas)): 80 % mails a warning, past 100 % the key's writes are `429 quota_exceeded` until midnight UTC. Compose: `DEFAULT_DAILY_LIMIT`. |
 | `MEMENTO_MAX_DAILY_LIMIT` | *(unset)* | Highest `daily_limit` a user may give a key; unset → none. Compose: `MAX_DAILY_LIMIT`. |
 
 `docker-compose.yaml` additionally reads `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`,
@@ -278,8 +278,10 @@ Both share `DATABASE_URL`, `REDIS_URL` and the lookups, so a key created on the 
 pushes events to either container (`MEMENTO_URL=https://service.stage.memento-service.org/memento`
 is what the once-view prints). The `service` container takes `SERVICE_URL` (the links in mails;
 default `http://localhost:8201`), `BREVO_API_KEY`, `MAIL_FROM` and the quota variables. `memento`
-gets the Brevo and quota variables too: the 80 % / 100 % quota mails are sent by whichever
-instance stores the event.
+gets `SERVICE_URL`, the Brevo and the quota variables too, with `ACCOUNTS` empty: a key made on
+the service site is metered and held to its daily limit on whichever container it writes
+through (one count, in Redis), and the 80 % / 100 % quota mails are sent by whichever container
+stores the event ([Quotas](#quotas)).
 
 - **Keys** come only from the site (or `memento create-key` for CLI keys). **Mails** (verify,
   reset, quota) go through Brevo with `BREVO_API_KEY` + `MAIL_FROM` (a verified sender); without
@@ -316,12 +318,28 @@ server {
 
 ### Quotas
 
-With accounts on, every API key — CLI keys included — is held to its daily event limit
-(`daily_limit`, else `DEFAULT_DAILY_LIMIT`, 100 000): at 80 % the key's creator (or the
-tenant's owner) gets a warning mail, past 100 % the key's writes answer `429 quota_exceeded`
-until midnight UTC, and one more mail goes out. A producer pushing one event a second writes
-86 400 a day; raise `DEFAULT_DAILY_LIMIT` (or the key's limit with `PATCH /keys/:id`) for
-heavier ones. Without accounts there are no limits and no metering.
+A **limited** API key is metered and held to its daily event limit (`daily_limit`, else
+`DEFAULT_DAILY_LIMIT`, 100 000): at 80 % the key's creator (or the tenant's owner) gets a
+warning mail, past 100 % the key's writes answer `429 quota_exceeded` until midnight UTC, and
+one more mail goes out. A producer pushing one event a second writes 86 400 a day; raise
+`DEFAULT_DAILY_LIMIT` (or the key's limit with `PATCH /keys/:id`) for heavier ones. Which keys
+are limited:
+
+| process | key of a self-service tenant (one with an account) | key of any other tenant (CLI) |
+|---|---|---|
+| accounts on | limited and metered | limited and metered |
+| accounts off | limited and metered | neither |
+
+So a key made on the service site counts the same whichever process on the database receives
+its events: stage's `memento` (accounts off) meters and limits it like `service` does. A
+deployment that never had accounts has no self-service tenants, so nothing there is limited.
+
+- Every process on one database must agree on the **counter store**: all with `REDIS_URL`, or
+  none — a process without Redis neither sees nor adds to the Redis count.
+- **Mails** go out from the process that stores the event: with accounts through its mailer;
+  without accounts only when it has `SERVICE_URL` (the link in the mail), Brevo when
+  `BREVO_API_KEY` is set. A process without `SERVICE_URL` sends none and leaves the day's mail
+  to one that can.
 
 - **Redis** (`REDIS_URL`) holds today's counters (`memento:quota:<key>:<day>`, expire after
   2 days), shared by every process. Without it the count is the sum of today's

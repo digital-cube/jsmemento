@@ -426,9 +426,13 @@ The CLI's `create-key` / `revoke-key` write none.
 
 ### Daily limits and usage
 
-With accounts on, every API key is held to a number of **events per UTC day**: its
-`daily_limit`, else `MEMENTO_DEFAULT_DAILY_LIMIT`. Every route that stores an event with a key
-— `POST /events`, `POST /chats/:id/messages`, `/seen`, `/participants` — checks it first:
+A **metered** API key is held to a number of **events per UTC day**: its `daily_limit`, else
+`MEMENTO_DEFAULT_DAILY_LIMIT`. Metered are every key of a self-service tenant (one with an
+account member), on every process — with `MEMENTO_ACCOUNTS` or without, so a key counts the same
+whichever process on the database receives its events — and, on a process with accounts on,
+every other key too (CLI keys of operator tenants). Every route that stores an event with a
+metered key — `POST /events`, `POST /chats/:id/messages`, `/seen`, `/participants` — checks it
+first:
 
 - `used + 1 > limit` → `429 quota_exceeded`, nothing stored:
   ```json
@@ -441,7 +445,9 @@ The mails (`packages/server/mail/quota_{warning,exceeded}.{en,sr}.hbs`) go to th
 created the key, else the tenant's owner, in their locale, with a link to
 `${MEMENTO_SERVICE_URL}/keys/<id>`; sending never delays or fails the request. "Once a day" is
 claimed atomically on `memento_apikey.quota_warned_on` / `quota_exceeded_on`, so several
-processes do not send it twice.
+processes do not send it twice. A process without accounts sends them only when it has
+`MEMENTO_SERVICE_URL`; without it the process does not claim the day's mail, so the next write
+through a process that can send it still does.
 
 Today's count lives in Redis (`memento:quota:<key id>:<YYYY-MM-DD>`, `INCRBY` per stored event,
 `EXPIRE 172800`) when `REDIS_URL` is set; without Redis it is the sum of today's
@@ -451,8 +457,8 @@ Today's count lives in Redis (`memento:quota:<key id>:<YYYY-MM-DD>`, `INCRBY` pe
 API-key request, `Content-Length`), `events_written`, `rows_read` (rows returned by
 `GET /events`, `POST /events/query` and UDC `list`) and `stream_seconds` (open `/ws`
 connections, every 60 s and on close) — in memory, written to `memento_apikey_usage` every
-5 s and on shutdown with one upsert per batch. A failed write is logged and dropped. Session
-(cookie) requests are not metered.
+5 s and on shutdown with one upsert per batch. A failed write is logged and dropped. Only
+metered keys (above) are counted; session (cookie) requests are not metered.
 
 ### Self-service collections
 

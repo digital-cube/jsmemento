@@ -66,6 +66,18 @@ export interface AccountsConfig {
   sessionDays: number;
 }
 
+/**
+ * The quota mails of a process without accounts (`MEMENTO_SERVICE_URL` set): a self-service
+ * key is held to its daily limit whichever process it writes through.
+ */
+export interface QuotaMailConfig {
+  /** Public origin of the service site, without a trailing slash: the key's page. */
+  serviceUrl: string;
+  /** `null` → mails are logged (`LogMailer`), not sent. */
+  brevoApiKey: string | null;
+  mailFrom: { name: string; email: string } | null;
+}
+
 /** Quota defaults a tenant without its own values gets (read by the keys management). */
 export interface LimitsConfig {
   defaultMaxKeys: number;
@@ -110,6 +122,12 @@ export interface Config {
   demoApiKey: string | null;
   /** `null` → `MEMENTO_ACCOUNTS` is off: no auth routes, no session credential. */
   accounts: AccountsConfig | null;
+  /**
+   * Where the 80 % / 100 % quota mails link and how they are sent; `null` without
+   * `MEMENTO_SERVICE_URL` (that process then sends none). With accounts the same values as
+   * `accounts`.
+   */
+  quotaMail: QuotaMailConfig | null;
   limits: LimitsConfig;
   /** Fastify `trustProxy` (`MEMENTO_TRUST_PROXY`): honour `X-Forwarded-*` from nginx. */
   trustProxy: boolean;
@@ -120,23 +138,26 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const parsed = ConfigSchema.parse(
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== "")),
   );
-  let accounts: AccountsConfig | null = null;
-  if (parsed.MEMENTO_ACCOUNTS) {
-    if (!parsed.MEMENTO_SERVICE_URL) {
-      throw new Error("MEMENTO_SERVICE_URL is required when MEMENTO_ACCOUNTS is on");
-    }
+  if (parsed.MEMENTO_ACCOUNTS && !parsed.MEMENTO_SERVICE_URL) {
+    throw new Error("MEMENTO_SERVICE_URL is required when MEMENTO_ACCOUNTS is on");
+  }
+  let quotaMail: QuotaMailConfig | null = null;
+  if (parsed.MEMENTO_SERVICE_URL) {
     const brevoApiKey = parsed.MEMENTO_BREVO_API_KEY?.trim() || null;
     const from = parsed.MEMENTO_MAIL_FROM?.trim();
     if (brevoApiKey && !from) {
       throw new Error("MEMENTO_MAIL_FROM is required with MEMENTO_BREVO_API_KEY");
     }
-    accounts = {
+    quotaMail = {
       serviceUrl: parsed.MEMENTO_SERVICE_URL.replace(/\/+$/, ""),
       brevoApiKey,
       mailFrom: from ? parseMailFrom(from) : null,
-      sessionDays: parsed.MEMENTO_SESSION_DAYS,
     };
   }
+  const accounts: AccountsConfig | null =
+    parsed.MEMENTO_ACCOUNTS && quotaMail
+      ? { ...quotaMail, sessionDays: parsed.MEMENTO_SESSION_DAYS }
+      : null;
   return {
     databaseUrl: parsed.DATABASE_URL,
     testDatabaseUrl: parsed.TEST_DATABASE_URL,
@@ -161,6 +182,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     menuPath: parsed.MEMENTO_MENU_PATH ?? DEFAULT_MENU_PATH,
     demoApiKey: parsed.MEMENTO_DEMO_API_KEY?.trim() || null,
     accounts,
+    quotaMail,
     limits: {
       defaultMaxKeys: parsed.MEMENTO_DEFAULT_MAX_KEYS,
       defaultDailyLimit: parsed.MEMENTO_DEFAULT_DAILY_LIMIT,

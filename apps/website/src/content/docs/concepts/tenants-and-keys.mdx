@@ -80,9 +80,11 @@ as `api_key`, the prefix, which is what a person recognizes and can filter on.
 
 ## Daily limits
 
-With accounts on, every key — CLI keys included — may store a number of events per UTC day:
-its own `daily_limit`, else `MEMENTO_DEFAULT_DAILY_LIMIT` (100 000). Every route that stores an
-event with a key checks it first.
+A key of a self-service tenant (one that came from a registration on the service site) may
+store a number of events per UTC day: its own `daily_limit`, else `MEMENTO_DEFAULT_DAILY_LIMIT`
+(100 000). That holds on every server on the database, with accounts on or off, so the key counts
+the same whichever one receives its events. A server with accounts on limits every other key
+too, CLI keys included. Every route that stores an event with a limited key checks it first.
 
 - At **80 %** the event is stored and, the first time that day, the key's creator (or the
   tenant's owner) gets a `quota_warning` mail.
@@ -93,7 +95,8 @@ event with a key checks it first.
 A producer pushing one event a second writes 86 400 a day, so heavier ones need a higher limit
 (`MEMENTO_MAX_DAILY_LIMIT` caps what a user may set). Today's count lives in Redis
 (`memento:quota:<key>:<day>`), shared by every process; without Redis it is summed from the
-usage table. Without accounts there are no limits and no metering.
+usage table — every process on one database uses the same store. A deployment that never had
+accounts has no self-service tenants, so nothing there is limited or metered.
 
 An error looks the same for every route, a `422` here:
 
@@ -101,7 +104,7 @@ An error looks the same for every route, a `422` here:
 
 ## The usage meter
 
-Per key and per UTC hour the server counts `requests` and `bytes_in` (every API-key request),
+Per limited key (above) and per UTC hour the server counts `requests` and `bytes_in` (every request),
 `events_written`, `rows_read` (rows returned by the event lists, the Filter DSL query and UDC
 `list`) and `stream_seconds` (open `/ws` connections). It keeps them in memory and writes them
 to `memento_apikey_usage` every 5 s and on shutdown. Requests made with the session cookie are

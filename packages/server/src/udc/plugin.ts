@@ -15,7 +15,7 @@ import type { TenantContext } from "../context.js";
 import type { Database } from "../db/index.js";
 import { MementoError } from "../errors.js";
 import { authenticateApiKey } from "../services/apikeys.js";
-import type { UsageMeter } from "../usage.js";
+import { isMetered, meteredContext, type UsageMeter } from "../usage.js";
 import { type CollectionAuth, collectionAuth } from "./registry.js";
 
 export interface UdcRoutesOptions {
@@ -26,8 +26,10 @@ export interface UdcRoutesOptions {
    * `auth: "session" | "admin"` (`MementoRegistry`); `null`/absent: those refuse everyone.
    */
   sessions?: SessionOptions | null;
-  /** Counts `requests`, `bytes_in` and the `rows_read` of `list` for API-key requests. */
+  /** Counts `requests`, `bytes_in` and the `rows_read` of `list` for metered API-key requests. */
   usage?: UsageMeter | null;
+  /** Meter every key; `false`: only keys of self-service tenants. Default `true`. */
+  meterEveryKey?: boolean;
 }
 
 /** The `collection` a UDC request body names, if any. */
@@ -92,19 +94,19 @@ function refuse(
  */
 export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
   app,
-  { db, registry, sessions, usage },
+  { db, registry, sessions, usage, meterEveryKey = true },
 ) => {
   /** The API key's tenant with the action's scope checked; throws `MementoError`. */
   async function byKey(request: FastifyRequest, action: string): Promise<TenantContext> {
     const key = extractApiKey(request.headers);
     if (!key) throw new MementoError("forbidden", "missing API key");
-    const tenant = await authenticateApiKey(db, key);
+    const tenant = meteredContext(await authenticateApiKey(db, key), meterEveryKey);
     const required = scopeForAction(action);
     if (!hasScope(tenant.scopes, required)) {
       throw new MementoError("forbidden", `this API key lacks the "${required}" scope`);
     }
     request.log = request.log.child({ tenant: tenant.tenantSlug, api_key: tenant.apiKeyId });
-    if (tenant.apiKeyId) {
+    if (tenant.apiKeyId && isMetered(tenant)) {
       usage?.add(tenant.apiKeyId, tenant.tenantId, {
         requests: 1,
         bytes_in: contentLength(request),
@@ -190,7 +192,9 @@ export const udcRoutes: FastifyPluginAsync<UdcRoutesOptions> = async (
   if (usage) {
     app.addHook("preSerialization", async (request, _reply, payload: unknown) => {
       const tenant = request.tenant;
-      if (!tenant?.apiKeyId || actionOf(request.url) !== "list") return payload;
+      if (!tenant?.apiKeyId || !isMetered(tenant) || actionOf(request.url) !== "list") {
+        return payload;
+      }
       const rows = (payload as { payload?: { rows?: unknown } } | null)?.payload?.rows;
       if (Array.isArray(rows)) {
         usage.add(tenant.apiKeyId, tenant.tenantId, { rows_read: rows.length });

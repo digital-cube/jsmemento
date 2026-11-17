@@ -28,16 +28,19 @@ services:
       # key, the route answers 404. A key that is not read-only stops the server at startup.
       MEMENTO_DEMO_API_KEY: ${DEMO_API_KEY:-}
       # Self-service accounts (docs/DEPLOYMENT.md "Self-service accounts"). Empty: off, as on
-      # the examples instance. SERVICE_URL is required once ACCOUNTS=true; without
-      # BREVO_API_KEY mails are only logged; MAIL_FROM must be a sender verified in Brevo.
+      # the examples instance. SERVICE_URL is required once ACCOUNTS=true; with ACCOUNTS empty
+      # it still turns on the quota mails of self-service keys writing here (they are metered
+      # and limited either way, docs/DEPLOYMENT.md "Quotas"); without BREVO_API_KEY mails are
+      # only logged; MAIL_FROM must be a sender verified in Brevo.
       MEMENTO_ACCOUNTS: ${ACCOUNTS:-}
       MEMENTO_SERVICE_URL: ${SERVICE_URL:-}
       MEMENTO_BREVO_API_KEY: ${BREVO_API_KEY:-}
       MEMENTO_MAIL_FROM: ${MAIL_FROM:-}
       MEMENTO_TRUST_PROXY: ${TRUST_PROXY:-}
-      # Quotas of self-service keys (with ACCOUNTS=true): live keys per tenant, events per key
-      # and UTC day (80 % sends a warning mail, past 100 % POST /events answers 429), and the
-      # highest daily limit a user may set. Empty: 10 keys, 100 000 events, no ceiling.
+      # Quotas: live keys per tenant (ACCOUNTS=true), events per UTC day of a limited key —
+      # every key with ACCOUNTS=true, a self-service tenant's key always (80 % sends a warning
+      # mail, past 100 % POST /events answers 429) — and the highest daily limit a user may
+      # set. Empty: 10 keys, 100 000 events, no ceiling.
       MEMENTO_DEFAULT_MAX_KEYS: ${DEFAULT_MAX_KEYS:-}
       MEMENTO_DEFAULT_DAILY_LIMIT: ${DEFAULT_DAILY_LIMIT:-}
       MEMENTO_MAX_DAILY_LIMIT: ${MAX_DAILY_LIMIT:-}

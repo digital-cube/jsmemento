@@ -18,6 +18,17 @@ export interface TenantContext {
   userEmail?: string;
   isAdmin?: boolean;
   /**
+   * The key's tenant is a self-service one (it has an account member in
+   * `memento_tenant_user`), set by `authenticateApiKey`.
+   */
+  selfService?: boolean;
+  /**
+   * `false`: the key is neither metered nor held to its daily limit — a key of a tenant
+   * without accounts, on a process without `MEMENTO_ACCOUNTS`. Absent or `true`: it is
+   * (`isMetered`).
+   */
+  metered?: boolean;
+  /**
    * The locale the request asked its events to be rendered in, when it named one
    * (`X-Memento-Locale` on `/udc/*`); `undefined`: the server's default locale.
    */

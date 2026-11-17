@@ -10,7 +10,7 @@ import {
   authenticateSession,
   SESSION_COOKIE,
 } from "./services/sessions.js";
-import type { UsageMeter } from "./usage.js";
+import { isMetered, meteredContext, type UsageMeter } from "./usage.js";
 
 /** The credential a route takes instead of an API key: a signed-in user (`admin`: an admin). */
 export type SessionAuth = "session" | "admin";
@@ -41,8 +41,13 @@ export interface SessionOptions {
 export interface InstallAuthOptions {
   /** Enables the session credential (`config.auth`); `null`/absent: such routes answer 401. */
   sessions?: SessionOptions | null;
-  /** Counts `requests` and `bytes_in` of every API-key request; absent → not metered. */
+  /** Counts `requests` and `bytes_in` of every metered API-key request; absent → none. */
   usage?: UsageMeter | null;
+  /**
+   * Meter every key (a process with self-service accounts). `false`: only keys of
+   * self-service tenants (`meteredContext`). Default `true`.
+   */
+  meterEveryKey?: boolean;
 }
 
 /** The request's `Content-Length`, 0 when absent or not a number. */
@@ -182,13 +187,13 @@ export function installAuth(
     if (!required) return;
     const key = extractApiKey(request.headers) ?? websocketKey(request);
     if (!key) throw new MementoError("unauthorized", "missing API key");
-    const tenant = await authenticateApiKey(db, key);
+    const tenant = meteredContext(await authenticateApiKey(db, key), options.meterEveryKey ?? true);
     if (!hasScope(tenant.scopes, required)) {
       throw new MementoError("forbidden", `this API key lacks the "${required}" scope`);
     }
     request.tenant = tenant;
     request.log = request.log.child({ tenant: tenant.tenantSlug, api_key: tenant.apiKeyId });
-    if (tenant.apiKeyId) {
+    if (tenant.apiKeyId && isMetered(tenant)) {
       options.usage?.add(tenant.apiKeyId, tenant.tenantId, {
         requests: 1,
         bytes_in: contentLength(request),

@@ -49,34 +49,34 @@ if (config.redisUrl) {
   feed = bus;
 }
 
-// Self-service accounts (MEMENTO_ACCOUNTS): Brevo when a key is set, otherwise mails are
-// logged; rate limit and quota counters in Redis when there is one, so every process shares
-// them.
+// Rate limit and quota counters in Redis when there is one, so every process shares them —
+// with accounts or without: a self-service key is metered and held to its daily limit on
+// whichever process it writes through.
+const countersRedis: Redis | null = config.redisUrl
+  ? new Redis(config.redisUrl, { maxRetriesPerRequest: 2 })
+  : null;
+countersRedis?.on("error", (error) => app.log.warn({ err: error }, "counters redis error"));
+// Quota and account mails: Brevo when a key is set, otherwise logged; none without
+// MEMENTO_SERVICE_URL (the link in a mail).
+const mailer =
+  config.quotaMail?.brevoApiKey && config.quotaMail.mailFrom
+    ? new BrevoMailer({
+        apiKey: config.quotaMail.brevoApiKey,
+        from: config.quotaMail.mailFrom,
+        // `app` exists by the time a mail is sent.
+        log: { info: (o, m) => app.log.info(o, m), error: (o, m) => app.log.error(o, m) },
+      })
+    : undefined;
+
+// Self-service accounts (MEMENTO_ACCOUNTS): the /auth/* routes and the session cookie.
 let accounts: AccountsOptions | undefined;
-let rateLimitRedis: Redis | null = null;
 if (config.accounts) {
-  const { brevoApiKey, mailFrom } = config.accounts;
-  if (config.redisUrl) {
-    rateLimitRedis = new Redis(config.redisUrl, { maxRetriesPerRequest: 2 });
-    rateLimitRedis.on("error", (error) => app.log.warn({ err: error }, "accounts redis error"));
-  }
   accounts = {
     serviceUrl: config.accounts.serviceUrl,
     sessionDays: config.accounts.sessionDays,
     limits: config.limits,
-    rateLimit: { redis: rateLimitRedis },
-    // Today's per-key event counters (memento:quota:<key>:<day>), shared by every process.
-    redis: rateLimitRedis,
-    ...(brevoApiKey && mailFrom
-      ? {
-          mailer: new BrevoMailer({
-            apiKey: brevoApiKey,
-            from: mailFrom,
-            // `app` exists by the time a mail is sent.
-            log: { info: (o, m) => app.log.info(o, m), error: (o, m) => app.log.error(o, m) },
-          }),
-        }
-      : {}),
+    rateLimit: { redis: countersRedis },
+    ...(mailer ? { mailer } : {}),
   };
 }
 
@@ -87,6 +87,14 @@ const app = await buildApp({
   logger: { level: config.logLevel },
   trustProxy: config.trustProxy,
   ...(accounts ? { accounts } : {}),
+  limits: config.limits,
+  metering: {
+    // Today's per-key event counters (memento:quota:<key>:<day>), shared by every process.
+    redis: countersRedis,
+    mail: config.quotaMail
+      ? { serviceUrl: config.quotaMail.serviceUrl, ...(mailer ? { mailer } : {}) }
+      : null,
+  },
   lookups,
   defaultLocale: config.defaultLocale,
   stream: {
@@ -118,11 +126,20 @@ if (config.accounts) {
     {
       service_url: config.accounts.serviceUrl,
       mail: config.accounts.brevoApiKey ? "brevo" : "log",
-      rate_limit_store: rateLimitRedis ? "redis" : "memory",
-      quota_store: rateLimitRedis ? "redis" : "usage table",
+      rate_limit_store: countersRedis ? "redis" : "memory",
+      quota_store: countersRedis ? "redis" : "usage table",
       default_daily_limit: config.limits.defaultDailyLimit,
     },
     "self-service accounts on: /auth/* and the session cookie",
+  );
+} else {
+  app.log.info(
+    {
+      quota_store: countersRedis ? "redis" : "usage table",
+      quota_mail: config.quotaMail ? (config.quotaMail.brevoApiKey ? "brevo" : "log") : "none",
+      default_daily_limit: config.limits.defaultDailyLimit,
+    },
+    "accounts off: keys of self-service tenants are still metered and held to their daily limit",
   );
 }
 if (config.uiDir) app.log.info({ root: config.uiDir }, "serving the web UI at / and /en/");
@@ -130,7 +147,7 @@ if (config.uiDir) app.log.info({ root: config.uiDir }, "serving the web UI at / 
 app.addHook("onClose", async () => {
   await publisher.close();
   await feed.close();
-  rateLimitRedis?.disconnect();
+  countersRedis?.disconnect();
   await database.close();
 });
 

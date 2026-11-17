@@ -1,12 +1,13 @@
 import { fileURLToPath } from "node:url";
-import { count, eq } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AccountsOptions } from "../src/app.js";
+import { type AccountsOptions, buildApp, type MeteringOptions } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
 import { apiKeys, apiKeyUsage, events, tenants } from "../src/db/schema.js";
 import { MemoryMailer } from "../src/mail/mailer.js";
+import { MemoryPublisher } from "../src/publisher.js";
 import { quotaKey } from "../src/quota.js";
 import { setUserAdmin } from "../src/services/accounts.js";
 import { authenticateApiKey, createApiKey, revokeApiKey } from "../src/services/apikeys.js";
@@ -445,6 +446,123 @@ describe("daily quota", () => {
     expect(seen.statusCode).toBe(429);
     const view = await session(cookie, "PATCH", `/keys/${api_key.id}`, { name: "ingest" });
     expect(view.json().data.api_key.used_today).toBe(2);
+  });
+});
+
+// Stage: `service` (accounts on) and `memento` (the examples site, accounts off) share one
+// database, so a key made on the service site writes through either.
+describe("a self-service key on a process without accounts", () => {
+  const log = { error: vi.fn() };
+  let examplesMailer: MemoryMailer;
+
+  /** A second process on the same database, without `accounts`. */
+  async function examplesApp(metering: Partial<MeteringOptions> = {}) {
+    examplesMailer = new MemoryMailer();
+    const app = await buildApp({
+      db: handle.db,
+      publisher: new MemoryPublisher(),
+      logger: false,
+      metering: { mail: { serviceUrl: SERVICE_URL, mailer: examplesMailer }, ...metering },
+    });
+    apps.push(app);
+    return app;
+  }
+  const pushTo = (app: FastifyInstance, key: string, n: number) =>
+    app.inject({
+      method: "POST",
+      url: "/memento/events",
+      headers: auth(key),
+      payload: sampleEvent(n),
+    });
+  const usageOf = async (apiKeyId: string) => {
+    const [row] = await handle.db
+      .select({
+        events: sql<string>`coalesce(sum(${apiKeyUsage.eventsWritten}), 0)`,
+        requests: sql<string>`coalesce(sum(${apiKeyUsage.requests}), 0)`,
+      })
+      .from(apiKeyUsage)
+      .where(eq(apiKeyUsage.apiKeyId, apiKeyId));
+    return { events: Number(row?.events ?? 0), requests: Number(row?.requests ?? 0) };
+  };
+
+  async function exercise(service: UsageMeter, examples: UsageMeter, app: FastifyInstance) {
+    const ana = await register();
+    const { api_key, key } = await createKey(ana.cookie, { name: "ingest", daily_limit: 5 });
+    for (let n = 1; n <= 3; n++) expect((await pushTo(fx.app, key, n)).statusCode).toBe(201);
+    await service.flush();
+    // The 4th of 5, through the other process, reaches 80 %: it sends the warning.
+    expect((await pushTo(app, key, 4)).statusCode).toBe(201);
+    expect((await pushTo(app, key, 5)).statusCode).toBe(201);
+    await vi.waitFor(() => expect(examplesMailer.sent).toHaveLength(1));
+    expect(examplesMailer.sent[0]?.to).toBe("ana@example.com");
+    expect(examplesMailer.sent[0]?.text).toContain(`${SERVICE_URL}/keys/${api_key.id}`);
+    const refused = await pushTo(app, key, 6);
+    expect(refused.statusCode, refused.body).toBe(429);
+    expect(refused.json().error).toMatchObject({ code: "quota_exceeded", details: { used: 5 } });
+    await examples.flush();
+    // The service process sees the 2 events the other one stored.
+    expect((await pushTo(fx.app, key, 7)).statusCode).toBe(429);
+    const view = await session(ana.cookie, "PATCH", `/keys/${api_key.id}`, { name: "ingest" });
+    expect(view.json().data.api_key.used_today).toBe(5);
+    await service.flush();
+    await examples.flush();
+    // Events written: 3 + 2; requests: all 7 POSTs, refused ones included.
+    expect(await usageOf(api_key.id)).toEqual({ events: 5, requests: 7 });
+    const [stored] = await handle.db
+      .select({ n: count() })
+      .from(events)
+      .where(eq(events.apiKeyId, api_key.id));
+    expect(stored?.n).toBe(5);
+    // One warning (from the other process), one exceeded mail, nothing twice.
+    await vi.waitFor(() =>
+      expect(
+        [...mailer.sent, ...examplesMailer.sent].filter((m) => /80 %|reached/.test(m.subject)),
+      ).toHaveLength(2),
+    );
+  }
+
+  it("is metered and held to its daily limit there (usage table)", async () => {
+    const service = new UsageMeter({ db: handle.db, log, flushIntervalMs: 3_600_000 });
+    const examples = new UsageMeter({ db: handle.db, log, flushIntervalMs: 3_600_000 });
+    await setup({ usage: service });
+    await exercise(service, examples, await examplesApp({ usage: examples }));
+  });
+
+  // Skipped on SQLite: that run has no Redis (REDIS_URL is empty), by design of the run.
+  it.skipIf(onSqlite)("is metered and held to its daily limit there (Redis)", async () => {
+    redis = new Redis(loadConfig().redisUrl ?? "redis://localhost:6379/0", {
+      maxRetriesPerRequest: 1,
+    });
+    const service = new UsageMeter({ db: handle.db, log, flushIntervalMs: 3_600_000 });
+    const examples = new UsageMeter({ db: handle.db, log, flushIntervalMs: 3_600_000 });
+    await setup({ usage: service, redis });
+    const app = await examplesApp({ usage: examples, redis });
+    try {
+      await exercise(service, examples, app);
+    } finally {
+      for (const k of await redis.keys("memento:quota:*")) await redis.del(k);
+    }
+  });
+
+  it("leaves a key of a tenant without accounts unmetered and unlimited", async () => {
+    const examples = new UsageMeter({ db: handle.db, log, flushIntervalMs: 3_600_000 });
+    const app = await examplesApp({ usage: examples });
+    await handle.db.update(apiKeys).set({ dailyLimit: 1 });
+    for (let n = 1; n <= 3; n++) {
+      expect((await pushTo(app, fx.keys.write, n)).statusCode).toBe(201);
+    }
+    await app.close();
+    expect(await handle.db.select().from(apiKeyUsage)).toEqual([]);
+  });
+
+  it("without a service URL: no quota mail, and the day's mail is left to a process that has one", async () => {
+    const app = await examplesApp({ mail: null });
+    const ana = await register();
+    const { api_key, key } = await createKey(ana.cookie, { name: "ingest", daily_limit: 1 });
+    expect((await pushTo(app, key, 1)).statusCode).toBe(201);
+    expect((await pushTo(app, key, 2)).statusCode).toBe(429);
+    const row = await handle.db.query.apiKeys.findFirst({ where: eq(apiKeys.id, api_key.id) });
+    expect(row).toMatchObject({ quotaWarnedOn: null, quotaExceededOn: null });
   });
 });
 

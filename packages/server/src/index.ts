@@ -5,6 +5,7 @@ export {
   codeForStatus,
   DEFAULT_LIMITS,
   type MementoPluginOptions,
+  type MeteringOptions,
   mementoPlugin,
   requestId,
   type StreamOptions,
@@ -248,6 +249,8 @@ export { isoOf, TableCollectionSource, type TableField, type TableSpec } from ".
 export {
   dayStartOf,
   hourOf,
+  isMetered,
+  meteredContext,
   USAGE_FLUSH_INTERVAL_MS,
   type UsageCounters,
   UsageMeter,

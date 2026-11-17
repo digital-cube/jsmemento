@@ -188,6 +188,24 @@ describe("accounts config", () => {
     });
   });
 
+  it("quota mails without accounts need only MEMENTO_SERVICE_URL", () => {
+    expect(loadConfig({}).quotaMail).toBeNull();
+    const config = loadConfig({
+      MEMENTO_SERVICE_URL: "https://service.stage.memento-service.org/",
+      MEMENTO_BREVO_API_KEY: "xkeysib-1",
+      MEMENTO_MAIL_FROM: "info@example.com",
+    });
+    expect(config.accounts).toBeNull();
+    expect(config.quotaMail).toEqual({
+      serviceUrl: "https://service.stage.memento-service.org",
+      brevoApiKey: "xkeysib-1",
+      mailFrom: { name: "info@example.com", email: "info@example.com" },
+    });
+    expect(() =>
+      loadConfig({ MEMENTO_SERVICE_URL: "https://s.test", MEMENTO_BREVO_API_KEY: "k" }),
+    ).toThrow(/MEMENTO_MAIL_FROM/);
+  });
+
   it("parses MEMENTO_MAIL_FROM forms", () => {
     expect(parseMailFrom('"Memento Team" <a@b.rs>')).toEqual({
       name: "Memento Team",

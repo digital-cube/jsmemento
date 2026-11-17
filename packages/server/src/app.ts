@@ -71,13 +71,35 @@ export interface AccountsOptions {
   limits?: LimitsConfig;
   /** Auth rate limits: `max` requests per `timeWindowMs` (default 10 per 15 min). */
   rateLimit?: { max?: number; timeWindowMs?: number; redis?: Redis | null };
+  /** Same as `metering.redis` (which wins when both are set). */
+  redis?: Redis | null;
+  /** Same as `metering.usage` (which wins when both are set). */
+  usage?: UsageMeter;
+  /** Same as `metering.now` (which wins when both are set). */
+  now?: () => Date;
+}
+
+/**
+ * Per-key usage and daily limits, on every process — with accounts or without. Keys of a
+ * self-service tenant (one with an account member) are metered and limited wherever they
+ * write, so two processes on one database (stage's `service` and `memento`) count the same
+ * key the same way; a process with accounts meters every other key too.
+ */
+export interface MeteringOptions {
   /**
    * Where today's per-key event counters live (`memento:quota:<key>:<day>`); `null`/absent →
-   * summed from `memento_apikey_usage` and this process's unflushed counters.
+   * summed from `memento_apikey_usage` and this process's unflushed counters. Every process
+   * on one database must make the same choice.
    */
   redis?: Redis | null;
   /** Default: a `UsageMeter` over `memento_apikey_usage`, flushed every 5 s and on close. */
   usage?: UsageMeter;
+  /**
+   * The 80 % / 100 % quota mails of a process without accounts (with accounts they go out
+   * through `accounts.mailer`). `null`/absent → this process sends none and leaves the day's
+   * mail to one that can.
+   */
+  mail?: { serviceUrl: string; mailer?: Mailer; templates?: MailTemplates } | null;
   /** The clock of the daily limits (tests pin it). */
   now?: () => Date;
 }
@@ -120,6 +142,13 @@ export interface MementoPluginOptions {
   demoApiKey?: string;
   /** Turns on self-service accounts. Default: off — no `/auth/*`, no session credential. */
   accounts?: AccountsOptions;
+  /** Per-key usage and daily limits (`MeteringOptions`). Default: no Redis, no quota mails. */
+  metering?: MeteringOptions;
+  /**
+   * Quota defaults (the daily limit of a key without its own). Default `accounts.limits`,
+   * else `DEFAULT_LIMITS`.
+   */
+  limits?: LimitsConfig;
 }
 
 /** Selects `memento.v1` when offered, else the `bearer.<key>` protocol the client sent. */
@@ -135,9 +164,9 @@ export interface RouteDeps {
   capabilities: Partial<Capabilities>;
   lookups: Lookups;
   renderer: EventRenderer;
-  /** Per-key usage counters (`MEMENTO_ACCOUNTS`); `null` → not metered. */
+  /** Per-key usage counters of metered keys (`isMetered`); `null` → not metered. */
   usage: UsageMeter | null;
-  /** Daily event limits of keys (`MEMENTO_ACCOUNTS`); `null` → unlimited. */
+  /** Daily event limits of metered keys; `null` → unlimited. */
   quota: QuotaGuard | null;
 }
 
@@ -162,26 +191,36 @@ export function requestId(header: string | string[] | undefined): string {
 export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (app, options) => {
   const lookups = options.lookups ?? emptyLookups();
   const accounts = options.accounts;
-  const limits = accounts?.limits ?? DEFAULT_LIMITS;
-  // Self-service mode meters every API key and holds it to its daily limit.
-  const usage = accounts
-    ? (accounts.usage ?? new UsageMeter({ db: options.db, log: app.log }))
-    : null;
+  const metering = options.metering ?? {};
+  const limits = options.limits ?? accounts?.limits ?? DEFAULT_LIMITS;
+  // Keys of self-service tenants are metered and held to their daily limit on every process
+  // (they may write through any process on the database); with accounts, every key is.
+  const meterEveryKey = accounts !== undefined;
+  const usage =
+    metering.usage ?? accounts?.usage ?? new UsageMeter({ db: options.db, log: app.log });
   const mailer = accounts ? (accounts.mailer ?? new LogMailer(app.log)) : null;
   const mailTemplates = accounts ? (accounts.mailTemplates ?? new MailTemplates()) : null;
   const serviceUrl = accounts?.serviceUrl.replace(/\/+$/, "") ?? "";
-  const quota =
-    accounts && usage && mailer && mailTemplates
-      ? new QuotaGuard({
-          db: options.db,
-          usage,
-          redis: accounts.redis ?? null,
-          defaultDailyLimit: limits.defaultDailyLimit,
-          mail: { mailer, templates: mailTemplates, serviceUrl },
-          log: app.log,
-          ...(accounts.now ? { now: accounts.now } : {}),
-        })
-      : null;
+  const quotaMail =
+    mailer && mailTemplates
+      ? { mailer, templates: mailTemplates, serviceUrl }
+      : metering.mail
+        ? {
+            mailer: metering.mail.mailer ?? new LogMailer(app.log),
+            templates: metering.mail.templates ?? new MailTemplates(),
+            serviceUrl: metering.mail.serviceUrl.replace(/\/+$/, ""),
+          }
+        : null;
+  const now = metering.now ?? accounts?.now;
+  const quota = new QuotaGuard({
+    db: options.db,
+    usage,
+    redis: metering.redis ?? accounts?.redis ?? null,
+    defaultDailyLimit: limits.defaultDailyLimit,
+    mail: quotaMail,
+    log: app.log,
+    ...(now ? { now } : {}),
+  });
   const deps: RouteDeps = {
     usage,
     quota,
@@ -261,10 +300,10 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   }
 
   // After the hub's: its connections add their last stream seconds as they close.
-  if (usage) app.addHook("preClose", async () => usage.close());
+  app.addHook("preClose", async () => usage.close());
   const sessions = accounts ? { days: accounts.sessionDays ?? 30 } : null;
   if (accounts && !app.hasRequestDecorator("cookies")) await app.register(fastifyCookie);
-  installAuth(app, deps.db, { sessions, usage });
+  installAuth(app, deps.db, { sessions, usage, meterEveryKey });
   if (hub) await app.register(streamRoutes, { hub });
   await app.register(healthRoutes, deps);
   await app.register(eventRoutes, deps);
@@ -273,7 +312,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
   await app.register(describeRoutes, deps);
   const demo = options.demoApiKey ? await resolveDemoKey(deps.db, options.demoApiKey) : null;
   await app.register(demoRoutes, { demo });
-  if (accounts && sessions && mailer && mailTemplates && quota) {
+  if (accounts && sessions && mailer && mailTemplates) {
     await app.register(accountRoutes, {
       db: deps.db,
       mails: new AccountMails({ mailer, templates: mailTemplates, serviceUrl, log: app.log }),
@@ -294,7 +333,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
       eventCollections({
         db: deps.db,
         renderer: deps.renderer,
-        ...(quota ? { accounts: { quota } } : {}),
+        ...(accounts ? { accounts: { quota } } : {}),
       });
     if (options.menu) {
       const menu = menuCollection({ file: options.menu, registry });
@@ -305,7 +344,7 @@ export const mementoPlugin: FastifyPluginAsync<MementoPluginOptions> = async (ap
         registry.register(menu);
       }
     }
-    await app.register(udcRoutes, { db: deps.db, registry, sessions, usage });
+    await app.register(udcRoutes, { db: deps.db, registry, sessions, usage, meterEveryKey });
   }
 };
 

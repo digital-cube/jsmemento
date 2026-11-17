@@ -8,10 +8,10 @@ import {
   type Scope,
   timingSafeEqual,
 } from "@memento/core";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { TenantContext } from "../context.js";
 import type { Database } from "../db/index.js";
-import { type ApiKeyRow, apiKeys, tenants } from "../db/schema.js";
+import { type ApiKeyRow, apiKeys, tenants, tenantUsers } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import { getTenantBySlug } from "./tenants.js";
 
@@ -118,7 +118,14 @@ export async function authenticateApiKey(
   const parts = parseApiKey(key);
   if (!parts) throw invalid();
   const [found] = await db
-    .select({ key: apiKeys, tenant: tenants })
+    .select({
+      key: apiKeys,
+      tenant: tenants,
+      // 1/0 rather than a boolean: the same value on PostgreSQL and SQLite.
+      selfService: sql<
+        number | string
+      >`case when exists (select 1 from ${tenantUsers} where ${tenantUsers.tenantId} = ${tenants.id}) then 1 else 0 end`,
+    })
     .from(apiKeys)
     .innerJoin(tenants, eq(apiKeys.tenantId, tenants.id))
     .where(eq(apiKeys.prefix, parts.prefix))
@@ -147,5 +154,6 @@ export async function authenticateApiKey(
     tenantName: found.tenant.name,
     apiKeyId: found.key.id,
     scopes: found.key.scopes as Scope[],
+    selfService: Number(found.selfService) === 1,
   };
 }

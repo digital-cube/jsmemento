@@ -394,7 +394,7 @@ process:
 |---|---|---|
 | a stored event → `/ws` clients | the in-process `LocalBus`: the process streams what it stores | `RedisPublisher` → `memento:events:<tenant>` → `RedisFeed` in every process |
 | rate limits of `/auth/*` (accounts on) | in the process's memory | counters in Redis |
-| today's quota count per API key (accounts on) | today's `memento_apikey_usage` rows plus the unflushed buffer (flushed every 5 s) | `memento:quota:<key>:<day>` in Redis |
+| today's quota count per limited API key | today's `memento_apikey_usage` rows plus the unflushed buffer (flushed every 5 s) | `memento:quota:<key>:<day>` in Redis |
 | the usage meter (`memento_apikey_usage`) | written every 5 s and on shutdown | the same |
 
 The server's log says which it uses when accounts are on:

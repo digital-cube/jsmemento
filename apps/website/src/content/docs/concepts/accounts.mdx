@@ -97,8 +97,9 @@ The `retention` service of `docker-compose.yaml` (profile `demo`) runs it once a
 tenant has `retention_days` it does nothing.
 
 <Aside>
-Daily limits and the usage meter belong to accounts too: with accounts on, every key is held to
-its events per UTC day, and without accounts there are no limits and no metering
+Daily limits and the usage meter follow the account's keys: a key of a self-service tenant is
+held to its events per UTC day and metered on every server on the database, with accounts on or
+off; a server with accounts on also limits every other key
 ([Daily limits](/concepts/tenants-and-keys/#daily-limits)).
 </Aside>
 

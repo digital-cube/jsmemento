@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { TenantContext } from "./context.js";
 import type { Database } from "./db/index.js";
 import { apiKeyUsage } from "./db/schema.js";
 
@@ -56,6 +57,24 @@ export function dayStartOf(at: Date): Date {
 /** `YYYY-MM-DD` of `at`'s UTC day. */
 export function utcDay(at: Date): string {
   return at.toISOString().slice(0, 10);
+}
+
+/**
+ * Whether a request is metered and held to its key's daily limit: an API key whose context
+ * the auth step did not mark `metered: false` (see `meteredContext`). Sessions never are.
+ */
+export function isMetered(context: Pick<TenantContext, "apiKeyId" | "metered">): boolean {
+  return context.apiKeyId !== null && context.metered !== false;
+}
+
+/**
+ * The context of an authenticated key with `metered` decided: a process with self-service
+ * accounts meters every key (`everyKey`); any process meters a key of a self-service tenant,
+ * so the key's usage and daily limit hold whichever process it writes through.
+ */
+export function meteredContext(context: TenantContext, everyKey: boolean): TenantContext {
+  if (!context.apiKeyId) return context;
+  return { ...context, metered: everyKey || context.selfService === true };
 }
 
 /** Upserts a batch: counters already in the table are added to, not replaced. */

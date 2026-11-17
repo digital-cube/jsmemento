@@ -286,6 +286,17 @@ share one version.
   pending migrations (two replicas, or `memento` and `service` started by one
   `docker compose up`) both ran the same `CREATE …` and one exited with a unique violation.
   SQLite is unchanged (one process per file).
+- **A self-service key is metered and held to its daily limit on every server process**, not
+  only on one with `MEMENTO_ACCOUNTS`. Stage runs `service` (accounts on) and `memento`
+  (accounts off) on one database, and a key made on the service site works on both: events
+  written through `memento` were missing from the key's usage and "today" count, and its daily
+  limit did not apply there. Now a key of a tenant with an account member is metered and
+  limited wherever it writes (one count in Redis when `REDIS_URL` is set); a process with
+  accounts still meters every key, and one without leaves other keys (CLI keys of operator
+  tenants) alone. A process without accounts sends the quota mails when it has
+  `MEMENTO_SERVICE_URL`, and without it leaves the day's mail to one that can. New plugin
+  options `metering` (`redis`, `usage`, `mail`, `now`) and `limits`; `accounts.redis`,
+  `.usage` and `.now` still work.
 
 ## [1.0.0] - 2026-10-31
 

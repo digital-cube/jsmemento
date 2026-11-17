@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { RouteDeps } from "../app.js";
 import { MementoError } from "../errors.js";
 import { listEvents, pushEvent } from "../services/events.js";
+import { isMetered } from "../usage.js";
 
 const QueryBodySchema = z.looseObject({ filter: FilterSchema.nullish() });
 const PushQuerySchema = z.looseObject({ locale: LocaleSchema.optional() });
@@ -15,7 +16,8 @@ export const eventRoutes: FastifyPluginAsync<RouteDeps> = async (
   /** `rows_read` of an API-key read (session reads are not metered). */
   const read = (request: FastifyRequest, rows: number) => {
     const tenant = request.tenant;
-    if (usage && tenant?.apiKeyId) usage.add(tenant.apiKeyId, tenant.tenantId, { rows_read: rows });
+    if (usage && tenant?.apiKeyId && isMetered(tenant))
+      usage.add(tenant.apiKeyId, tenant.tenantId, { rows_read: rows });
   };
 
   /** Push one event; `?locale=sr` picks the locale `rendered` is stored in. */
