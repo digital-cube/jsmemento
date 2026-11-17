@@ -1,4 +1,4 @@
-import { type Tenant, type TenantCreate, TenantCreateSchema } from "@memento/core";
+import { type Tenant, type TenantCreate, TenantCreateSchema } from "@jsmemento/core";
 import { asc, eq } from "drizzle-orm";
 import { type Database, dialect } from "../db/index.js";
 import { type TenantRow, tenants } from "../db/schema.js";

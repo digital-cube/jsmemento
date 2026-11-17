@@ -351,7 +351,7 @@ deployment that never had accounts has no self-service tenants, so nothing there
 
 ## The website
 
-`https://stage.memento-service.org/` is `apps/website` (`@memento/website`): memento's own
+`https://stage.memento-service.org/` is `apps/website` (`@jsmemento/website`): memento's own
 website, Astro + Starlight, static files served by nginx on the stage VM like
 `stage.jsudc.dev`. It is **not part of the image** (the Dockerfile's turbo filters leave it
 out) and has no server: one build, swapped in under a symlink.
@@ -377,8 +377,8 @@ REPO_URL=/home/digital/work/jsmemento deploy/website/stage.sh --branch main   # 
 ```
 
 It clones or fetches the repository into `/home/digital/sites/stage.memento-service.org/src`,
-checks out `origin/<branch>`, installs `@memento/website` and its dependencies only
-(`pnpm install --frozen-lockfile --filter @memento/website...`, pnpm from `packageManager`
+checks out `origin/<branch>`, installs `@jsmemento/website` and its dependencies only
+(`pnpm install --frozen-lockfile --filter @jsmemento/website...`, pnpm from `packageManager`
 through corepack, Node 24 from nvm), builds with the stage variables, copies
 `apps/website/dist` to `releases/<short sha>/`, repoints `current` atomically, keeps three
 releases, and fails unless `/` answers 200 and a missing page the site's 404 through nginx on

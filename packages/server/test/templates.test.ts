@@ -1,8 +1,8 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { EVENT_TYPES, FREE_TEXT_EVENT_TYPES } from "@memento/core";
-import { compileLookups, LookupRegistry } from "@memento/lookups";
+import { EVENT_TYPES, FREE_TEXT_EVENT_TYPES } from "@jsmemento/core";
+import { compileLookups, LookupRegistry } from "@jsmemento/lookups";
 import { describe, expect, it } from "vitest";
 import {
   type RenderContext,

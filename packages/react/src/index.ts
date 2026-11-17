@@ -4,8 +4,8 @@ export type {
   StreamFilter,
   StreamStatus,
   WebSocketConstructor,
-} from "@memento/core";
-export { MementoApiError, MementoClient, MementoStream } from "@memento/core";
+} from "@jsmemento/core";
+export { MementoApiError, MementoClient, MementoStream } from "@jsmemento/core";
 export {
   type MementoContextValue,
   MementoProvider,

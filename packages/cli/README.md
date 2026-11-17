@@ -1,4 +1,4 @@
-# @memento/cli
+# @jsmemento/cli
 
 The `memento` command line: setup wizard, tenants, API keys, templates, chats, lookups and `memento tail` (live stream). Reads `DATABASE_URL` / `REDIS_URL` like the server.
 

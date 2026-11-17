@@ -9,7 +9,7 @@ import ExampleShot from "../../../components/ExampleShot.astro";
 import LiveExample from "../../../components/LiveExample.astro";
 
 `memento simulate` also plays a chat: the team talks in one room, and the page shows that room
-with `MementoChat` from `@memento/react` — the component an application would embed —
+with `MementoChat` from `@jsmemento/react` — the component an application would embed —
 read-only and live. A chat is an ordinary memento instance whose messages, read markers and
 joins are events ([Chats as events](/concepts/chats/)).
 
@@ -53,7 +53,7 @@ simulator.
 `MementoChat` loads the newest 100 messages and then follows the room's events on
 `/memento/ws`: new messages appear as they are sent, read markers move on `CHAT_MESSAGE_SEEN`,
 "X was added" lines appear on `CHAT_PARTICIPANT_ADDED`. The page follows the same stream
-(`useLive` of `@memento/ui-shell`) to read the room again when a participant is added, or, while
+(`useLive` of `@jsmemento/ui-shell`) to read the room again when a participant is added, or, while
 the room is missing, when it first speaks.
 
 `MementoProvider` gets the site's locale: the system lines ("mila was added to the chat" /

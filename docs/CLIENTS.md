@@ -3,7 +3,7 @@
 `clients/<lang>/` holds one complete, runnable program per language — JavaScript, TypeScript,
 Python, PHP, Java, Rust, Go and C++ — that uses the public API the way any integration would:
 plain HTTP with `Authorization: Bearer <key>` and, for the live stream, a WebSocket with the
-subprotocols `memento.v1` and `bearer.<key>`. No SDK: `@memento/core` stays unpublished, and the
+subprotocols `memento.v1` and `bearer.<key>`. No SDK: `@jsmemento/core` stays unpublished, and the
 programs use the language's ordinary HTTP client (`fetch`, `urllib`, `curl`, `HttpClient`,
 `ureq`, `net/http`, `libcurl`).
 
@@ -85,7 +85,7 @@ A missing `clients/`, README section, run line or shown file fails the build wit
 the message. The order, labels and shown files are the plugin's `CLIENT_LANGUAGES`; a ninth
 language is a directory plus one line there. `apps/service/turbo.json` adds `clients/**` to the
 build's inputs, so a change of a program rebuilds the site. The image copies
-`apps/service/dist` whole, zips included; `@memento/server` serves them as static files.
+`apps/service/dist` whole, zips included; `@jsmemento/server` serves them as static files.
 
 Tests: `apps/service/test/clients-plugin.test.ts` (README parsing and every zip's file list,
 against the real `clients/`) and `clients-page.test.tsx` (tabs, URL and localStorage, the

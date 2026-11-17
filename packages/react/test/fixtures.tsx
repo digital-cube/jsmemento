@@ -1,4 +1,4 @@
-import type { MementoEvent, WebSocketLike } from "@memento/core";
+import type { MementoEvent, WebSocketLike } from "@jsmemento/core";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 import { MementoProvider } from "../src/index.js";

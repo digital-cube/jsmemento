@@ -1,3 +1,4 @@
+import { routerBasename, storedLocale, storeLocale } from "@jsmemento/ui-shell";
 import type { UdcClient } from "@jsudc/core/client";
 import {
   createRendererRegistry,
@@ -11,7 +12,6 @@ import { chartRenderer } from "@jsudc/react/chart";
 import { UdcReactRouterUrlState } from "@jsudc/react/react-router";
 import { tableRenderer } from "@jsudc/react/table";
 import { Spinner, Toaster, TooltipProvider } from "@jsudc/react/ui";
-import { routerBasename, storedLocale, storeLocale } from "@memento/ui-shell";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   lazy,

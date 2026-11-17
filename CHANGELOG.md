@@ -2,7 +2,7 @@
 
 All notable changes to JSMemento. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
-[Semantic Versioning](https://semver.org/). Every `@memento/*` package and the Docker image
+[Semantic Versioning](https://semver.org/). Every `@jsmemento/*` package and the Docker image
 share one version.
 
 ## [Unreleased]
@@ -48,7 +48,7 @@ share one version.
   - The server and CLI suites run on both databases (vitest projects, `MEMENTO_TEST_DIALECT`,
     `test:pg` / `test:sqlite`); `test/parity.test.ts` pins what both must answer alike.
 
-- **The website** (`apps/website`, `@memento/website`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#the-website)):
+- **The website** (`apps/website`, `@jsmemento/website`, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#the-website)):
   Astro + Starlight with memento's own identity (ink and bone, the red thread, Bodoni Moda),
   dark and light, Pagefind search, a home hero (one `USER_LOGIN` and its EN / SR sentence),
   the sidebar Get started / Concepts / Reference / Examples / Clients / Packages (an index each
@@ -88,7 +88,7 @@ share one version.
   `clients/check.sh` runs one against a local server, and the `Client programs` workflow
   (`.github/workflows/clients.yml`) runs all eight on every change.
 
-- **API keys users manage** (`@memento/server`, `MEMENTO_ACCOUNTS`): session routes
+- **API keys users manage** (`@jsmemento/server`, `MEMENTO_ACCOUNTS`): session routes
   `POST /keys` (`{name, scopes: read|write, expires_at?, daily_limit?}` → the plaintext once;
   `409 limit_reached` past `max_keys`), `PATCH /keys/:id` (name, `daily_limit`),
   `POST /keys/:id/disable|enable` (pause / resume), `DELETE /keys/:id` (soft delete). Disabled
@@ -116,7 +116,7 @@ share one version.
   `ApiKey` gains `status`, `daily_limit`, `used_today`, `created_by`; compose passes
   `DEFAULT_MAX_KEYS`, `DEFAULT_DAILY_LIMIT`, `MAX_DAILY_LIMIT`.
 
-- **Self-service accounts, server side** (`@memento/server`, behind `MEMENTO_ACCOUNTS`, off by
+- **Self-service accounts, server side** (`@jsmemento/server`, behind `MEMENTO_ACCOUNTS`, off by
   default): `POST /auth/register` (a user, a tenant of their own `t-xxxxxxxx`, the `owner`
   membership, a verify mail, a session), `/auth/verify`, `/auth/resend`, `/auth/login`,
   `/auth/logout`, `/auth/forgot`, `/auth/reset`, `GET`/`PATCH /auth/me`. Passwords argon2id
@@ -131,7 +131,7 @@ share one version.
   `Content-Type: application/json` (415 otherwise). `TenantContext` gains `userId`,
   `userEmail`, `isAdmin`; `apiKeyId` is `null` for a session. UDC collections registered in
   the new `MementoRegistry` with `auth: "session" | "admin"` are read with the cookie.
-- **Mail** (`@memento/server`): `Mailer`, `BrevoMailer` (Brevo transactional API; a refusal is
+- **Mail** (`@jsmemento/server`): `Mailer`, `BrevoMailer` (Brevo transactional API; a refusal is
   logged, never fails the request), `LogMailer`, `MemoryMailer`; templates
   `packages/server/mail/{verify,reset}.{en,sr}.hbs` (first line the subject) rendered with the
   event templates' Handlebars sandbox.
@@ -140,11 +140,11 @@ share one version.
   `MEMENTO_DEFAULT_MAX_KEYS`, `MEMENTO_DEFAULT_DAILY_LIMIT`, `MEMENTO_MAX_DAILY_LIMIT`;
   `docker-compose.yaml` passes `ACCOUNTS`, `SERVICE_URL`, `BREVO_API_KEY`, `MAIL_FROM`,
   `TRUST_PROXY`. `buildApp({ trustProxy, accounts })`.
-- **CLI** (`@memento/cli`): `list-users`, `make-admin` / `revoke-admin`, `disable-user` /
+- **CLI** (`@jsmemento/cli`): `list-users`, `make-admin` / `revoke-admin`, `disable-user` /
   `enable-user`, `verify-user`.
-- **Error codes** (`@memento/core`): `unsupported_media_type` (415), `rate_limited` (429).
+- **Error codes** (`@jsmemento/core`): `unsupported_media_type` (415), `rate_limited` (429).
 
-- **`activity` UDC collection** (`@memento/server`): the tenant's events counted per minute and
+- **`activity` UDC collection** (`@jsmemento/server`): the tenant's events counted per minute and
   per `event_type`, computed per request with a `GROUP BY` over `memento_event` (no migration,
   no new index: the inner query is bounded on `occurred_at` and reads the tenant/time index).
   Fields `minute`, `event_type`, `count`, plus one integer column per event type of
@@ -160,29 +160,29 @@ share one version.
   (`?as=`), with seen markers, "X was added" lines in the header's language, a disabled
   composer ("read-only demo key"), live over the WebSocket; an empty state with the compose
   command while the room does not exist.
-- **`memento simulate` chat scene** (`@memento/cli`): makes sure `chat-demo-room` exists
+- **`memento simulate` chat scene** (`@jsmemento/cli`): makes sure `chat-demo-room` exists
   (created with four of the cast, an existing one reused) and plays messages about the
   desk's tickets in English and Serbian, read markers and the odd new member; `--no-chat`
   turns it off. `TicketDesk.nextStep()` returns events and chat calls; `next()` stays the
   event-only story.
-- **`MementoChat` `readOnly`, `seenMarkers`, `systemEvents`** (`@memento/react`), with
+- **`MementoChat` `readOnly`, `seenMarkers`, `systemEvents`** (`@jsmemento/react`), with
   `useMementoChat(…, { seen, system })` returning `participants` and `notices`, and the
   helpers `seenMarkers()` / `applyChatEvent()`.
 - **`MementoClient.createChat()`, `.listChats()`, `.markSeen()`, `.addParticipant()`** and
-  `chatMessages({ event_type })` (`@memento/core`).
-- **UDC collections** (`@memento/server`): `POST <prefix>/udc/<action>` serves the tenant's
+  `chatMessages({ event_type })` (`@jsmemento/core`).
+- **UDC collections** (`@jsmemento/server`): `POST <prefix>/udc/<action>` serves the tenant's
   events through `@jsudc/server` 0.2.1 — `events` (every event) and `cpu_load` (`CPU_LOAD`
   events with the load averages as columns, table + chart). Filter DSL, sort, offset paging
   and exact totals over SQL, tenant-scoped by the API key (`read`; refused in-protocol with
   `forbidden`). `mementoPlugin({ udc })` takes another `CollectionRegistry`, or `false`.
-- **`memento cpu-monitor`** (`@memento/cli`): pushes `os.loadavg()` as `CPU_LOAD` events every
+- **`memento cpu-monitor`** (`@jsmemento/cli`): pushes `os.loadavg()` as `CPU_LOAD` events every
   `--interval` seconds; logs and retries network/server failures, stops on a refused key.
 - **`cpu-monitor` service** in `docker-compose.yaml` (compose profile `demo`, off by
   default): runs `memento cpu-monitor` from the same image against `memento:3000`, with
   `restart: unless-stopped`, so the CPU monitor demo stays live across server and host
   restarts. Configured by `CPU_MONITOR_API_KEY` (write scope), `CPU_MONITOR_TENANT`,
   `CPU_MONITOR_INTERVAL` and `CPU_MONITOR_INSTANCE_ID`; see docs/DEPLOYMENT.md "Demo pusher".
-- **`memento simulate`** (`@memento/cli`): plays a ticket desk — a cast of six users and a
+- **`memento simulate`** (`@jsmemento/cli`): plays a ticket desk — a cast of six users and a
   `desk-bot` logging in and out, creating, modifying, noting and closing tickets
   (`ticket/T-<n>`), newcomers (`USER_CREATED`) now and then — one event every `--interval`
   seconds (default 3), deterministic from `--seed`, `--once` for one scene. Payloads carry the
@@ -191,25 +191,25 @@ share one version.
 - **`simulator` service** in `docker-compose.yaml` (profile `demo`): `memento simulate` from the
   same image, key `SIMULATOR_API_KEY` (write; may be the CPU monitor's), `SIMULATOR_TENANT`,
   `SIMULATOR_INTERVAL`; see docs/DEPLOYMENT.md "Demo pusher".
-- **`X-Memento-Locale`** on `POST /udc/*` (`@memento/server`): the `events` and `cpu_load`
+- **`X-Memento-Locale`** on `POST /udc/*` (`@jsmemento/server`): the `events` and `cpu_load`
   rows' `rendered` text in that locale, like `?locale=` of `GET /events`; a malformed value is
   refused in-protocol with `validation_error`.
 - **Examples site: the Activity feed** (`/examples/activity`): the tenant's events except
   `CPU_LOAD` as rendered sentences, newest first, infinite paging over the `events` UDC
   collection, refreshed by the stream, in the header's language (EN / SR). **Every example of the
   series** is in `menu.yaml`; the ones not built yet open a "planned" page.
-- **`MementoClient.pushEvent()` and `.describe()`** (`@memento/core`).
-- **`apps/examples`** (`@memento/examples`, replaces `apps/cpu-monitor`): the examples site,
+- **`MementoClient.pushEvent()` and `.describe()`** (`@jsmemento/core`).
+- **`apps/examples`** (`@jsmemento/examples`, replaces `apps/cpu-monitor`): the examples site,
   served by the server at `/` and `/en/`. A sidebar drawn from the `menu` UDC collection
   (ported from the jsudc example's shell: tree, expand state, en/sr labels), react-router routes
   (`/examples/cpu-monitor`, `/udc/:collection`), and the CPU monitor as its first example —
   `UdcDataView` over `cpu_load`, refreshed by the WebSocket stream, with a live/offline health
   indicator. Connects by itself with the server's demo key; settings (base URL, own key) in the
   header.
-- **`menu` UDC collection** (`@memento/server`): `menu.yaml` at the repository root
+- **`menu` UDC collection** (`@jsmemento/server`): `menu.yaml` at the repository root
   (`MEMENTO_MENU_PATH`; image `/app/config/menu.yaml`) served by `@jsudc/server`'s `yaml_menu`
   source, `udc:collections` resolved against the live registry. `mementoPlugin({ menu })`.
-- **`GET <prefix>/api/demo`** (`@memento/server`, no auth): the read-only demo key of
+- **`GET <prefix>/api/demo`** (`@jsmemento/server`, no auth): the read-only demo key of
   `MEMENTO_DEMO_API_KEY` (compose: `DEMO_API_KEY`) for the examples site; 404 without one. The
   server refuses to start when that key is unknown, revoked or not exactly `read`.
 - Vocabulary: event type `CPU_LOAD`, instance type `SERVER`, and the `CPU_LOAD` templates
@@ -217,7 +217,11 @@ share one version.
 
 ### Changed
 
-- **`@memento/server`**: the PostgreSQL schema moved from `db/schema.ts` to
+- **Breaking (package names):** the npm packages are now `@jsmemento/*` (`@jsmemento/core`,
+  `server`, `cli`, `react`, `lookups`), no longer in the `@memento` scope, because that scope on
+  npm belongs to someone else; change the dependency names and imports. The `memento` command,
+  the image, the `MEMENTO_*` variables and the `/memento` prefix stay as they are.
+- **`@jsmemento/server`**: the PostgreSQL schema moved from `db/schema.ts` to
   `db/schema-postgres.ts` (the `schema` export stays, now the tables of the connected
   database); the UDC field maps (`EVENTS_FIELDS`, `CPU_LOAD_FIELDS`, `API_KEY_EVENT_FIELD`)
   read their columns when a query is built. A boolean UDC field (`is_admin`, …) filters on
@@ -253,7 +257,7 @@ share one version.
   `uuidv7()`); `gen_random_uuid()` stays the column default, so no migration.
 
 - **`@jsudc/*` 0.3** (`@jsudc/core` 0.3.0, `@jsudc/server` 0.3.0, `@jsudc/react` 0.3.1, the
-  lookups and `row_link` release) in `@memento/server`, `@memento/ui-shell`, the examples site
+  lookups and `row_link` release) in `@jsmemento/server`, `@jsmemento/ui-shell`, the examples site
   and the service site. Nothing changes on the wire: the rows, filters, sorts and paging of
   `events`, `cpu_load`, `activity`, `menu` and the self-service collections are as before.
   `@jsudc/server` 0.3 checks at startup that every `lookup` field and `row_link` of the
@@ -264,11 +268,11 @@ share one version.
   for `capabilities.subscribe` (memento's sources answer `subscribe: false`); the live updates
   keep riding memento's own `/ws` stream ([docs/STREAMING.md](docs/STREAMING.md)).
 
-- **Breaking (embedding API):** an application that embeds `@memento/server` and builds or
+- **Breaking (embedding API):** an application that embeds `@jsmemento/server` and builds or
   extends its UDC registry itself (the `udc` option, `MementoRegistry`, `eventCollections`,
   `EventCollectionSource`) with its own `@jsudc/core` / `@jsudc/server` has to be on
   `@jsudc/*` 0.3 too: the registry, its sources and their schemas are `@jsudc` 0.3 types.
-  `@memento/react` does not depend on `@jsudc/*` and is unaffected; no `@memento/*` package
+  `@jsmemento/react` does not depend on `@jsudc/*` and is unaffected; no `@jsmemento/*` package
   has `@jsudc/*` as a peer dependency.
 
 ### Fixed

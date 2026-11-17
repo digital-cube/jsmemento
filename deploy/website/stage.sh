@@ -3,7 +3,7 @@
 # build-and-swap, the way deploy/stage.sh of digital-cube/jsudc-website deploys stage.jsudc.dev:
 #   clone or fetch digital-cube/jsmemento into $ROOT/src -> check out origin/<branch>
 #   (default main) -> pnpm (the repo's packageManager, through corepack) install of
-#   @memento/website and its dependencies only -> build with
+#   @jsmemento/website and its dependencies only -> build with
 #   SITE_URL=https://stage.memento-service.org,
 #   EXAMPLE_URL=https://examples.stage.memento-service.org and
 #   SERVICE_URL=https://service.stage.memento-service.org
@@ -151,11 +151,11 @@ main() {
     echo "==> build: releases/$sha already has $sha for these variables, not rebuilding"
   else
     # pnpm is the version the repository pins in package.json's packageManager.
-    echo "==> pnpm install (@memento/website and its dependencies)"
-    (cd "$SRC" && timeout 600 corepack pnpm install --frozen-lockfile --filter "@memento/website...")
+    echo "==> pnpm install (@jsmemento/website and its dependencies)"
+    (cd "$SRC" && timeout 600 corepack pnpm install --frozen-lockfile --filter "@jsmemento/website...")
     echo "==> build (SITE_URL=$SITE_URL EXAMPLE_URL=$EXAMPLE_URL SERVICE_URL=$SERVICE_URL)"
     (cd "$SRC" && SITE_URL="$SITE_URL" EXAMPLE_URL="$EXAMPLE_URL" SERVICE_URL="$SERVICE_URL" \
-      timeout 600 corepack pnpm --filter @memento/website build)
+      timeout 600 corepack pnpm --filter @jsmemento/website build)
     [[ -f "$SRC/$APP/dist/index.html" ]] || { echo "stage.sh: the build left no $APP/dist/index.html" >&2; exit 1; }
 
     local next="$release.new"

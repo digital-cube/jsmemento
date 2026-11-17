@@ -1,4 +1,4 @@
-import { LocaleSchema, type StreamFilter, StreamFilterSchema } from "@memento/core";
+import { LocaleSchema, type StreamFilter, StreamFilterSchema } from "@jsmemento/core";
 import type { FastifyPluginAsync } from "fastify";
 import { MementoError } from "../errors.js";
 import type { StreamHub } from "../stream/hub.js";

@@ -1,6 +1,6 @@
 import type {} from "@fastify/cookie";
 import fastifyRateLimit from "@fastify/rate-limit";
-import { ok } from "@memento/core";
+import { ok } from "@jsmemento/core";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import { acceptEmptyJson, clearSessionCookie, sessionCookie, setSessionCookie } from "../auth.js";

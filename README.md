@@ -10,12 +10,12 @@ on one host, a SQLite file and nothing else).
 
 | package | |
 |---|---|
-| [`@memento/core`](packages/core) | Zod schemas + inferred types, API key / scope helpers, Filter DSL, envelope |
-| [`@memento/lookups`](packages/lookups) | `lookups.yaml` vocabulary, CSV translations, candidate recorder, TS/Zod codegen |
-| [`@memento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering, WebSocket stream, UDC collections |
-| [`@memento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail`, `cpu-monitor` |
-| [`@memento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
-| [`apps/example`](apps/example) | Vite + React demo of `@memento/react`: paste a key, watch the live table |
+| [`@jsmemento/core`](packages/core) | Zod schemas + inferred types, API key / scope helpers, Filter DSL, envelope |
+| [`@jsmemento/lookups`](packages/lookups) | `lookups.yaml` vocabulary, CSV translations, candidate recorder, TS/Zod codegen |
+| [`@jsmemento/server`](packages/server) | Fastify plugin & standalone server, Drizzle schema + migrations, Handlebars rendering, WebSocket stream, UDC collections |
+| [`@jsmemento/cli`](packages/cli) | `memento` CLI: setup wizard, tenants, API keys, templates, lookups, chats, `tail`, `cpu-monitor` |
+| [`@jsmemento/react`](packages/react) | React UI: `MementoProvider`, live event table, chat, search, hooks |
+| [`apps/example`](apps/example) | Vite + React demo of `@jsmemento/react`: paste a key, watch the live table |
 | [`apps/examples`](apps/examples) | the examples site (served at `/` and `/en/`): a sidebar from the `menu` UDC collection, the live CPU monitor (`memento cpu-monitor` → `cpu_load` → `@jsudc/react`) as its first example |
 | [`apps/service`](apps/service) | the service site (`service.stage.memento-service.org`, a second container of the image): register, create API keys, watch what each key writes; admin |
 | [`apps/website`](apps/website) | the website, `memento-service.org` (Astro + Starlight, static; `stage.memento-service.org`): what memento is, getting started, concepts, reference — not part of the image |
@@ -149,7 +149,7 @@ and [Demo key](docs/DEPLOYMENT.md#demo-key-examples-site).
 - [docs/TEMPLATES.md](docs/TEMPLATES.md) — rendering, locale fallback, tenant templates, lookups
 - [docs/CHATS.md](docs/CHATS.md) — chats: messages, seen tracking, participants, permissions, CLI
 - [docs/STREAMING.md](docs/STREAMING.md) — WebSocket `/memento/ws`: auth, filters, messages, slow consumers
-- [docs/REACT.md](docs/REACT.md) — `@memento/react` components and hooks, the example app
+- [docs/REACT.md](docs/REACT.md) — `@jsmemento/react` components and hooks, the example app
 - [docs/CLI.md](docs/CLI.md) — every `memento` command, prompts, `tail`, error messages
 - [docs/CLIENTS.md](docs/CLIENTS.md) — the client programs in `clients/` (eight languages: push, query, tail) and their CI
 - [docs/ANALYSIS.md](docs/ANALYSIS.md), [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md) — background

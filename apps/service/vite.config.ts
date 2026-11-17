@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => {
     // clientsPlugin: the /clients page (`virtual:clients`) and dist/clients/<lang>.zip.
     plugins: [react(), clientsPlugin()],
     // Use the workspace packages' TypeScript sources: no build step before `pnpm dev`.
-    resolve: { conditions: ["@memento/source", ...defaultClientConditions] },
-    // Production bundle (served by @memento/server from MEMENTO_UI_DIR): no source maps.
+    resolve: { conditions: ["@jsmemento/source", ...defaultClientConditions] },
+    // Production bundle (served by @jsmemento/server from MEMENTO_UI_DIR): no source maps.
     build: { outDir: "dist", sourcemap: false },
     server: { port: 5174, proxy },
     preview: { proxy },

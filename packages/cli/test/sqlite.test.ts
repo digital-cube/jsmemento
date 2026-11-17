@@ -1,4 +1,4 @@
-import { buildApp, connect, loadConfig, MemoryPublisher, schema } from "@memento/server";
+import { buildApp, connect, loadConfig, MemoryPublisher, schema } from "@jsmemento/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { onSqlite, reset } from "../../server/test/helpers.js";
 import { describeDatabaseUrl, friendlyError, runCli } from "../src/index.js";

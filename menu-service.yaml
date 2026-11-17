@@ -1,7 +1,7 @@
 # JSMemento — the service site's menu (apps/service): the sidebar of a signed-in user at
 # https://service.stage.memento-service.org/.
 #
-# Served by the service instance of @memento/server as its `menu` UDC collection
+# Served by the service instance of @jsmemento/server as its `menu` UDC collection
 # (MEMENTO_MENU_PATH=/app/config/menu-service.yaml in the image). With MEMENTO_ACCOUNTS the
 # menu is read with the session cookie (`key_or_session`): the site has no API key.
 # Same keys as menu.yaml; `translation_key`s are the site's messages

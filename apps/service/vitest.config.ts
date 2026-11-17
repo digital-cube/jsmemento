@@ -10,9 +10,9 @@ export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: {
     alias: [
-      { find: /^@memento\/core$/, replacement: src("../../packages/core/src/index.ts") },
-      { find: /^@memento\/react$/, replacement: src("../../packages/react/src/index.ts") },
-      { find: /^@memento\/ui-shell$/, replacement: src("../../packages/ui-shell/src/index.ts") },
+      { find: /^@jsmemento\/core$/, replacement: src("../../packages/core/src/index.ts") },
+      { find: /^@jsmemento\/react$/, replacement: src("../../packages/react/src/index.ts") },
+      { find: /^@jsmemento\/ui-shell$/, replacement: src("../../packages/ui-shell/src/index.ts") },
     ],
   },
   test: {

@@ -1,4 +1,4 @@
-import type { Condition, Filter, FilterField } from "@memento/core";
+import type { Condition, Filter, FilterField } from "@jsmemento/core";
 import {
   type AnyColumn,
   and,

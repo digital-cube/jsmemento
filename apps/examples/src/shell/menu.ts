@@ -1,7 +1,7 @@
+import { menuRow } from "@jsmemento/ui-shell";
 import type { Row } from "@jsudc/core";
-import { menuRow } from "@memento/ui-shell";
 
-// The menu's pure parts (buildMenu, activeLeaf, the expand state) are @memento/ui-shell's.
+// The menu's pure parts (buildMenu, activeLeaf, the expand state) are @jsmemento/ui-shell's.
 
 /**
  * The sidebar when the server serves no `menu` collection (no menu.yaml, no key yet, an

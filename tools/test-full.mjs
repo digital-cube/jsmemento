@@ -4,11 +4,11 @@
  * runs (through `tools/test-full.sh`) and what `pnpm test:full` runs by hand.
  *
  *   1. resolves the databases (the environment, then `.env`, then the defaults of
- *      `@memento/server`'s config, which `.env.example` repeats) and REFUSES (exit 2) a
+ *      `@jsmemento/server`'s config, which `.env.example` repeats) and REFUSES (exit 2) a
  *      `TEST_DATABASE_URL` that is not a PostgreSQL test database: the suites TRUNCATE it;
  *   2. checks that this PostgreSQL and Redis answer (exit 2 with a sentence when they do not);
- *   3. `turbo run test:cov --continue`: every package with coverage, `@memento/server` and
- *      `@memento/cli` on both databases (their Vitest projects `server` / `server-sqlite`,
+ *   3. `turbo run test:cov --continue`: every package with coverage, `@jsmemento/server` and
+ *      `@jsmemento/cli` on both databases (their Vitest projects `server` / `server-sqlite`,
  *      `cli` / `cli-sqlite`, in one Vitest run each, so one coverage map per package);
  *   4. `turbo run test:e2e`: the built server ×2 over HTTP and WebSocket (skip: `--no-e2e`);
  *   5. merges every workspace's `coverage/coverage-final.json` (`packages/*`, `apps/*`) into

@@ -1,4 +1,4 @@
-import { connect, loadConfig, schema } from "@memento/server";
+import { connect, loadConfig, schema } from "@jsmemento/server";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { onSqlite, reset } from "../../server/test/helpers.js";
 import {

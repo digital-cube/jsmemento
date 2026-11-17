@@ -1,1 +1,1 @@
-node node_modules/@memento/server/dist/server.js
+node node_modules/@jsmemento/server/dist/server.js

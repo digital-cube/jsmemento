@@ -1,4 +1,4 @@
-/* @memento/ui-shell — the shell both sites share: header, sidebar, menu, page, buttons, status, feed, planned page, chart window. Each site's own app.css comes after it. */
+/* @jsmemento/ui-shell — the shell both sites share: header, sidebar, menu, page, buttons, status, feed, planned page, chart window. Each site's own app.css comes after it. */
 
 :root {
   --cm-bg: #f6f7f9;

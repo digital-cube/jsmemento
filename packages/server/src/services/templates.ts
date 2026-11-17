@@ -4,8 +4,8 @@ import {
   TemplateEventTypeSchema,
   type TemplateInput,
   TemplateInputSchema,
-} from "@memento/core";
-import { LookupRegistry } from "@memento/lookups";
+} from "@jsmemento/core";
+import { LookupRegistry } from "@jsmemento/lookups";
 import { and, asc, eq } from "drizzle-orm";
 import { type Database, dialect } from "../db/index.js";
 import { templates } from "../db/schema.js";

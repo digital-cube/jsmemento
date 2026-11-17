@@ -1,8 +1,8 @@
 /**
- * @memento/ui-shell — what the examples site (`apps/examples`) and the service site
+ * @jsmemento/ui-shell — what the examples site (`apps/examples`) and the service site
  * (`apps/service`) share: the sidebar drawn from the `menu` UDC collection, the header, the
  * locale helpers, the stream/polling refetch hooks, the per-minute chart window and the event
- * feed's lines. Styles: `@memento/ui-shell/shell.css`. Private, consumed as source.
+ * feed's lines. Styles: `@jsmemento/ui-shell/shell.css`. Private, consumed as source.
  */
 export * from "./ChartWindow.js";
 export * from "./chart.js";

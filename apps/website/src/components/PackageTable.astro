@@ -39,7 +39,7 @@ const rows = (
   // "JSMemento server: Fastify app, …" — the page names the package already.
   description: (pkg.description ?? "").replace(/^JSMemento [^:]*:\s*/, ""),
   peers: Object.entries(pkg.peerDependencies ?? {}).map(([n, v]) => `${n} ${v}`),
-  uses: Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith("@memento/")),
+  uses: Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith("@jsmemento/")),
 }));
 const licences = [...new Set(rows.map((r) => r.license))];
 const versions = [...new Set(rows.map((r) => r.version))];

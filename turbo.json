@@ -29,13 +29,13 @@
       "cache": false,
       "persistent": true
     },
-    "@memento/cli#test": {
-      "dependsOn": ["^build", "@memento/server#test"],
+    "@jsmemento/cli#test": {
+      "dependsOn": ["^build", "@jsmemento/server#test"],
       "outputs": [],
       "cache": false
     },
-    "@memento/cli#test:cov": {
-      "dependsOn": ["^build", "@memento/server#test:cov"],
+    "@jsmemento/cli#test:cov": {
+      "dependsOn": ["^build", "@jsmemento/server#test:cov"],
       "outputs": ["coverage/**"],
       "cache": false
     },

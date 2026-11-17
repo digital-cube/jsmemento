@@ -1,5 +1,5 @@
 {
-  "name": "@memento/website",
+  "name": "@jsmemento/website",
   "version": "1.0.0",
   "private": true,
   "description": "memento-service.org: the website of memento (Astro + Starlight), static files built by deploy/website/stage.sh; not part of the Docker image.",
@@ -26,9 +26,9 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
-    "@memento/core": "workspace:*",
-    "@memento/react": "workspace:*",
-    "@memento/server": "workspace:*",
+    "@jsmemento/core": "workspace:*",
+    "@jsmemento/react": "workspace:*",
+    "@jsmemento/server": "workspace:*",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "fastify": "^5.12.7",

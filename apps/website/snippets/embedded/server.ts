@@ -1,4 +1,4 @@
-import { connect, LocalBus, mementoPlugin, runMigrations } from "@memento/server";
+import { connect, LocalBus, mementoPlugin, runMigrations } from "@jsmemento/server";
 import Fastify from "fastify";
 
 // DATABASE_URL picks the database: file:<path> is one SQLite file, postgresql://… your

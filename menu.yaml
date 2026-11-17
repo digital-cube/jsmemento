@@ -1,6 +1,6 @@
 # JSMemento — the examples site's menu (apps/examples). This file IS its sidebar.
 #
-# Served by @memento/server as the `menu` UDC collection (source `yaml_menu` of
+# Served by @jsmemento/server as the `menu` UDC collection (source `yaml_menu` of
 # @jsudc/server, POST /memento/udc/list {collection: "menu"}), read again whenever the
 # file changes. Path: MEMENTO_MENU_PATH; default: menu.yaml at the repository root
 # (the Docker image: /app/config/menu.yaml). Without the file there is no `menu`

@@ -3,7 +3,7 @@ import {
   type StreamStatus,
   type WebSocketConstructor,
   type WebSocketLike,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { type Dispatch, useEffect, useReducer, useRef, useState } from "react";
 import {
   closeFrame,

@@ -1,4 +1,4 @@
-import type { LookupRegistry } from "@memento/lookups";
+import type { LookupRegistry } from "@jsmemento/lookups";
 import Handlebars from "handlebars";
 
 /** A template body that does not compile, or uses something the sandbox forbids. */

@@ -1,7 +1,7 @@
+import type { Filter } from "@jsmemento/core";
+import type { MementoSearchValues } from "@jsmemento/react";
 import type { FilterNode, Condition as UdcCondition } from "@jsudc/core";
 import { encodeFilterParam, PARAM } from "@jsudc/react/headless";
-import type { Filter } from "@memento/core";
-import type { MementoSearchValues } from "@memento/react";
 
 /** The UDC collection the same search can be made on. */
 export const SEARCH_COLLECTION = "events";

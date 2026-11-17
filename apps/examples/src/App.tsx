@@ -1,3 +1,4 @@
+import { routerBasename, storedLocale, storeLocale } from "@jsmemento/ui-shell";
 import {
   createRendererRegistry,
   createUdcQueryClient,
@@ -11,7 +12,6 @@ import { chartRenderer } from "@jsudc/react/chart";
 import { UdcReactRouterUrlState } from "@jsudc/react/react-router";
 import { tableRenderer } from "@jsudc/react/table";
 import { Toaster, TooltipProvider } from "@jsudc/react/ui";
-import { routerBasename, storedLocale, storeLocale } from "@memento/ui-shell";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
@@ -35,7 +35,7 @@ const renderers = createRendererRegistry(tableRenderer, chartRenderer);
 /** The first example: where `/` leads. */
 export const FIRST_EXAMPLE = "/examples/cpu-monitor";
 
-// The locale helpers are @memento/ui-shell's (the service site uses them too).
+// The locale helpers are @jsmemento/ui-shell's (the service site uses them too).
 export { routerBasename, storedLocale };
 
 /** `/udc/:collection`: any collection the server lists, as a plain data view. */

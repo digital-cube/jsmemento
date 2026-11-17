@@ -1,5 +1,5 @@
+import { menuRow } from "@jsmemento/ui-shell";
 import type { Row } from "@jsudc/core";
-import { menuRow } from "@memento/ui-shell";
 
 /** The collection the sidebar is drawn from (menu-service.yaml on the service instance). */
 export const MENU_COLLECTION = "menu";

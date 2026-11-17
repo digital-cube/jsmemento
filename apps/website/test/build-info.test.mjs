@@ -30,11 +30,11 @@ const answer = (status, body) => async () =>
 
 test("the published packages are the five non-private ones", () => {
   assert.deepEqual(NAMES, [
-    "@memento/cli",
-    "@memento/core",
-    "@memento/lookups",
-    "@memento/react",
-    "@memento/server",
+    "@jsmemento/cli",
+    "@jsmemento/core",
+    "@jsmemento/lookups",
+    "@jsmemento/react",
+    "@jsmemento/server",
   ]);
 });
 
@@ -64,31 +64,31 @@ test("a registry document: dist-tags.latest and its time, in UTC", () => {
 });
 
 test("fetchNpm: 404 is absent, an error or a timeout is unknown, never a throw", async () => {
-  assert.deepEqual(await fetchNpm("@memento/core", { fetchImpl: answer(404) }), {
+  assert.deepEqual(await fetchNpm("@jsmemento/core", { fetchImpl: answer(404) }), {
     state: "absent",
   });
-  assert.equal((await fetchNpm("@memento/core", { fetchImpl: answer(503) })).state, "unknown");
+  assert.equal((await fetchNpm("@jsmemento/core", { fetchImpl: answer(503) })).state, "unknown");
   const offline = async () => {
     throw new TypeError("fetch failed");
   };
-  assert.equal((await fetchNpm("@memento/core", { fetchImpl: offline })).state, "unknown");
+  assert.equal((await fetchNpm("@jsmemento/core", { fetchImpl: offline })).state, "unknown");
   const hang = (_url, { signal }) =>
     new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason)));
   const t0 = Date.now();
-  const slow = await fetchNpm("@memento/core", { fetchImpl: hang, timeoutMs: 50 });
+  const slow = await fetchNpm("@jsmemento/core", { fetchImpl: hang, timeoutMs: 50 });
   assert.equal(slow.state, "unknown");
   assert.ok(Date.now() - t0 < 2000);
 });
 
 test("fetchNpm asks for the scoped name with the slash escaped", async () => {
   let asked = "";
-  await fetchNpm("@memento/core", {
+  await fetchNpm("@jsmemento/core", {
     fetchImpl: async (url) => {
       asked = url;
       return new Response("", { status: 404 });
     },
   });
-  assert.equal(asked, "https://registry.npmjs.org/@memento%2fcore");
+  assert.equal(asked, "https://registry.npmjs.org/@jsmemento%2fcore");
 });
 
 test("npmStates: one warning for an unreachable registry, none for 404s or off", async () => {
@@ -114,17 +114,17 @@ test("npmStates: one warning for an unreachable registry, none for 404s or off",
 test("npmStates from the fixture: published, null as a 404", async () => {
   const { npm, npmSource } = await npmStates(NAMES, { source: FIXTURE });
   assert.equal(npmSource, "fixture");
-  assert.deepEqual(npm["@memento/server"], {
+  assert.deepEqual(npm["@jsmemento/server"], {
     state: "published",
     version: "1.0.0",
     time: "2026-10-31T09:00:05Z",
   });
-  assert.deepEqual(npm["@memento/lookups"], {
+  assert.deepEqual(npm["@jsmemento/lookups"], {
     state: "published",
     version: "0.9.0",
     time: "2026-10-20T12:00:01Z",
   });
-  assert.deepEqual(npm["@memento/react"], { state: "absent" });
+  assert.deepEqual(npm["@jsmemento/react"], { state: "absent" });
 });
 
 test("the release from CHANGELOG.md: the version's heading, else the newest", () => {
@@ -217,7 +217,7 @@ test("without git history the release and the commit come from CHANGELOG.md, or 
     assert.equal(info.release?.version, version);
     assert.equal(info.builtAt, "2026-11-15T17:01:30Z");
     assert.equal(info.commit, null);
-    assert.deepEqual(info.npm, { "@memento/core": { state: "unknown" } });
+    assert.deepEqual(info.npm, { "@jsmemento/core": { state: "unknown" } });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

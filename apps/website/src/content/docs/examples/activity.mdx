@@ -33,7 +33,7 @@ The `events` UDC collection, every event of the tenant except the CPU monitor's 
   scrolls into view, or on **Older events**.
 
 The rows come through `useUdcCollection` of `@jsudc/react`. Each line has the time, the actor's
-initials avatar (`initials` and `hue` of `@memento/react`) and id, the **rendered** text, the
+initials avatar (`initials` and `hue` of `@jsmemento/react`) and id, the **rendered** text, the
 instance as a chip (`ticket/T-17`) that opens its [timeline](/examples/entity/), and the event
 type as a muted tag.
 
@@ -47,7 +47,7 @@ from: [Rendering and translations](/concepts/rendering/).
 
 ## Live
 
-`useLive` (from `@memento/ui-shell`) follows the whole stream; every event that is not a
+`useLive` (from `@jsmemento/ui-shell`) follows the whole stream; every event that is not a
 `CPU_LOAD` refetches the feed, at most once per 250 ms. New lines fade in.
 
 With no simulator running the feed is empty: the page says what pushes these events and gives

@@ -1,4 +1,4 @@
-import { LocaleSchema } from "@memento/core";
+import { LocaleSchema } from "@jsmemento/core";
 import { z } from "zod";
 import { DEFAULT_LOOKUPS_PATH } from "./lookups.js";
 import { DEFAULT_MENU_PATH } from "./udc/menu.js";

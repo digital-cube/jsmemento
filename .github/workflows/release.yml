@@ -1,7 +1,7 @@
 # Publishing.
 # - merge to main  → ghcr.io/digital-cube/jsmemento:main, :edge, :sha-<short>
 # - tag vX.Y.Z     → ghcr.io/digital-cube/jsmemento:X.Y.Z, :X.Y, :X, :latest,
-#                    a GitHub release (notes from CHANGELOG.md) and the @memento/* npm packages.
+#                    a GitHub release (notes from CHANGELOG.md) and the @jsmemento/* npm packages.
 # The tag must equal the version in package.json (bump every package, then `git tag vX.Y.Z`).
 name: Release
 
@@ -116,7 +116,7 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
 
   npm:
-    name: Publish @memento/* to npm
+    name: Publish @jsmemento/* to npm
     if: github.ref_type == 'tag'
     needs: [version, image]
     runs-on: ubuntu-latest
@@ -139,7 +139,7 @@ jobs:
           NPM_CONFIG_PROVENANCE: "true"
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN is not set: @memento/* packages were not published"
+            echo "::warning::NPM_TOKEN is not set: @jsmemento/* packages were not published"
             exit 0
           fi
           pnpm -r --filter "./packages/*" publish --access public --no-git-checks

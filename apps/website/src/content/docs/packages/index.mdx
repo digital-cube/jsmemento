@@ -1,6 +1,6 @@
 ---
 title: Packages
-description: The five @memento packages with the versions of the workspace, the CLI and the Docker image with its tags, and which ones you install.
+description: The five @jsmemento packages with the versions of the workspace, the CLI and the Docker image with its tags, and which ones you install.
 sidebar:
   order: 0
   label: Overview
@@ -8,7 +8,7 @@ sidebar:
 
 import PackageTable from "../../../components/PackageTable.astro";
 
-memento is one monorepo with one version line: the five `@memento/*` packages, the CLI and the
+memento is one monorepo with one version line: the five `@jsmemento/*` packages, the CLI and the
 Docker image share one version and release together. The packages go to npm with the first
 release tag; until it is pushed they install from
 [the repository](https://github.com/digital-cube/jsmemento) (built and packed, as
@@ -17,19 +17,19 @@ every commit of `main`.
 
 <PackageTable />
 
-- **`@memento/core`** has no Node-only API (it hashes with Web Crypto), so the same package
+- **`@jsmemento/core`** has no Node-only API (it hashes with Web Crypto), so the same package
   serves the server, the CLI, a browser and React. Its only dependency is `zod`.
-- **`@memento/server`** brings Fastify and its WebSocket, cookie, static and rate-limit plugins,
+- **`@jsmemento/server`** brings Fastify and its WebSocket, cookie, static and rate-limit plugins,
   Drizzle and `pg`, and `@jsudc/server` for the UDC collections. It runs on PostgreSQL or on a
   SQLite file through Node's built-in `node:sqlite`, with the migrations of both inside; SQLite is
   in the changelog's `[Unreleased]` section, so it arrives on npm and in the image with the next
   release.
-- **`@memento/react`** keeps React as a peer (`react` and `react-dom` 18 or newer) and ships a
-  stylesheet, `@memento/react/styles.css`.
+- **`@jsmemento/react`** keeps React as a peer (`react` and `react-dom` 18 or newer) and ships a
+  stylesheet, `@jsmemento/react/styles.css`.
 
 ## The CLI in the image
 
-`@memento/cli` is the `memento` command. In the image it is `/usr/local/bin/memento`, with the
+`@jsmemento/cli` is the `memento` command. In the image it is `/usr/local/bin/memento`, with the
 same `DATABASE_URL` and `REDIS_URL` as the server, next to `/usr/local/bin/memento-healthcheck`
 (exit 0 when `GET <prefix>/api/health` answers 200; also the image's `HEALTHCHECK`):
 
@@ -56,11 +56,11 @@ and [Environment variables](/reference/environment/).
 
 | You are writing | Install |
 | --- | --- |
-| A memento server of your own | nothing from npm: the image, with [`docker-compose.yaml`](/get-started/docker/); or `@memento/server @memento/cli` on [a SQLite file](/get-started/sqlite/) |
-| A Fastify app with memento inside | `@memento/server @memento/core fastify`, and `@memento/cli` for migrations, tenants and keys |
-| A React UI over memento | `@memento/react @memento/core react react-dom`, and `@jsudc/react` for the UDC collections |
-| A script, a worker or a browser client in JavaScript or TypeScript | `@memento/core` (its `MementoClient` and `MementoStream`) |
-| Tools for your own vocabulary (`lookups.yaml`, translations, codegen) | `@memento/lookups`, or the CLI's `memento lookups` |
+| A memento server of your own | nothing from npm: the image, with [`docker-compose.yaml`](/get-started/docker/); or `@jsmemento/server @jsmemento/cli` on [a SQLite file](/get-started/sqlite/) |
+| A Fastify app with memento inside | `@jsmemento/server @jsmemento/core fastify`, and `@jsmemento/cli` for migrations, tenants and keys |
+| A React UI over memento | `@jsmemento/react @jsmemento/core react react-dom`, and `@jsudc/react` for the UDC collections |
+| A script, a worker or a browser client in JavaScript or TypeScript | `@jsmemento/core` (its `MementoClient` and `MementoStream`) |
+| Tools for your own vocabulary (`lookups.yaml`, translations, codegen) | `@jsmemento/lookups`, or the CLI's `memento lookups` |
 | An integration in another language | nothing: one of the [client programs](/clients/), plain HTTP and a WebSocket |
 
 The UDC side of a React UI is jsudc's: [jsudc.dev](https://jsudc.dev) lists its packages and their

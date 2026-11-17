@@ -1,13 +1,13 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { EventCreate } from "@memento/core";
+import type { EventCreate } from "@jsmemento/core";
 import {
   CandidateRecorder,
   type CodegenOptions,
   type CsvIssue,
   LookupRegistry,
   loadLookups,
-} from "@memento/lookups";
+} from "@jsmemento/lookups";
 
 /** The lookup sections memento checks events against. */
 export const LOOKUP_SECTIONS = {
@@ -17,7 +17,7 @@ export const LOOKUP_SECTIONS = {
   actorType: "ActorTypes",
 } as const;
 
-/** How memento's vocabulary is turned into `@memento/core`'s typed lookups. */
+/** How memento's vocabulary is turned into `@jsmemento/core`'s typed lookups. */
 export const LOOKUPS_CODEGEN: CodegenOptions = {
   lowercase: [LOOKUP_SECTIONS.instanceType, LOOKUP_SECTIONS.actorType],
   source: "lookups.yaml",

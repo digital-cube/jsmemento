@@ -1,4 +1,4 @@
-import { describeDatabase } from "@memento/server";
+import { describeDatabase } from "@jsmemento/server";
 
 /**
  * Plain-language messages for the failures a CLI user actually meets — the database is down

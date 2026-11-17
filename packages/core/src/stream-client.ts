@@ -8,7 +8,7 @@ import {
 } from "./stream.js";
 
 /**
- * Client side of the real-time stream (`GET /memento/ws`), shared by `@memento/react` and the
+ * Client side of the real-time stream (`GET /memento/ws`), shared by `@jsmemento/react` and the
  * CLI's `memento tail`. Works with any WHATWG-style WebSocket: the browser's, Node's global
  * one (Node ≥ 22), or a test double.
  */

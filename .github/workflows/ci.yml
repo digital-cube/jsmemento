@@ -67,7 +67,7 @@ jobs:
               node -e '
                 const t = require(process.argv[1]).total;
                 const p = process.argv[1].split("/")[1];
-                console.log(`| @memento/${p} | ${t.lines.pct} % | ${t.statements.pct} % | ${t.functions.pct} % | ${t.branches.pct} % |`);
+                console.log(`| @jsmemento/${p} | ${t.lines.pct} % | ${t.statements.pct} % | ${t.functions.pct} % | ${t.branches.pct} % |`);
               ' "$PWD/$f"
             done
           } >> "$GITHUB_STEP_SUMMARY"
@@ -90,14 +90,14 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @memento/website...
+      - run: pnpm install --frozen-lockfile --filter @jsmemento/website...
       # apps/website: Astro + Starlight; starlight-links-validator fails the build on a broken
       # internal link. Needs no network (astro check runs in the test job's `pnpm typecheck`);
       # SITE_NPM=off: the Packages table does not ask the npm registry (apps/website/README.md).
-      - run: pnpm --filter @memento/website build
+      - run: pnpm --filter @jsmemento/website build
         env:
           SITE_NPM: "off"
-      - run: pnpm --filter @memento/website test
+      - run: pnpm --filter @jsmemento/website test
 
   docker:
     name: Docker image + E2E against docker-compose.yaml

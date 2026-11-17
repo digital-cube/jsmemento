@@ -1,4 +1,4 @@
-import type { MementoEvent } from "@memento/core";
+import type { MementoEvent } from "@jsmemento/core";
 import { Redis } from "ioredis";
 
 /** A stored event, announced to real-time subscribers (WebSocket hub, Phase 4). */

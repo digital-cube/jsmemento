@@ -8,7 +8,7 @@ import {
   streamUrl,
   type WebSocketConstructor,
   type WebSocketLike,
-} from "@memento/core";
+} from "@jsmemento/core";
 
 /**
  * The Live tail example's logic, apart from React: the page's filters and their URL, the

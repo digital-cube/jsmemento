@@ -20,7 +20,7 @@ import {
   type ChatSeenResult,
   hasScope,
   type PageMeta,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { and, asc, desc, eq, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { requireTenant } from "../context.js";

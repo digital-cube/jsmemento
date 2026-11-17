@@ -14,7 +14,7 @@ Contents: [SQLite or PostgreSQL](#sqlite-or-postgresql) · [Quick start](#quick-
 [Limits](#limits-and-known-differences) · [Moving between the databases](#moving-between-the-databases)
 
 > SQLite support is in `CHANGELOG.md` `[Unreleased]`. The first release that has it (planned as
-> 1.1.0) publishes `@memento/*` on npm and the image `ghcr.io/digital-cube/jsmemento` with it.
+> 1.1.0) publishes `@jsmemento/*` on npm and the image `ghcr.io/digital-cube/jsmemento` with it.
 > Until then, no npm package and no image tag has SQLite: build both from the repository.
 > This guide's runs did exactly that ([below](#installing-before-the-release)).
 
@@ -51,7 +51,7 @@ Node 24+ (`node --version`), `curl` and `jq`. No Docker, no database service, no
 
 ```sh
 mkdir my-memento && cd my-memento
-npm install @memento/server @memento/cli
+npm install @jsmemento/server @jsmemento/cli
 ```
 
 ### Installing before the release
@@ -61,7 +61,7 @@ tarballs instead. This guide's runs installed them this way:
 
 ```sh
 git clone https://github.com/digital-cube/jsmemento.git && cd jsmemento
-pnpm install && pnpm --filter "@memento/cli..." build
+pnpm install && pnpm --filter "@jsmemento/cli..." build
 for p in core lookups server cli; do (cd packages/$p && pnpm pack --pack-destination ../../../memento-tarballs); done
 cd ../my-memento
 npm install ../memento-tarballs/memento-{core,lookups,server,cli}-1.0.0.tgz
@@ -110,7 +110,7 @@ export KEY=mk_q6hndb7s_qXSYIUqKeHLHfrwmDpkMPBdypsPQtZhe    # yours, from the lin
 Start the server. It listens on `0.0.0.0:8000` by default; this run used port 9300:
 
 ```sh
-PORT=9300 node node_modules/@memento/server/dist/server.js
+PORT=9300 node node_modules/@jsmemento/server/dist/server.js
 #   {"level":30,…,"database":"SQLite …/my-memento/data/memento.db","msg":"database migrated and open"}
 #   {"level":40,…,"msg":"…/my-memento/node_modules/lookups.yaml not found: lookups disabled"}
 #   {"level":40,…,"msg":"…/my-memento/node_modules/menu.yaml not found: no menu UDC collection"}
@@ -286,7 +286,7 @@ tenant and a key:
 
 ```sh
 mkdir ticket-desk && cd ticket-desk && npm init -y && npm pkg set type=module
-npm install fastify@5 @memento/server     # before the release: the tarballs, as above
+npm install fastify@5 @jsmemento/server     # before the release: the tarballs, as above
 ```
 
 ```js
@@ -300,7 +300,7 @@ import {
   listTenants,
   mementoPlugin,
   runMigrations,
-} from "@memento/server";
+} from "@jsmemento/server";
 
 // file: → SQLite (WAL, one writer). The application owns the handle and closes it.
 const database = connect(process.env.DATABASE_URL ?? "file:data/desk.db");
@@ -631,13 +631,13 @@ review candidates.
 
 ```sh
 mv data/memento.db data/memento.db.old && cp backup/memento-2026-11-16.db data/memento.db
-PORT=9300 node node_modules/@memento/server/dist/server.js &
+PORT=9300 node node_modules/@jsmemento/server/dist/server.js &
 curl -s localhost:9300/memento/entities/user/42/events -H "Authorization: Bearer $KEY" | jq -c '[.data[] | .event_type]'
 #   ["USER_LOGIN"]
 ```
 
 **Upgrades.** Back up first. A new server applies the pending migrations of
-`drizzle-sqlite/` (shipped in `@memento/server`) at start, before it listens. `memento migrate`
+`drizzle-sqlite/` (shipped in `@jsmemento/server`) at start, before it listens. `memento migrate`
 does the same by hand. Migrations are forward-only, so rolling back means restoring the backup.
 
 **What not to do:**

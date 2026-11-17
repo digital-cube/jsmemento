@@ -1,4 +1,4 @@
-# @memento/lookups
+# @jsmemento/lookups
 
 Controlled vocabularies for JSMemento: `lookups.yaml` compiler and registry, CSV translations with a validator, candidate recording for unknown values, and TypeScript/Zod codegen.
 

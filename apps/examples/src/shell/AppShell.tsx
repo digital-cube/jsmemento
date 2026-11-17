@@ -1,6 +1,6 @@
+import { MenuTree, RemoteMenu, TopBar } from "@jsmemento/ui-shell";
 import { useI18n, useUdcCollections } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
-import { MenuTree, RemoteMenu, TopBar } from "@memento/ui-shell";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router";
 import { useSettings } from "../connection.js";

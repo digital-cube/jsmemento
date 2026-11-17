@@ -1,4 +1,4 @@
-// The window helpers (`?w=`, the `minute gte` condition in `?f=`) are @memento/ui-shell's:
+// The window helpers (`?w=`, the `minute gte` condition in `?f=`) are @jsmemento/ui-shell's:
 // the service site's key page draws the same chart over `api_key_activity`.
 export {
   CHART_WINDOWS,
@@ -13,7 +13,7 @@ export {
   windowStart,
   withWindow,
   withWindowCondition,
-} from "@memento/ui-shell";
+} from "@jsmemento/ui-shell";
 
 /** The UDC collection the page draws: events per minute and per event_type. */
 export const CHART_COLLECTION = "activity";

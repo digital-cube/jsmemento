@@ -1,5 +1,5 @@
-import { MementoDataView, MementoProvider } from "@memento/react";
-import "@memento/react/styles.css";
+import { MementoDataView, MementoProvider } from "@jsmemento/react";
+import "@jsmemento/react/styles.css";
 
 // A live table of the tenant's user events, rendered in Serbian. `/memento` is your own
 // origin (proxied to memento); the key needs the read scope.

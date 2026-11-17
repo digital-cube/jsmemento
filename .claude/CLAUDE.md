@@ -32,8 +32,8 @@ The code does not match the target yet. Do not assume otherwise:
   per-key activity / events / usage, admin) reads every list through `@jsudc/react` with the
   session cookie (no token); writes go to `/auth/*`, `/keys*`, `/admin/*`. The shell both sites
   share (menu sidebar, header, locale, refetch hooks, chart window, feed lines) is
-  `packages/ui-shell` (`@memento/ui-shell`, private, consumed as source).
-- `packages/react/src/MementoDataView.tsx` is built on `MementoClient` from `@memento/core`
+  `packages/ui-shell` (`@jsmemento/ui-shell`, private, consumed as source).
+- `packages/react/src/MementoDataView.tsx` is built on `MementoClient` from `@jsmemento/core`
   and the local `EventTable`, not on `@jsudc/react`.
 - `apps/example/src/App.tsx` has one raw `fetch` (POST of a test event).
 

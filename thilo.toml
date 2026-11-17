@@ -4,7 +4,7 @@
 
 [testing]
 # Run from the repository root; the exit status is the verdict. Every package's Vitest suite
-# with coverage (@memento/server and @memento/cli on PostgreSQL and on SQLite), then the E2E
+# with coverage (@jsmemento/server and @jsmemento/cli on PostgreSQL and on SQLite), then the E2E
 # suite. Needs PostgreSQL (TEST_DATABASE_URL, a *_test database: anything else is refused) and
 # Redis (REDIS_URL) — from the environment, then .env, then the compose.yaml defaults; says so
 # and exits 2 when they do not answer. A test ticket's `workers` arrives as `-n N` in

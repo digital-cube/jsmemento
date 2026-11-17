@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FREE_TEXT_EVENT_TYPES, GENERIC_TEMPLATE } from "@memento/core";
-import { LookupRegistry } from "@memento/lookups";
+import { FREE_TEXT_EVENT_TYPES, GENERIC_TEMPLATE } from "@jsmemento/core";
+import { LookupRegistry } from "@jsmemento/lookups";
 import { and, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { templates } from "../db/schema.js";

@@ -1,5 +1,5 @@
+import { type Health, type LiveState, useLive, useThrottledRefresh } from "@jsmemento/ui-shell";
 import { UdcDataView } from "@jsudc/react";
-import { type Health, type LiveState, useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useSettings } from "../../connection.js";

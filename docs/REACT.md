@@ -1,4 +1,4 @@
-# React UI — `@memento/react`
+# React UI — `@jsmemento/react`
 
 Components for browsing a tenant's events in a React app: a live table, a chat, and a search
 form. They read through the HTTP API and stay current through the WebSocket stream
@@ -6,8 +6,8 @@ form. They read through the HTTP API and stay current through the WebSocket stre
 user picks. React 18 or 19.
 
 ```tsx
-import { MementoChat, MementoDataView, MementoProvider, MementoSearch } from "@memento/react";
-import "@memento/react/styles.css";
+import { MementoChat, MementoDataView, MementoProvider, MementoSearch } from "@jsmemento/react";
+import "@jsmemento/react/styles.css";
 
 <MementoProvider baseUrl="/memento" apiKey={key}>
   <MementoDataView />                       {/* live table with event / instance type filters */}
@@ -29,7 +29,7 @@ The quickest way to see it running is the example app (`apps/example`, below).
 | `reconnect?` | `false`, or `{ initialDelayMs, maxDelayMs }` (default 0.5 s doubling to 15 s) |
 
 `useMemento()` returns `{ client, openStream, baseUrl, apiKey, locale }` for your own components.
-`client` is a `MementoClient` from `@memento/core`.
+`client` is a `MementoClient` from `@jsmemento/core`.
 
 ## `MementoDataView` — the event table
 
@@ -124,7 +124,7 @@ streaming). `<StatusIndicator status={status} />` renders it:
 - red dot: offline.
 
 **Filters and the stream.** `GET /events` accepts `prefix*`; the stream matches exactly.
-`liveFilter()` (`@memento/core`) splits a query into two parts:
+`liveFilter()` (`@jsmemento/core`) splits a query into two parts:
 - exact values go to `/ws`;
 - `*` prefixes are applied in the browser.
 
@@ -133,7 +133,7 @@ outside `after`/`before` are dropped the same way.
 
 ## Styling
 
-`@memento/react/styles.css` is optional. Every class starts with `memento-`. Theme it by
+`@jsmemento/react/styles.css` is optional. Every class starts with `memento-`. Theme it by
 overriding the custom properties on `.memento`:
 
 ```css
@@ -170,7 +170,7 @@ pnpm dev                                    # http://localhost:5173 — paste th
 
 ## Tests
 
-`pnpm --filter @memento/react test:cov`: Vitest + jsdom + Testing Library. The suite covers:
+`pnpm --filter @jsmemento/react test:cov`: Vitest + jsdom + Testing Library. The suite covers:
 - mount and render;
 - sorting;
 - a filter change re-subscribing the WebSocket with the new query;

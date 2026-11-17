@@ -1,5 +1,5 @@
 {
-  "name": "@memento/core",
+  "name": "@jsmemento/core",
   "version": "1.0.0",
   "description": "JSMemento protocol: Zod schemas, inferred types and helpers shared by server, CLI and clients.",
   "license": "MIT",
@@ -14,7 +14,7 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "@memento/source": "./src/index.ts",
+      "@jsmemento/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }

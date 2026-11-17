@@ -1,7 +1,4 @@
-import type { Condition } from "@jsudc/core";
-import { intlLocaleOf, UdcDataView, udcKeys, useI18n, useUdcCollection } from "@jsudc/react";
-import { Button, Spinner, useToast } from "@jsudc/react/ui";
-import { hue, initials } from "@memento/react";
+import { hue, initials } from "@jsmemento/react";
 import {
   type FeedItem,
   feedTime,
@@ -10,7 +7,10 @@ import {
   usePolling,
   useSlidingWindow,
   WindowSelector,
-} from "@memento/ui-shell";
+} from "@jsmemento/ui-shell";
+import type { Condition } from "@jsudc/core";
+import { intlLocaleOf, UdcDataView, udcKeys, useI18n, useUdcCollection } from "@jsudc/react";
+import { Button, Spinner, useToast } from "@jsudc/react/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { type CSSProperties, type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router";

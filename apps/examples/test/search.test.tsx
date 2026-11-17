@@ -1,7 +1,7 @@
+import type { Filter, MementoEvent } from "@jsmemento/core";
+import { dayStart, type MementoSearchValues } from "@jsmemento/react";
 import { evaluateFilter } from "@jsudc/core";
 import { decodeFilterParam } from "@jsudc/react/headless";
-import type { Filter, MementoEvent } from "@memento/core";
-import { dayStart, type MementoSearchValues } from "@memento/react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";

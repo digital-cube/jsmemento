@@ -1,3 +1,4 @@
+import type { MementoEvent } from "@jsmemento/core";
 import {
   type Capabilities,
   type Condition,
@@ -13,7 +14,6 @@ import {
   UdcError,
 } from "@jsudc/core";
 import type { Source, SourceListRequest } from "@jsudc/server";
-import type { MementoEvent } from "@memento/core";
 import {
   and,
   between,

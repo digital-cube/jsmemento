@@ -8,7 +8,7 @@ import {
   liveFilter,
   type MementoEvent,
   type StreamStatus,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMemento } from "./context.js";
 

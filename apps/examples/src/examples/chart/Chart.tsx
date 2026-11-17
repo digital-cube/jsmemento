@@ -1,5 +1,10 @@
+import {
+  useLive,
+  useSlidingWindow,
+  useThrottledRefresh,
+  WindowSelector,
+} from "@jsmemento/ui-shell";
 import { UdcDataView, useI18n } from "@jsudc/react";
-import { useLive, useSlidingWindow, useThrottledRefresh, WindowSelector } from "@memento/ui-shell";
 import { useSettings } from "../../connection.js";
 import { Connected } from "../../shell/AppShell.js";
 import { FeedStatus } from "../activity/Activity.js";

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { Scope } from "@memento/core";
+import type { Scope } from "@jsmemento/core";
 import { MementoError } from "./errors.js";
 
 /**

@@ -6,8 +6,8 @@ import {
   FREE_TEXT_EVENT_TYPES,
   INSTANCE_TYPES,
   MementoClient,
-} from "@memento/core";
-import { LookupRegistry } from "@memento/lookups";
+} from "@jsmemento/core";
+import { LookupRegistry } from "@jsmemento/lookups";
 import {
   BUNDLED_TEMPLATES_DIR,
   buildApp,
@@ -17,7 +17,7 @@ import {
   loadConfig,
   loadTemplateDir,
   TemplateEngine,
-} from "@memento/server";
+} from "@jsmemento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reset } from "../../server/test/helpers.js";
 import {

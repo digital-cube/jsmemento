@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { StreamMessageSchema, streamSubprotocols } from "@memento/core";
+import { StreamMessageSchema, streamSubprotocols } from "@jsmemento/core";
 import { count, eq, type SQL, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";

@@ -276,7 +276,7 @@ collections/
 | **Validacija** | Pydantic | Zod (poput jsudc) |
 | **CLI** | Typer + Rich | Commander.js ili Yargs |
 | **Lookup management** | dc-lookups (Python) | vlastiti Lookup sistem ili port |
-| **Package org** | `memento` (pip) | `@memento/core`, `@memento/server`, `@memento/react` (npm) |
+| **Package org** | `memento` (pip) | `@jsmemento/core`, `@jsmemento/server`, `@jsmemento/react` (npm) |
 | **UDC integracija** | `udc-py` | `@jsudc/core` + `@jsudc/server` |
 | **Deployment** | podman-compose | isti (Podman radi sa Node.js slikama) |
 | **Testing** | pytest + asyncio | Vitest (kao jsudc) |
@@ -312,11 +312,11 @@ collections/
 ```
 jsmemento/                          (monorepo root)
 ├── packages/
-│   ├── @memento/core/              # Protokol (Zod šeme, envelope, auth, helpers)
-│   ├── @memento/server/            # Fastify server + dispatcher
-│   ├── @memento/react/             # React komponente (DataView, provider)
-│   ├── @memento/cli/               # CLI (tenant, key, template management)
-│   └── @memento/client/            # JS client SDK (HTTP + WebSocket)
+│   ├── @jsmemento/core/              # Protokol (Zod šeme, envelope, auth, helpers)
+│   ├── @jsmemento/server/            # Fastify server + dispatcher
+│   ├── @jsmemento/react/             # React komponente (DataView, provider)
+│   ├── @jsmemento/cli/               # CLI (tenant, key, template management)
+│   └── @jsmemento/client/            # JS client SDK (HTTP + WebSocket)
 ├── apps/
 │   ├── example/                    # Example app (Fastify + React)
 │   └── demo/                       # Interactive demo (poput Python verzije)
@@ -331,11 +331,11 @@ jsmemento/                          (monorepo root)
 
 | Paket | Uloga | Zavisnosti |
 |-------|-------|-----------|
-| `@memento/core` | Protocol + auth helpers | `zod` samo |
-| `@memento/server` | Server dispatcher + plugin | `@memento/core`, `fastify`, `drizzle-orm`, `pg`, `zod` |
-| `@memento/react` | UI komponente | `@memento/core`, `react`, `@tanstack/react-query` |
-| `@memento/cli` | CLI komande | `@memento/core`, `commander`, `chalk` |
-| `@memento/client` | Client SDK | `@memento/core` samo |
+| `@jsmemento/core` | Protocol + auth helpers | `zod` samo |
+| `@jsmemento/server` | Server dispatcher + plugin | `@jsmemento/core`, `fastify`, `drizzle-orm`, `pg`, `zod` |
+| `@jsmemento/react` | UI komponente | `@jsmemento/core`, `react`, `@tanstack/react-query` |
+| `@jsmemento/cli` | CLI komande | `@jsmemento/core`, `commander`, `chalk` |
+| `@jsmemento/client` | Client SDK | `@jsmemento/core` samo |
 
 ### 5.3 Tri deployment moda
 
@@ -347,7 +347,7 @@ jsmemento/                          (monorepo root)
 │ 1. EMBEDDED (npm paket)                                      │
 │    ┌──────────────────────────┐                             │
 │    │ Vaša Fastify aplikacija   │                            │
-│    │ ├── @memento/server       │ ← npm install              │
+│    │ ├── @jsmemento/server       │ ← npm install              │
 │    │ └── UdcSource(memento)    │                            │
 │    └──────────────────────────┘                             │
 │                                                              │
@@ -398,14 +398,14 @@ jsmemento/                          (monorepo root)
 
 | Memento (Python) | jsmemento (JS) | Fajl |
 |------------------|-------------------|------|
-| `fastapi.FastAPI` | `fastify.Fastify` | `@memento/server/src/index.ts` |
-| `Pydantic` BaseModel | `Zod` schema | `@memento/core/src/schema.ts` |
-| `Jinja2` Template | Nunjucks Template | `@memento/core/src/render.ts` |
-| `ContextVar` (tenant) | `request.context` + middleware | `@memento/server/src/middleware.ts` |
+| `fastapi.FastAPI` | `fastify.Fastify` | `@jsmemento/server/src/index.ts` |
+| `Pydantic` BaseModel | `Zod` schema | `@jsmemento/core/src/schema.ts` |
+| `Jinja2` Template | Nunjucks Template | `@jsmemento/core/src/render.ts` |
+| `ContextVar` (tenant) | `request.context` + middleware | `@jsmemento/server/src/middleware.ts` |
 | `asyncpg` driver | `pg` driver | (isti) |
-| UdcSource | UdcSource implementacija | `@memento/server/src/udc-source.ts` |
-| Typer CLI | Commander.js CLI | `@memento/cli/src/index.ts` |
-| React SPA | React SPA (isti) | `@memento/react/src/` |
+| UdcSource | UdcSource implementacija | `@jsmemento/server/src/udc-source.ts` |
+| Typer CLI | Commander.js CLI | `@jsmemento/cli/src/index.ts` |
+| React SPA | React SPA (isti) | `@jsmemento/react/src/` |
 | pytest | Vitest | `packages/*/test/` |
 
 ---
@@ -417,7 +417,7 @@ jsmemento/                          (monorepo root)
 ```typescript
 // your-app/src/index.ts
 import Fastify from "fastify";
-import { mementoPlugin } from "@memento/server";
+import { mementoPlugin } from "@jsmemento/server";
 
 const fastify = Fastify();
 
@@ -506,7 +506,7 @@ await client.pushEvent({
    - **Preporuka:** Redis Pub/Sub (jednostavna, dovoljno za real-time, memento-spp koristi Redis)
 
 6. **Lookup management:** Port dc-lookups-py vs vlastiti sistem
-   - **Preporuka:** Vlastiti `@memento/lookups` paket sa YAML + CSV (jednostavnije bez Python zavisnosti)
+   - **Preporuka:** Vlastiti `@jsmemento/lookups` paket sa YAML + CSV (jednostavnije bez Python zavisnosti)
 
 7. **Package registry:** npm (javno) vs GitHub Packages (privatno)
    - **Preporuka:** npm (open source, kako je jsudc)
@@ -520,12 +520,12 @@ await client.pushEvent({
 
 | Faza | Sadržaj | Procena |
 |------|---------|--------|
-| **Phase 1** | Core struktura, `@memento/core`, baza šema, Zod validacija | 2-3 nedelje |
-| **Phase 2** | `@memento/server`, FastAPI-like routes, multitenancy middleware | 2-3 nedelje |
+| **Phase 1** | Core struktura, `@jsmemento/core`, baza šema, Zod validacija | 2-3 nedelje |
+| **Phase 2** | `@jsmemento/server`, FastAPI-like routes, multitenancy middleware | 2-3 nedelje |
 | **Phase 3** | WebSocket `/ws`, pub/sub, slow-consumer detection | 1-2 nedelje |
 | **Phase 4** | Template rendering (Nunjucks), i18n fallback | 1 nedelja |
-| **Phase 5** | `@memento/react` komponente (DataView, filters) | 1-2 nedelje |
-| **Phase 6** | `@memento/cli` — tenant/key/template management | 1 nedelja |
+| **Phase 5** | `@jsmemento/react` komponente (DataView, filters) | 1-2 nedelje |
+| **Phase 6** | `@jsmemento/cli` — tenant/key/template management | 1 nedelja |
 | **Phase 7** | Docker image, podman-compose, CI/CD | 1 nedelja |
 | **Phase 8** | Testovi (> 80% coverage), integracione test | 2 nedelje |
 | **MVP release** | v1.0.0 na npm + GitHub | *Ukupno: 3-4 meseca* |

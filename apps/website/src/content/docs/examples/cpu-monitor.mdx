@@ -58,8 +58,8 @@ tree from, so it shows as a chip, where it can be changed or removed like any ot
   `httpUrl: "/memento"` and the key as `Authorization: Bearer`, so `UdcDataView` from
   `@jsudc/react` calls `POST /memento/udc/describe` and `POST /memento/udc/list`. There is no
   hand-written fetch of list data.
-- **The stream only says "refetch".** `useLive` (from `@memento/ui-shell`, on `MementoStream` of
-  `@memento/core`) subscribes to `/memento/ws?event_type=CPU_LOAD&instance_type=server` — the
+- **The stream only says "refetch".** `useLive` (from `@jsmemento/ui-shell`, on `MementoStream` of
+  `@jsmemento/core`) subscribes to `/memento/ws?event_type=CPU_LOAD&instance_type=server` — the
   `event_type` only while the collection is `cpu_load` — and every event invalidates the
   collection's list queries, at most once per 250 ms.
 - **The status bar**: green **Live** when the stream is connected and the server healthy, amber

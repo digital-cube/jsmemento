@@ -1,4 +1,4 @@
-import { ok } from "@memento/core";
+import { ok } from "@jsmemento/core";
 import { and, eq, isNull } from "drizzle-orm";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { RouteDeps } from "../app.js";

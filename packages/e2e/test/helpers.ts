@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { type MementoEvent, MementoStream, type StreamFilter } from "@memento/core";
-import { connect, createApiKey, createTenant } from "@memento/server";
+import { type MementoEvent, MementoStream, type StreamFilter } from "@jsmemento/core";
+import { connect, createApiKey, createTenant } from "@jsmemento/server";
 import { afterAll, afterEach, inject } from "vitest";
 import WebSocket from "ws";
 

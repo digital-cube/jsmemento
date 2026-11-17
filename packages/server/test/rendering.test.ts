@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { generateLookupsModule, validateTranslationsCsv } from "@memento/lookups";
+import { generateLookupsModule, validateTranslationsCsv } from "@jsmemento/lookups";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { runWithTenant } from "../src/context.js";
@@ -439,7 +439,7 @@ describe("the repository's vocabulary", () => {
     expect(validateTranslationsCsv(csv, lookups.registry).ok).toBe(true);
   });
 
-  it("the generated @memento/core lookups match lookups.yaml (run `memento lookups codegen`)", async () => {
+  it("the generated @jsmemento/core lookups match lookups.yaml (run `memento lookups codegen`)", async () => {
     const lookups = await initLookups({ path: DEFAULT_LOOKUPS_PATH, candidatesDir: null });
     expect(await readFile(GENERATED_LOOKUPS_PATH, "utf8")).toBe(
       generateLookupsModule(lookups.registry, LOOKUPS_CODEGEN),

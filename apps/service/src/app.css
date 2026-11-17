@@ -1,5 +1,5 @@
 /* The service site's own styles; the shell's (header, menu, buttons, feed, chart window…) are
-   @memento/ui-shell/shell.css, imported first. */
+   @jsmemento/ui-shell/shell.css, imported first. */
 
 a {
   color: var(--cm-accent);

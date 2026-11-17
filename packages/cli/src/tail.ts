@@ -8,7 +8,7 @@ import {
   type MementoEvent,
   MementoStream,
   type WebSocketConstructor,
-} from "@memento/core";
+} from "@jsmemento/core";
 import type { CliIO } from "./program.js";
 import type { Ui } from "./ui.js";
 

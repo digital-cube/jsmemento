@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import fastifyCookie from "@fastify/cookie";
 import fastifyWebsocket from "@fastify/websocket";
-import type { CollectionRegistry } from "@jsudc/server";
 import {
   type Capabilities,
   ERROR_CODES,
   type ErrorCode,
   fail,
   STREAM_SUBPROTOCOL,
-} from "@memento/core";
+} from "@jsmemento/core";
+import type { CollectionRegistry } from "@jsudc/server";
 import Fastify, {
   type FastifyError,
   type FastifyInstance,

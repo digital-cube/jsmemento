@@ -1,6 +1,6 @@
 import type { AddressInfo } from "node:net";
-import { MementoApiError } from "@memento/core";
-import { buildApp, connect, createApiKey, createTenant, loadConfig } from "@memento/server";
+import { MementoApiError } from "@jsmemento/core";
+import { buildApp, connect, createApiKey, createTenant, loadConfig } from "@jsmemento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reset } from "../../server/test/helpers.js";
 import {

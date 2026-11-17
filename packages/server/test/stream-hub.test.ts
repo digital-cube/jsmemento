@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { MementoEvent, StreamMessage } from "@memento/core";
+import type { MementoEvent, StreamMessage } from "@jsmemento/core";
 import type { FastifyBaseLogger } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "../src/context.js";

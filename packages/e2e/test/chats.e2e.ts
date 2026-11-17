@@ -1,4 +1,4 @@
-import type { Chat, ChatMessageResult, MementoEvent } from "@memento/core";
+import type { Chat, ChatMessageResult, MementoEvent } from "@jsmemento/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { api, LiveFeed, newTenant, type TenantKeys } from "./helpers.js";
 

@@ -88,7 +88,7 @@ logged as a warning and does not fail the push.
 
 ## `MementoStream`
 
-The browser, `@memento/react` and `memento tail` share one client from `@memento/core`. It puts
+The browser, `@jsmemento/react` and `memento tail` share one client from `@jsmemento/core`. It puts
 the key in the subprotocol, waits for the welcome, reports its status (`connecting`, `live`,
 `offline`, `closed`) and reconnects with exponential backoff, 0.5 s up to 15 s, reset after each
 welcome. In Node:

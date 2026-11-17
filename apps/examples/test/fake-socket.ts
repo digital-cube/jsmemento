@@ -1,4 +1,4 @@
-import type { WebSocketLike } from "@memento/core";
+import type { WebSocketLike } from "@jsmemento/core";
 
 /** A valid event id for the n-th test event. */
 export const uuid = (n: number) => `0199a000-0000-7000-8000-${String(n).padStart(12, "0")}`;

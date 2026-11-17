@@ -1,5 +1,5 @@
+import { withoutHidden } from "@jsmemento/ui-shell";
 import { UdcError } from "@jsudc/core";
-import { withoutHidden } from "@memento/ui-shell";
 import { screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ServiceRoutes } from "../src/App.js";

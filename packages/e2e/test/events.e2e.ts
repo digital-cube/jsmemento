@@ -1,4 +1,4 @@
-import type { MementoEvent } from "@memento/core";
+import type { MementoEvent } from "@jsmemento/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { api, LiveFeed, newTenant, pushServer, streamServer, type TenantKeys } from "./helpers.js";
 

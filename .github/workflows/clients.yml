@@ -65,7 +65,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the server and the CLI
-        run: pnpm turbo run build --filter=@memento/server --filter=@memento/cli
+        run: pnpm turbo run build --filter=@jsmemento/server --filter=@jsmemento/cli
       - name: Start the server, create a tenant and a key
         # appends MEMENTO_URL=http://127.0.0.1:8000/memento and MEMENTO_API_KEY to $GITHUB_ENV
         run: clients/check.sh stack

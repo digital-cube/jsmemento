@@ -1,4 +1,4 @@
-import { type ChatParticipant, chatInstanceId, type MementoEvent } from "@memento/core";
+import { type ChatParticipant, chatInstanceId, type MementoEvent } from "@jsmemento/core";
 import {
   type CSSProperties,
   type FormEvent,

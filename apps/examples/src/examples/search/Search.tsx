@@ -1,7 +1,7 @@
-import "@memento/react/styles.css";
+import "@jsmemento/react/styles.css";
+import type { MementoEvent } from "@jsmemento/core";
+import { MementoProvider, MementoSearch, type MementoSearchValues } from "@jsmemento/react";
 import { intlLocaleOf, useI18n } from "@jsudc/react";
-import type { MementoEvent } from "@memento/core";
-import { MementoProvider, MementoSearch, type MementoSearchValues } from "@memento/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useSettings } from "../../connection.js";
@@ -19,7 +19,7 @@ import {
 } from "./search.js";
 
 /**
- * The Search example (`/examples/search`): `MementoSearch` from `@memento/react` on the left;
+ * The Search example (`/examples/search`): `MementoSearch` from `@jsmemento/react` on the left;
  * on the right what it sent — the Filter DSL tree, the request as `curl`, the shape of the
  * answer — read off the wire, and a link to the UDC `events` table with the same filter. The
  * search lives in the page's URL.

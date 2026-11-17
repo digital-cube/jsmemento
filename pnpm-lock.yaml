@@ -32,7 +32,7 @@ importers:
 
   apps/example:
     dependencies:
-      '@memento/react':
+      '@jsmemento/react':
         specifier: workspace:*
         version: link:../../packages/react
       react:
@@ -57,21 +57,21 @@ importers:
 
   apps/examples:
     dependencies:
+      '@jsmemento/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@jsmemento/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@jsmemento/ui-shell':
+        specifier: workspace:*
+        version: link:../../packages/ui-shell
       '@jsudc/core':
         specifier: 0.3.0
         version: 0.3.0
       '@jsudc/react':
         specifier: 0.3.1
         version: 0.3.1(@jsudc/core@0.3.0)(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-table@8.21.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(lucide-react@1.65.0(@types/react@19.3.0)(react@19.3.1))(radix-ui@1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react-router@7.18.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(recharts@3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@17.0.2)(react@19.3.1)(redux@5.0.1))
-      '@memento/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@memento/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@memento/ui-shell':
-        specifier: workspace:*
-        version: link:../../packages/ui-shell
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
@@ -121,21 +121,21 @@ importers:
 
   apps/service:
     dependencies:
+      '@jsmemento/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@jsmemento/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@jsmemento/ui-shell':
+        specifier: workspace:*
+        version: link:../../packages/ui-shell
       '@jsudc/core':
         specifier: 0.3.0
         version: 0.3.0
       '@jsudc/react':
         specifier: 0.3.1
         version: 0.3.1(@jsudc/core@0.3.0)(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-table@8.21.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(lucide-react@1.65.0(@types/react@19.3.0)(react@19.3.1))(radix-ui@1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react-router@7.18.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(recharts@3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@17.0.2)(react@19.3.1)(redux@5.0.1))
-      '@memento/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@memento/react':
-        specifier: workspace:*
-        version: link:../../packages/react
-      '@memento/ui-shell':
-        specifier: workspace:*
-        version: link:../../packages/ui-shell
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
@@ -216,13 +216,13 @@ importers:
       '@astrojs/check':
         specifier: ^0.9.12
         version: 0.9.12(@emnapi/runtime@1.11.3)(prettier@3.9.10)(typescript@5.9.3)
-      '@memento/core':
+      '@jsmemento/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@memento/react':
+      '@jsmemento/react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@memento/server':
+      '@jsmemento/server':
         specifier: workspace:*
         version: link:../../packages/server
       '@types/node':
@@ -255,13 +255,13 @@ importers:
       '@inquirer/prompts':
         specifier: ^8.7.5
         version: 8.7.5(@types/node@24.19.2)
-      '@memento/core':
+      '@jsmemento/core':
         specifier: workspace:*
         version: link:../core
-      '@memento/lookups':
+      '@jsmemento/lookups':
         specifier: workspace:*
         version: link:../lookups
-      '@memento/server':
+      '@jsmemento/server':
         specifier: workspace:*
         version: link:../server
       chalk:
@@ -289,10 +289,10 @@ importers:
 
   packages/e2e:
     dependencies:
-      '@memento/core':
+      '@jsmemento/core':
         specifier: workspace:*
         version: link:../core
-      '@memento/server':
+      '@jsmemento/server':
         specifier: workspace:*
         version: link:../server
     devDependencies:
@@ -311,7 +311,7 @@ importers:
 
   packages/react:
     dependencies:
-      '@memento/core':
+      '@jsmemento/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -360,18 +360,18 @@ importers:
       '@fastify/websocket':
         specifier: ^11.3.4
         version: 11.3.4
+      '@jsmemento/core':
+        specifier: workspace:*
+        version: link:../core
+      '@jsmemento/lookups':
+        specifier: workspace:*
+        version: link:../lookups
       '@jsudc/core':
         specifier: 0.3.0
         version: 0.3.0
       '@jsudc/server':
         specifier: 0.3.0
         version: 0.3.0(@jsudc/core@0.3.0)(drizzle-orm@0.45.4(@types/pg@8.23.1)(pg@8.23.1))(fastify@5.12.7)(pg@8.23.1)(zod@4.6.7)
-      '@memento/core':
-        specifier: workspace:*
-        version: link:../core
-      '@memento/lookups':
-        specifier: workspace:*
-        version: link:../lookups
       '@node-rs/argon2':
         specifier: ^2.2.2
         version: 2.2.2
@@ -409,15 +409,15 @@ importers:
 
   packages/ui-shell:
     dependencies:
+      '@jsmemento/core':
+        specifier: workspace:*
+        version: link:../core
       '@jsudc/core':
         specifier: 0.3.0
         version: 0.3.0
       '@jsudc/react':
         specifier: 0.3.1
         version: 0.3.1(@jsudc/core@0.3.0)(@tanstack/react-query@5.105.0(@types/react@19.3.0)(react@19.3.1))(@tanstack/react-table@8.21.3(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(lucide-react@1.65.0(@types/react@19.3.0)(react@19.3.1))(radix-ui@1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react-router@7.18.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(recharts@3.10.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react-is@17.0.2)(react@19.3.1)(redux@5.0.1))
-      '@memento/core':
-        specifier: workspace:*
-        version: link:../core
       '@tanstack/react-query':
         specifier: ^5.105.0
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)

@@ -1,4 +1,4 @@
-# @memento/server
+# @jsmemento/server
 
 The JSMemento server: a Fastify plugin (`mementoPlugin`) and app factory (`buildApp`) with Drizzle storage on PostgreSQL or a SQLite file (`DATABASE_URL=file:<path>`, one server process, no Redis needed), API-key auth, Handlebars rendering, chats and the `/ws` real-time stream. `node dist/server.js` runs it standalone; the Docker image is `ghcr.io/digital-cube/jsmemento`.
 

@@ -6,7 +6,7 @@ import {
   createTenant,
   LocalBus,
   loadConfig,
-} from "@memento/server";
+} from "@jsmemento/server";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { reset } from "../../server/test/helpers.js";
 import { clock, makeUi, runCli, tailLine, tailQuery } from "../src/index.js";

@@ -24,7 +24,7 @@ ws.onmessage = (e) => console.log(JSON.parse(e.data));
   subprotocol list as `bearer.<api_key>`. Offer `memento.v1` next to it: the server selects
   `memento.v1` and the key is not echoed back in the handshake. Non-browser clients may send
   `Authorization: Bearer <key>` or `X-Api-Key` instead. The key needs the `read` scope.
-  `@memento/core` has `streamSubprotocols(key)` for the list.
+  `@jsmemento/core` has `streamSubprotocols(key)` for the list.
 - **Refusals happen before the upgrade**, as ordinary HTTP responses with the usual error
   envelope: `401` missing/invalid/revoked key, `403` key without `read`, `422` invalid filter
   (unknown parameter, malformed `event_type`, …). A plain `GET` without `Upgrade` is a `400`.
@@ -46,14 +46,14 @@ All optional; every one that is set must match exactly (AND).
 
 Without `locale` an event arrives with the `rendered` text it was stored with.
 
-### Client: `MementoStream` (`@memento/core`)
+### Client: `MementoStream` (`@jsmemento/core`)
 
-The browser, `@memento/react` and `memento tail` share one client. It handles the subprotocol
+The browser, `@jsmemento/react` and `memento tail` share one client. It handles the subprotocol
 auth, waits for the welcome, and reconnects with exponential backoff (0.5 s → 15 s, reset
 after each welcome).
 
 ```ts
-import { MementoStream } from "@memento/core";
+import { MementoStream } from "@jsmemento/core";
 const stream = new MementoStream({
   baseUrl: "http://localhost:8000/memento",          // or "/memento" in a browser
   apiKey,
@@ -69,7 +69,7 @@ into the exact filter `/ws` accepts and a predicate for the rest.
 
 ## Messages (server → client, JSON text frames)
 
-Schemas: `StreamMessageSchema` in `@memento/core` (`src/stream.ts`).
+Schemas: `StreamMessageSchema` in `@jsmemento/core` (`src/stream.ts`).
 
 **`memento.welcome`** — first message. When it arrives the connection is subscribed: every
 event stored from now on that matches is delivered.

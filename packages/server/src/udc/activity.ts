@@ -1,3 +1,4 @@
+import { EVENT_TYPES } from "@jsmemento/core";
 import {
   type Condition,
   type FilterNode,
@@ -10,7 +11,6 @@ import {
   UdcError,
 } from "@jsudc/core";
 import type { Source, SourceListRequest } from "@jsudc/server";
-import { EVENT_TYPES } from "@memento/core";
 import { and, count, eq, gte, isNull, lt, type SQL, sql } from "drizzle-orm";
 import { requireTenant } from "../context.js";
 import { type Database, dialect } from "../db/index.js";

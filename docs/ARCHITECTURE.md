@@ -3,7 +3,7 @@
 > Implemented: the core API and multitenancy, Handlebars templates with locale fallback and
 > YAML/CSV lookups ([TEMPLATES.md](TEMPLATES.md)), chats as first-class instances
 > ([CHATS.md](CHATS.md)), WebSocket streaming `/memento/ws` (in one process, or across processes over Redis Pub/Sub;
-> [STREAMING.md](STREAMING.md)), the `@memento/react` UI and the CLI ([REACT.md](REACT.md),
+> [STREAMING.md](STREAMING.md)), the `@jsmemento/react` UI and the CLI ([REACT.md](REACT.md),
 > [CLI.md](CLI.md)), UDC collections (`packages/server/src/udc/`, [API.md](API.md#post-mementoudcaction--udc-collections))
 > and self-service accounts ([API.md](API.md#accounts-memento_accountstrue)). Per-event seen/star
 > endpoints come later; their tables already exist.
@@ -17,7 +17,7 @@ Endpoint reference: [API.md](API.md).
 jsmemento/
 ├── pnpm-workspace.yaml        # packages/* and apps/*
 ├── turbo.json                 # build / typecheck / test / test:cov pipelines
-├── tsconfig.base.json         # strict TS, NodeNext, custom condition "@memento/source"
+├── tsconfig.base.json         # strict TS, NodeNext, custom condition "@jsmemento/source"
 ├── biome.json                 # lint + format
 ├── compose.yaml               # PostgreSQL 18 + Redis 7 (+ creates <db>_test)
 ├── .env.example               # every variable the server and CLI read
@@ -25,25 +25,25 @@ jsmemento/
 ├── i18n/translations.csv      # lookup labels per locale
 ├── var/candidates/            # unknown lookup values recorded at ingestion
 ├── packages/
-│   ├── core/    @memento/core    Zod schemas, inferred types, helpers (only dep: zod)
-│   ├── lookups/ @memento/lookups YAML vocabulary, CSV translations, candidates, codegen
-│   ├── server/  @memento/server  Fastify plugin + app, Drizzle schema & migrations,
+│   ├── core/    @jsmemento/core    Zod schemas, inferred types, helpers (only dep: zod)
+│   ├── lookups/ @jsmemento/lookups YAML vocabulary, CSV translations, candidates, codegen
+│   ├── server/  @jsmemento/server  Fastify plugin + app, Drizzle schema & migrations,
 │   │                             Handlebars renderer + bundled templates (templates/*.hbs)
-│   ├── cli/     @memento/cli     `memento` command (Commander, chalk, ora, @inquirer/prompts)
-│   └── react/   @memento/react   React components + hooks over the HTTP API and /ws
+│   ├── cli/     @jsmemento/cli     `memento` command (Commander, chalk, ora, @inquirer/prompts)
+│   └── react/   @jsmemento/react   React components + hooks over the HTTP API and /ws
 └── apps/
-    └── example/ @memento/example Vite + React demo (proxies /memento to the server)
+    └── example/ @jsmemento/example Vite + React demo (proxies /memento to the server)
 ```
 
 Dependency direction: `cli → server → core`, `react → core`, `server → lookups` (`lookups` depends only on `yaml`). `core` has no Node-only APIs (it hashes with
 Web Crypto), so the same package serves browsers, React and the future client SDK.
 
-Packages export `dist/` for consumers, plus a `@memento/source` export condition pointing
+Packages export `dist/` for consumers, plus a `@jsmemento/source` export condition pointing
 at `src/` — `tsx` (dev server, CLI in dev) and `tsc --noEmit` resolve workspace packages
 from source, so no build step is needed during development. Vitest uses path aliases for
 the same purpose.
 
-## 2. `@memento/core` — the protocol
+## 2. `@jsmemento/core` — the protocol
 
 | Module | Contents |
 |--------|----------|
@@ -205,7 +205,7 @@ events (`CHAT_MESSAGE_SENT`, `CHAT_MESSAGE_SEEN`, `CHAT_PARTICIPANT_ADDED`). Mig
 moved the old `participants text[]` into the participant table and renamed `title` → `name`.
 See [CHATS.md](CHATS.md).
 
-## 4. `@memento/server`
+## 4. `@jsmemento/server`
 
 ```
 src/
@@ -306,7 +306,7 @@ tenant's templates for the page's event types.
 - **Standalone**: `node packages/server/dist/server.js` (or `pnpm dev`) — applies migrations on
   start, then listens on `HOST:PORT`.
 
-## 5. `@memento/cli`
+## 5. `@jsmemento/cli`
 
 `memento [--json] <command>`; reads `DATABASE_URL`.
 
@@ -320,7 +320,7 @@ tenant's templates for the page's event types.
 | `create-template --tenant --event-type --locale (--body \| --file) [--replace]` | write a tenant template into `memento_template` (compiled first) |
 | `list-templates --tenant` / `delete-template --tenant --event-type --locale` | manage tenant templates |
 | `lookups validate [--path] [--translations]` | check `lookups.yaml` + translations CSV (`file:line` errors/warnings) |
-| `lookups codegen [--path] [--out] [--check]` | regenerate `@memento/core`'s typed lookups; `--check` fails when stale |
+| `lookups codegen [--path] [--out] [--check]` | regenerate `@jsmemento/core`'s typed lookups; `--check` fails when stale |
 | `lookups candidates [--path] [--dir]` | list recorded unknown values |
 | `create-chat --tenant --participants a,b [--name] [--kind] [--chat-id]` | create a chat (`--tenant` defaults to `$MEMENTO_TENANT`) |
 | `send-message --tenant --chat-id --user --content [--locale]` | send a chat message as a participant (rendered, published to Redis when `REDIS_URL` is set) |
@@ -335,7 +335,7 @@ twice, as two vitest projects: against a real PostgreSQL test database (`TEST_DA
 migrated once per run and truncated per test file, and against a SQLite file under the
 temporary directory, created and migrated for the run, with `REDIS_URL` empty
 (`MEMENTO_TEST_DIALECT=postgres|sqlite`, or `test:pg` / `test:sqlite` in the package, runs
-one). Turbo orders `@memento/cli#test` after `@memento/server#test` so they never truncate
+one). Turbo orders `@jsmemento/cli#test` after `@jsmemento/server#test` so they never truncate
 each other's data. `test/sqlite.test.ts` (SQLite only) covers the connection, the
 migrations, the writer gate and another process on the file; `test/parity.test.ts` (both)
 pins the answers the two databases share. A test that cannot run on SQLite is skipped by name

@@ -1,4 +1,4 @@
-import type { MementoEvent } from "@memento/core";
+import type { MementoEvent } from "@jsmemento/core";
 import { Redis } from "ioredis";
 import type { EventPublisher, PublishedEvent } from "../publisher.js";
 

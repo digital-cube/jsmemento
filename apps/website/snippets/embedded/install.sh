@@ -1,4 +1,4 @@
-# Until the first release puts @memento/* on npm: build and pack them from a clone
+# Until the first release puts @jsmemento/* on npm: build and pack them from a clone
 git clone https://github.com/digital-cube/jsmemento.git && cd jsmemento
 pnpm install && pnpm turbo run build --filter="./packages/*"
 pnpm --filter "./packages/*" pack --pack-destination ../memento-tarballs

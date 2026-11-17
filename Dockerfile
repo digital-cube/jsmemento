@@ -17,12 +17,12 @@ RUN pnpm install --frozen-lockfile
 # (MEMENTO_UI_DIR), its sidebar the menu.yaml copied next to lookups.yaml (MEMENTO_MENU_PATH),
 # and the service site (apps/service) the second container serves from /app/ui-service with
 # MEMENTO_MENU_PATH=/app/config/menu-service.yaml (docker-compose.yaml, service `service`).
-RUN pnpm turbo run build --filter=@memento/cli... --filter=@memento/examples --filter=@memento/service
-# Standalone copies of @memento/server and @memento/cli with their production dependencies;
-# the workspace packages they use (@memento/core, @memento/lookups, …) are copied in, not
+RUN pnpm turbo run build --filter=@jsmemento/cli... --filter=@jsmemento/examples --filter=@jsmemento/service
+# Standalone copies of @jsmemento/server and @jsmemento/cli with their production dependencies;
+# the workspace packages they use (@jsmemento/core, @jsmemento/lookups, …) are copied in, not
 # symlinked.
-RUN pnpm --config.inject-workspace-packages=true --filter @memento/server deploy --prod /out/app \
- && pnpm --config.inject-workspace-packages=true --filter @memento/cli deploy --prod /out/cli \
+RUN pnpm --config.inject-workspace-packages=true --filter @jsmemento/server deploy --prod /out/app \
+ && pnpm --config.inject-workspace-packages=true --filter @jsmemento/cli deploy --prod /out/cli \
  && mkdir -p /out/app/config \
  && cp -r lookups.yaml menu.yaml menu-service.yaml i18n /out/app/config/ \
  && cp -r apps/examples/dist /out/app/ui \

@@ -1,5 +1,10 @@
 import { hostname, loadavg } from "node:os";
-import { type EventInput, MementoApiError, MementoClient, type MementoEvent } from "@memento/core";
+import {
+  type EventInput,
+  MementoApiError,
+  MementoClient,
+  type MementoEvent,
+} from "@jsmemento/core";
 import type { CliIO } from "./program.js";
 import { clock } from "./tail.js";
 import type { Ui } from "./ui.js";

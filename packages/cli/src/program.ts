@@ -8,12 +8,12 @@ import {
   SCOPES,
   SlugSchema,
   type WebSocketConstructor,
-} from "@memento/core";
+} from "@jsmemento/core";
 import {
   generateLookupsModule,
   LookupCompileError,
   validateTranslationsCsv,
-} from "@memento/lookups";
+} from "@jsmemento/lookups";
 import {
   applyRetention,
   createApiKey,
@@ -43,7 +43,7 @@ import {
   serializeUser,
   setUserAdmin,
   setUserDisabled,
-} from "@memento/server";
+} from "@jsmemento/server";
 import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 import { CpuMonitorError, runCpuMonitor } from "./cpu-monitor.js";
 import { friendlyError } from "./errors.js";
@@ -954,7 +954,7 @@ markers (CHAT_MESSAGE_SEEN), and now and then a new member. --no-chat leaves the
 
   lookups
     .command("codegen")
-    .description("generate TypeScript enums + Zod schemas from lookups.yaml into @memento/core")
+    .description("generate TypeScript enums + Zod schemas from lookups.yaml into @jsmemento/core")
     .option(...pathOption)
     .option("--out <file>", "output module", GENERATED_LOOKUPS_PATH)
     .option("--check", "exit 1 if the output is out of date instead of writing it")

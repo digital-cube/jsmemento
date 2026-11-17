@@ -1,4 +1,4 @@
-/* The examples site's own styles; the shell's (header, menu, feed, chart window…) are @memento/ui-shell/shell.css, imported first. */
+/* The examples site's own styles; the shell's (header, menu, feed, chart window…) are @jsmemento/ui-shell/shell.css, imported first. */
 
 .popover {
   position: relative;

@@ -46,7 +46,7 @@ exits with 1.
 every change:
 
 ```bash
-pnpm turbo run build --filter=@memento/server --filter=@memento/cli
+pnpm turbo run build --filter=@jsmemento/server --filter=@jsmemento/cli
 DATABASE_URL=postgresql://jsmemento:jsmemento@localhost:5432/jsmemento clients/check.sh stack
 export MEMENTO_URL=http://127.0.0.1:8000/memento MEMENTO_API_KEY=mk_…   # what `stack` printed
 clients/check.sh run python        # no key → exit 2; wrong key → exit 1 + 401; then the real run

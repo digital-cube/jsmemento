@@ -1,6 +1,6 @@
+import { MenuTree, RemoteMenu, TopBar } from "@jsmemento/ui-shell";
 import { useI18n, useUdcDescribe } from "@jsudc/react";
 import { Button } from "@jsudc/react/ui";
-import { MenuTree, RemoteMenu, TopBar } from "@memento/ui-shell";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 import { Link, Outlet, useNavigate } from "react-router";

@@ -1,4 +1,4 @@
-import type { MementoEvent } from "@memento/core";
+import type { MementoEvent } from "@jsmemento/core";
 import { type ReactNode, useMemo, useState } from "react";
 import { formatDate, formatTime, type TimeFormat } from "./format.js";
 

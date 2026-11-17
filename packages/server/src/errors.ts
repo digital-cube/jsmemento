@@ -1,4 +1,4 @@
-import { ERROR_CODES, type ErrorCode } from "@memento/core";
+import { ERROR_CODES, type ErrorCode } from "@jsmemento/core";
 
 /** An error that maps to a structured `{ ok: false, error }` response. */
 export class MementoError extends Error {

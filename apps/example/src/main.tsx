@@ -1,4 +1,4 @@
-import "@memento/react/styles.css";
+import "@jsmemento/react/styles.css";
 import "./app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

@@ -53,7 +53,7 @@ section of `docs/DEPLOYMENT.md` adds the keys and the profile.
 
 The sidebar is the `menu` UDC collection: the repository's
 [`menu.yaml`](https://github.com/digital-cube/jsmemento/blob/main/menu.yaml), served by
-`@memento/server` (source `yaml_menu` of `@jsudc/server`) and read again whenever the file
+`@jsmemento/server` (source `yaml_menu` of `@jsudc/server`) and read again whenever the file
 changes. Its `Collections` branch is `children: "udc:collections"`, which the server resolves on
 every read into the collections it serves: `events`, `cpu_load`, `activity`, `menu`. Each opens
 at `/udc/<collection>` as a plain `UdcDataView`. A new example is one entry under `EXAMPLES` in

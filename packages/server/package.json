@@ -1,5 +1,5 @@
 {
-  "name": "@memento/server",
+  "name": "@jsmemento/server",
   "version": "1.0.0",
   "description": "JSMemento server: Fastify app, Drizzle storage on PostgreSQL or SQLite, tenant isolation, API key auth.",
   "license": "MIT",
@@ -16,7 +16,7 @@
   "type": "module",
   "exports": {
     ".": {
-      "@memento/source": "./src/index.ts",
+      "@jsmemento/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
@@ -31,11 +31,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsx watch --conditions=@memento/source src/server.ts",
+    "dev": "tsx watch --conditions=@jsmemento/source src/server.ts",
     "start": "node dist/server.js",
     "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle-sqlite.config.ts",
-    "db:migrate": "tsx --conditions=@memento/source src/migrate-cli.ts",
-    "db:migrate:test": "MIGRATE_TARGET=test tsx --conditions=@memento/source src/migrate-cli.ts",
+    "db:migrate": "tsx --conditions=@jsmemento/source src/migrate-cli.ts",
+    "db:migrate:test": "MIGRATE_TARGET=test tsx --conditions=@jsmemento/source src/migrate-cli.ts",
     "test": "vitest run",
     "test:pg": "MEMENTO_TEST_DIALECT=postgres vitest run",
     "test:sqlite": "MEMENTO_TEST_DIALECT=sqlite vitest run",
@@ -48,8 +48,8 @@
     "@fastify/websocket": "^11.3.4",
     "@jsudc/core": "0.3.0",
     "@jsudc/server": "0.3.0",
-    "@memento/core": "workspace:*",
-    "@memento/lookups": "workspace:*",
+    "@jsmemento/core": "workspace:*",
+    "@jsmemento/lookups": "workspace:*",
     "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.7",

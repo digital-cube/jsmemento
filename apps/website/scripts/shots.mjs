@@ -8,7 +8,7 @@
  * picks them up. Re-run it when an example's look changes; the webp files are committed.
  *
  * Themes. The examples site follows @jsudc/react's theme: `html.dark` when localStorage
- * `udc-theme` is "dark" (ThemeProvider, THEME_STORAGE_KEY). @memento/ui-shell has no dark
+ * `udc-theme` is "dark" (ThemeProvider, THEME_STORAGE_KEY). @jsmemento/ui-shell has no dark
  * tokens and the site mounts no ThemeProvider yet, so today a dark shot would be the light one:
  * THEMES is ["light"] and the home page shows the light shot in both of its own themes. Once
  * the examples site has a dark theme, add "dark" here and run this again; the component picks

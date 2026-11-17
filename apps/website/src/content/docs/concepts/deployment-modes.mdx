@@ -9,7 +9,7 @@ import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
 import server from "../../../../snippets/embedded/server.ts?raw";
 import { SERVICE_URL } from "../../../site.mjs";
 
-memento is one Fastify plugin, `mementoPlugin` from `@memento/server`. Where it runs is up to
+memento is one Fastify plugin, `mementoPlugin` from `@jsmemento/server`. Where it runs is up to
 you: inside an application you already have, as its own container, or not at all on your side —
 on the stage service, with a key. Where you run it, the database is PostgreSQL or a single
 SQLite file ([below](#postgresql-or-sqlite)).
@@ -17,7 +17,7 @@ SQLite file ([below](#postgresql-or-sqlite)).
 | | you run | you get |
 | --- | --- | --- |
 | **Embedded** | your Node app, your PostgreSQL or a SQLite file | memento's routes under a prefix of your app, its `memento_*` tables in your database |
-| **Standalone** | the image or `@memento/server`; PostgreSQL (optionally Redis) or a SQLite file | the server, the CLI, the examples site and the service site |
+| **Standalone** | the image or `@jsmemento/server`; PostgreSQL (optionally Redis) or a SQLite file | the server, the CLI, the examples site and the service site |
 | **Hosted** | nothing | a tenant on the stage service and keys for it |
 
 ## Embedded
@@ -76,7 +76,7 @@ The server is configured by environment variables only ([Environment](/reference
 [Run it with Docker](/get-started/docker/) goes from a clone to the first event. On SQLite the
 image needs one volume and `DATABASE_URL=file:/data/memento.db`, and no `postgres` or `redis`
 service ([the SQLite guide](/reference/sqlite/#the-image-on-sqlite)); without Docker,
-`@memento/server` from npm runs the same server ([Run it on a SQLite file](/get-started/sqlite/)).
+`@jsmemento/server` from npm runs the same server ([Run it on a SQLite file](/get-started/sqlite/)).
 
 ### One process or many
 

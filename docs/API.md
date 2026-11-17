@@ -1,6 +1,6 @@
 # HTTP API
 
-Every route `@memento/server` serves, with the scope it needs, its parameters and its answers.
+Every route `@jsmemento/server` serves, with the scope it needs, its parameters and its answers.
 Base path: `/memento` (configurable with `MEMENTO_API_PREFIX`). All bodies are JSON.
 Architecture and schemas: [ARCHITECTURE.md](ARCHITECTURE.md). Chat endpoints
 (`/memento/chats…`): [CHATS.md](CHATS.md). Real-time WebSocket stream (`/memento/ws`):
@@ -402,7 +402,7 @@ Writes need `Content-Type: application/json` (an empty body is `{}`).
 | `DELETE /keys/:id` | — | `204`: soft delete — fails auth, hidden from every list; the row stays because events point at it |
 
 `admin` is not a scope a user can give a key (the CLI still can). The key as these routes
-return it (`ApiKey` in `@memento/core`):
+return it (`ApiKey` in `@jsmemento/core`):
 
 ```json
 {

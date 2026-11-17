@@ -1,8 +1,8 @@
 {
-  "name": "@memento/examples",
+  "name": "@jsmemento/examples",
   "version": "1.0.0",
   "private": true,
-  "description": "JSMemento examples site: a sidebar drawn from the `menu` UDC collection and one page per example (first: the live CPU monitor), on @jsudc/react, served by @memento/server at / and /en/.",
+  "description": "JSMemento examples site: a sidebar drawn from the `menu` UDC collection and one page per example (first: the live CPU monitor), on @jsudc/react, served by @jsmemento/server at / and /en/.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,9 @@
   "dependencies": {
     "@jsudc/core": "0.3.0",
     "@jsudc/react": "0.3.1",
-    "@memento/core": "workspace:*",
-    "@memento/react": "workspace:*",
-    "@memento/ui-shell": "workspace:*",
+    "@jsmemento/core": "workspace:*",
+    "@jsmemento/react": "workspace:*",
+    "@jsmemento/ui-shell": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^1.65.0",

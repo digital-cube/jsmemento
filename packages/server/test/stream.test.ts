@@ -4,7 +4,7 @@ import {
   type StreamMessage,
   StreamMessageSchema,
   streamSubprotocols,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { Redis } from "ioredis";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";

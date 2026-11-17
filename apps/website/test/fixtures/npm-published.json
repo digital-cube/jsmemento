@@ -1,5 +1,5 @@
 {
-  "@memento/core": {
+  "@jsmemento/core": {
     "dist-tags": { "latest": "1.0.0" },
     "time": {
       "created": "2026-10-31T09:00:00.000Z",
@@ -7,7 +7,7 @@
       "1.0.0": "2026-10-31T09:00:02.140Z"
     }
   },
-  "@memento/server": {
+  "@jsmemento/server": {
     "dist-tags": { "latest": "1.0.0" },
     "time": {
       "created": "2026-10-31T09:00:00.000Z",
@@ -15,7 +15,7 @@
       "1.0.0": "2026-10-31T09:00:05.610Z"
     }
   },
-  "@memento/cli": {
+  "@jsmemento/cli": {
     "dist-tags": { "latest": "1.0.0" },
     "time": {
       "created": "2026-10-31T09:00:00.000Z",
@@ -23,7 +23,7 @@
       "1.0.0": "2026-10-31T09:00:07.020Z"
     }
   },
-  "@memento/lookups": {
+  "@jsmemento/lookups": {
     "dist-tags": { "latest": "0.9.0" },
     "time": {
       "created": "2026-10-20T12:00:00.000Z",
@@ -31,5 +31,5 @@
       "0.9.0": "2026-10-20T12:00:01.300Z"
     }
   },
-  "@memento/react": null
+  "@jsmemento/react": null
 }

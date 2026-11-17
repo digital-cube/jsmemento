@@ -57,7 +57,7 @@ the lines dip at the right edge, and the page's note says so.
 
 ## Live
 
-`useLive` (from `@memento/ui-shell`) follows the whole stream; every event refetches the
+`useLive` (from `@jsmemento/ui-shell`) follows the whole stream; every event refetches the
 collection's lists, at most once per 5 s. A bucket changes once a minute, so the 250 ms of the
 other pages are not needed. The same rows open as a plain table from the sidebar's Collections
 branch, `/udc/activity`.
@@ -66,7 +66,7 @@ The service site draws the same chart for each API key over `api_key_activity`
 ([The service site](/examples/service-site/)).
 
 The page: [`apps/examples/src/examples/chart/Chart.tsx`](https://github.com/digital-cube/jsmemento/blob/main/apps/examples/src/examples/chart/Chart.tsx);
-the window helpers are `@memento/ui-shell`'s.
+the window helpers are `@jsmemento/ui-shell`'s.
 
 <LiveExample
   path="/examples/chart?w=1h"

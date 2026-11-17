@@ -1,7 +1,7 @@
+import { extractApiKey, hasScope, LocaleSchema, type Scope } from "@jsmemento/core";
 import { errKind } from "@jsudc/core";
 import { MESSAGE_ID_HEADER } from "@jsudc/core/client";
 import { type CollectionRegistry, createDispatcher, udcPlugin } from "@jsudc/server";
-import { extractApiKey, hasScope, LocaleSchema, type Scope } from "@memento/core";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import {
   authenticateSessionRequest,

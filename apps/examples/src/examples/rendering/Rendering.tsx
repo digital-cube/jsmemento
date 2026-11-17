@@ -1,7 +1,7 @@
+import { useLive, useThrottledRefresh } from "@jsmemento/ui-shell";
 import type { Row } from "@jsudc/core";
 import { intlLocaleOf, useI18n, useUdcClient, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
-import { useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";

@@ -1,8 +1,8 @@
 {
-  "name": "@memento/service",
+  "name": "@jsmemento/service",
   "version": "1.0.0",
   "private": true,
-  "description": "The memento service site (https://service.stage.memento-service.org/): register, sign in, create and manage API keys, watch what each key writes. On @jsudc/react with the session cookie; served by a second @memento/server container from MEMENTO_UI_DIR=/app/ui-service.",
+  "description": "The memento service site (https://service.stage.memento-service.org/): register, sign in, create and manage API keys, watch what each key writes. On @jsudc/react with the session cookie; served by a second @jsmemento/server container from MEMENTO_UI_DIR=/app/ui-service.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,9 @@
   "dependencies": {
     "@jsudc/core": "0.3.0",
     "@jsudc/react": "0.3.1",
-    "@memento/core": "workspace:*",
-    "@memento/react": "workspace:*",
-    "@memento/ui-shell": "workspace:*",
+    "@jsmemento/core": "workspace:*",
+    "@jsmemento/react": "workspace:*",
+    "@jsmemento/ui-shell": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^1.65.0",

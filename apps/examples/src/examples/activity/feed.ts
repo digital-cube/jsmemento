@@ -1,9 +1,9 @@
+import { type FeedItem, uniqueFeedItems } from "@jsmemento/ui-shell";
 import type { FilterNode, Row, SortKey } from "@jsudc/core";
-import { type FeedItem, uniqueFeedItems } from "@memento/ui-shell";
 
-// The lines themselves (feedItem, feedTime) are @memento/ui-shell's: the service site's key
+// The lines themselves (feedItem, feedTime) are @jsmemento/ui-shell's: the service site's key
 // page draws the same feed over `api_key_events`.
-export { type FeedItem, feedItem, feedTime } from "@memento/ui-shell";
+export { type FeedItem, feedItem, feedTime } from "@jsmemento/ui-shell";
 
 /** Where the feed's rows come from: every event of the tenant, as UDC serves them. */
 export const FEED_COLLECTION = "events";

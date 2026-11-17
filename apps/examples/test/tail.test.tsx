@@ -1,4 +1,4 @@
-import type { MementoEvent } from "@memento/core";
+import type { MementoEvent } from "@jsmemento/core";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.js";

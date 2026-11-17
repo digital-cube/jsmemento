@@ -1,4 +1,4 @@
-import { buildDescribe, ok } from "@memento/core";
+import { buildDescribe, ok } from "@jsmemento/core";
 import type { FastifyPluginAsync } from "fastify";
 import type { RouteDeps } from "../app.js";
 import { requireTenant } from "../context.js";

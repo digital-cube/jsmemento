@@ -17,7 +17,7 @@ pnpm dev                          # server from source with reload: http://local
 ```
 
 `.env` is not loaded automatically: `set -a; . ./.env; set +a`, or rely on the defaults.
-Packages import each other from source during development (the `@memento/source` export
+Packages import each other from source during development (the `@jsmemento/source` export
 condition and the Vitest aliases), so `pnpm dev` and the tests need no build step.
 
 ## Repository layout
@@ -30,7 +30,7 @@ condition and the Vitest aliases), so `pnpm dev` and the tests need no build ste
 | `packages/cli` | the `memento` CLI |
 | `packages/react` | React components and hooks |
 | `packages/e2e` | end-to-end suite (private, not published) |
-| `apps/example` | Vite demo of `@memento/react` |
+| `apps/example` | Vite demo of `@jsmemento/react` |
 | `Dockerfile`, `docker-compose.yaml` | image and production-like stack ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | `compose.yaml` | development PostgreSQL + Redis |
 
@@ -50,20 +50,20 @@ pnpm test:e2e         # builds the server, starts two processes, tests over HTTP
 - `pnpm test` is the same as `test:coverage` without coverage. `pnpm test:full` runs
   `test:coverage` and `test:e2e` in one go with one merged coverage file
   ([§ The full suite](#the-full-suite)).
-- One package: `pnpm --filter @memento/server test`, one file:
-  `pnpm --filter @memento/server exec vitest run test/chats.test.ts`, watch mode:
-  `pnpm --filter @memento/core exec vitest`.
+- One package: `pnpm --filter @jsmemento/server test`, one file:
+  `pnpm --filter @jsmemento/server exec vitest run test/chats.test.ts`, watch mode:
+  `pnpm --filter @jsmemento/core exec vitest`.
 - **Coverage reports**: each package writes `coverage/index.html` (open it in a browser) and
   `coverage/coverage-summary.json`. A package below 80 % fails the run. In CI the reports are
   the `coverage` artifact of the *Lint, type check, test* job and a table in the job summary.
 - Server and CLI tests use the database at `TEST_DATABASE_URL` and **truncate it** per file;
   they run one file at a time. Never point it at data you want to keep.
-- **Both databases.** `@memento/server` and `@memento/cli` run every suite twice, as the vitest
+- **Both databases.** `@jsmemento/server` and `@jsmemento/cli` run every suite twice, as the vitest
   projects `server` / `server-sqlite` (`cli` / `cli-sqlite`): on PostgreSQL at
   `TEST_DATABASE_URL`, and on a SQLite file in the temporary directory that the run creates,
   migrates and removes, with no Redis. One of them: `MEMENTO_TEST_DIALECT=sqlite pnpm test`,
   or in the package `pnpm test:pg` / `pnpm test:sqlite` (the SQLite run needs neither
-  PostgreSQL nor Redis); one file on one: `pnpm --filter @memento/server exec vitest run
+  PostgreSQL nor Redis); one file on one: `pnpm --filter @jsmemento/server exec vitest run
   --project server-sqlite test/chats.test.ts`. A test that cannot run on SQLite is skipped by
   name with `it.skipIf(onSqlite)` (`test/helpers.ts`) and a comment with the reason; what the
   two must answer alike goes into `test/parity.test.ts`. After a schema change,
@@ -76,7 +76,7 @@ pnpm test:e2e         # builds the server, starts two processes, tests over HTTP
 ### The full suite
 
 `pnpm test:full` (`sh tools/test-full.sh` → `node tools/test-full.mjs`) is the whole suite as
-one command: every package's `test:cov` (`@memento/server` and `@memento/cli` on PostgreSQL
+one command: every package's `test:cov` (`@jsmemento/server` and `@jsmemento/cli` on PostgreSQL
 **and** SQLite, both Vitest projects in one run, so one coverage map per package), then
 `test:e2e`, then every package's coverage merged into **`coverage/coverage.json`** at the
 repository root (git-ignored), with a per-package table at the end. It is what the thilo
@@ -174,6 +174,6 @@ All packages and the image share one version.
 
 The *Release* workflow then checks that the tag equals the package versions, pushes
 `ghcr.io/digital-cube/jsmemento:X.Y.Z` (and `X.Y`, `X`, `latest`), creates the GitHub release
-with the changelog section as notes, and publishes `@memento/*` to npm with provenance — the
+with the changelog section as notes, and publishes `@jsmemento/*` to npm with provenance — the
 last step needs the `NPM_TOKEN` repository secret (an npm automation token of an account
-that may publish to the `@memento` scope) and is skipped with a warning without it.
+that may publish to the `@jsmemento` scope) and is skipped with a warning without it.

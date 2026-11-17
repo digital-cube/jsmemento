@@ -7,7 +7,7 @@ import {
   type StreamFilter,
   type StreamMessage,
   streamEvent,
-} from "@memento/core";
+} from "@jsmemento/core";
 import type { FastifyBaseLogger } from "fastify";
 import type { TenantContext } from "../context.js";
 import type { PublishedEvent } from "../publisher.js";

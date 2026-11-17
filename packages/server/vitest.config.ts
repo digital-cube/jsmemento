@@ -32,8 +32,8 @@ export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: {
     alias: {
-      "@memento/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)),
-      "@memento/lookups": fileURLToPath(new URL("../lookups/src/index.ts", import.meta.url)),
+      "@jsmemento/core": fileURLToPath(new URL("../core/src/index.ts", import.meta.url)),
+      "@jsmemento/lookups": fileURLToPath(new URL("../lookups/src/index.ts", import.meta.url)),
     },
   },
   test: {

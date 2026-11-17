@@ -1,4 +1,4 @@
-# @memento/website
+# @jsmemento/website
 
 The website of memento: **memento-service.org** (stage: <https://stage.memento-service.org>).
 Astro + Starlight, MDX content under `src/content/docs` (the sidebar follows the directory
@@ -12,12 +12,12 @@ From the repository root (Node 24, pnpm from `packageManager`):
 
 ```sh
 pnpm install
-pnpm --filter @memento/website gen         # the generated pages (below); dev, build and typecheck run it first
-pnpm --filter @memento/website dev         # http://localhost:4321
-pnpm --filter @memento/website build       # apps/website/dist; fails on a broken internal link
-pnpm --filter @memento/website preview     # serves dist/
-pnpm --filter @memento/website typecheck   # gen + astro check + check:snippets (also in the root `pnpm typecheck`)
-pnpm --filter @memento/website test        # test/*.test.mjs (node --test): src/build-info.mjs, offline
+pnpm --filter @jsmemento/website gen         # the generated pages (below); dev, build and typecheck run it first
+pnpm --filter @jsmemento/website dev         # http://localhost:4321
+pnpm --filter @jsmemento/website build       # apps/website/dist; fails on a broken internal link
+pnpm --filter @jsmemento/website preview     # serves dist/
+pnpm --filter @jsmemento/website typecheck   # gen + astro check + check:snippets (also in the root `pnpm typecheck`)
+pnpm --filter @jsmemento/website test        # test/*.test.mjs (node --test): src/build-info.mjs, offline
 ```
 
 `.astro` and `.mdx` files are not linted by Biome (the root `biome.json` skips them); the rest
@@ -77,7 +77,7 @@ key made there); a `*.out.txt` is what the step printed then.
 ### `npm run capture`: the recorded requests and answers
 
 ```sh
-MEMENTO_API_KEY=mk_… pnpm --filter @memento/website capture
+MEMENTO_API_KEY=mk_… pnpm --filter @jsmemento/website capture
 ```
 
 `scripts/capture.mjs` opens `/ws` for `user/42`, pushes `snippets/wire/push.json`, records the
@@ -92,8 +92,8 @@ changes, then commit the files.
 ### `npm run shots`: the examples site's screenshots
 
 ```sh
-pnpm --filter @memento/website exec playwright install chromium   # once
-pnpm --filter @memento/website shots                               # or: shots -- chat tail
+pnpm --filter @jsmemento/website exec playwright install chromium   # once
+pnpm --filter @jsmemento/website shots                               # or: shots -- chat tail
 ```
 
 `scripts/shots.mjs` (Playwright + sharp) opens each of the eight example pages on `EXAMPLE_URL`
@@ -101,7 +101,7 @@ pnpm --filter @memento/website shots                               # or: shots -
 `src/assets/examples/<page>-light.webp`. Commit the webp files; the build only reads them.
 The Examples pages show the same files through `<ExampleShot name="<page>">`. **Dark:** the
 examples site follows `@jsudc/react`'s theme (`html.dark` from localStorage
-`udc-theme`, which the script sets), but `@memento/ui-shell` has no dark tokens yet, so the
+`udc-theme`, which the script sets), but `@jsmemento/ui-shell` has no dark tokens yet, so the
 script takes the light theme only and the home page shows it in both of its own themes. Add
 `"dark"` to `THEMES` once the examples site has a dark theme; `Examples.astro` and `ExampleShot.astro` pick up
 `<page>-dark.webp` by themselves.
@@ -112,8 +112,8 @@ script takes the light theme only and the home page shows it in both of its own 
 `ts`/`js` fence anywhere but the generated pages, which are `docs/` itself), on a client program
 without its page, on a `snippets/wire` file that is not JSON or a request without its
 recorded answer, and runs `tsc -p snippets`: `server.ts`, `tail.ts` and `App.tsx` compile
-against the workspace's `@memento/server`, `@memento/core` and `@memento/react`, from their
-sources (`@memento/source`), so a renamed option breaks the check, not the reader.
+against the workspace's `@jsmemento/server`, `@jsmemento/core` and `@jsmemento/react`, from their
+sources (`@jsmemento/source`), so a renamed option breaks the check, not the reader.
 
 ## Build variables
 
@@ -157,8 +157,8 @@ attribute and UTC in the text.
 | `SITE_NPM_TIMEOUT_MS` | how long one registry request may take | `5000` |
 
 ```sh
-SITE_NPM=off pnpm --filter @memento/website build                              # offline, no warning
-SITE_NPM=test/fixtures/npm-published.json pnpm --filter @memento/website dev   # published dates, one package behind, one not on npm
+SITE_NPM=off pnpm --filter @jsmemento/website build                              # offline, no warning
+SITE_NPM=test/fixtures/npm-published.json pnpm --filter @jsmemento/website dev   # published dates, one package behind, one not on npm
 ```
 
 CI's *Website build* job builds with `SITE_NPM=off`. Everything is read when the site is built,

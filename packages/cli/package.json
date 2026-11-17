@@ -1,5 +1,5 @@
 {
-  "name": "@memento/cli",
+  "name": "@jsmemento/cli",
   "version": "1.0.0",
   "description": "JSMemento CLI: setup, tenants, API keys, templates, chats, lookups and a live tail.",
   "license": "MIT",
@@ -19,7 +19,7 @@
   },
   "exports": {
     ".": {
-      "@memento/source": "./src/index.ts",
+      "@jsmemento/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "tsx --conditions=@memento/source src/main.ts",
+    "start": "tsx --conditions=@jsmemento/source src/main.ts",
     "test": "vitest run",
     "test:pg": "MEMENTO_TEST_DIALECT=postgres vitest run",
     "test:sqlite": "MEMENTO_TEST_DIALECT=sqlite vitest run",
@@ -38,9 +38,9 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^8.7.5",
-    "@memento/core": "workspace:*",
-    "@memento/lookups": "workspace:*",
-    "@memento/server": "workspace:*",
+    "@jsmemento/core": "workspace:*",
+    "@jsmemento/lookups": "workspace:*",
+    "@jsmemento/server": "workspace:*",
     "chalk": "^6.0.1",
     "commander": "^15.0.0",
     "ora": "^9.4.1"

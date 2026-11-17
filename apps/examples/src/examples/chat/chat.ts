@@ -1,4 +1,4 @@
-import { CHAT_EVENT_TYPES, type Chat, MementoApiError, type MementoClient } from "@memento/core";
+import { CHAT_EVENT_TYPES, type Chat, MementoApiError, type MementoClient } from "@jsmemento/core";
 
 /**
  * The room `memento simulate` creates and talks in (`ROOM_ID` / `ROOM_FOUNDERS` of

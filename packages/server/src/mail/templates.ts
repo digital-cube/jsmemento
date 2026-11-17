@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LookupRegistry } from "@memento/lookups";
+import { LookupRegistry } from "@jsmemento/lookups";
 import { TemplateEngine } from "../templates/engine.js";
 import type { MailMessage } from "./mailer.js";
 

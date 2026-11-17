@@ -1,4 +1,4 @@
-import { ok } from "@memento/core";
+import { ok } from "@jsmemento/core";
 import type { FastifyPluginAsync } from "fastify";
 import type { RouteDeps } from "../app.js";
 import { entityHistory } from "../services/events.js";

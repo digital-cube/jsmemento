@@ -14,8 +14,8 @@
  *      and every request body `<name>.json` has the answer `<name>.out.json` scripts/capture.mjs
  *      recorded for it;
  *   3. `tsc -p snippets`: the embedded server, the stream client and the React app compile
- *      against the workspace's @memento/server, @memento/core and @memento/react (their
- *      sources, through the `@memento/source` condition), so a renamed option fails here.
+ *      against the workspace's @jsmemento/server, @jsmemento/core and @jsmemento/react (their
+ *      sources, through the `@jsmemento/source` condition), so a renamed option fails here.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";

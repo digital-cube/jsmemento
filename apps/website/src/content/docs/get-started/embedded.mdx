@@ -27,9 +27,9 @@ tables sit next to yours, or a SQLite file next to the application.
 
    <Code code={install} lang="sh" title="Terminal" />
 
-   `@memento/server` brings Fastify's WebSocket, cookie and static plugins, Drizzle and `pg`
+   `@jsmemento/server` brings Fastify's WebSocket, cookie and static plugins, Drizzle and `pg`
    (SQLite is Node's built-in `node:sqlite`, nothing to install);
-   `@memento/cli` is the `memento` command; `@memento/core` is the protocol and its clients.
+   `@jsmemento/cli` is the `memento` command; `@jsmemento/core` is the protocol and its clients.
 
 2. The server, next to whatever your app already serves:
 
@@ -39,7 +39,7 @@ tables sit next to yours, or a SQLite file next to the application.
      `postgresql://…` for PostgreSQL. `connect()` takes the driver from the URL; the rest of
      the code is the same for both.
    - `runMigrations` applies memento's migrations for that database, which ship inside
-     `@memento/server`. Run it on every start: what is applied already is skipped, and on
+     `@jsmemento/server`. Run it on every start: what is applied already is skipped, and on
      SQLite the first start creates the file. Every table is `memento_*`.
    - `LocalBus` is both the `publisher` (where stored events go) and the stream's `feed` (where
      `/ws` takes them from), in memory. With several processes on PostgreSQL, give each a
@@ -50,8 +50,8 @@ tables sit next to yours, or a SQLite file next to the application.
      own UDC collections next to memento's, or `false`), `menu`, `demoApiKey` and `accounts`
      (the self-service routes). Their meaning is in the `MementoPluginOptions` type.
 
-3. Something to follow the stream with. `MementoStream` from `@memento/core` is the client
-   `@memento/react` and `memento tail` use: it sends the key as a WebSocket subprotocol, waits
+3. Something to follow the stream with. `MementoStream` from `@jsmemento/core` is the client
+   `@jsmemento/react` and `memento tail` use: it sends the key as a WebSocket subprotocol, waits
    for the welcome, and reconnects with backoff:
 
    <Code code={tailTs} lang="ts" title="tail.ts" />
@@ -93,7 +93,7 @@ messages and close codes in
 
 ## Next
 
-- Draw the events in React: `MementoProvider` and `MementoDataView` from `@memento/react`, the
+- Draw the events in React: `MementoProvider` and `MementoDataView` from `@jsmemento/react`, the
   **React** tab of [Start where you are](/#start).
 - The standalone server is this plugin too: `packages/server/src/server.ts` adds the optional
   Redis, the lookups, the menu and the accounts from environment variables

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import fastifyStatic from "@fastify/static";
-import { ERROR_CODES, fail } from "@memento/core";
+import { ERROR_CODES, fail } from "@jsmemento/core";
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
 
 export interface UiOptions {

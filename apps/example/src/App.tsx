@@ -4,7 +4,7 @@ import {
   MementoProvider,
   MementoSearch,
   useMemento,
-} from "@memento/react";
+} from "@jsmemento/react";
 import { type FormEvent, useState } from "react";
 
 const KEY_STORAGE = "memento-example:api-key";

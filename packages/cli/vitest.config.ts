@@ -32,9 +32,9 @@ export default defineConfig({
   // Test workspace packages from source, without a build step.
   resolve: {
     alias: {
-      "@memento/core": src("../core/src/index.ts"),
-      "@memento/lookups": src("../lookups/src/index.ts"),
-      "@memento/server": src("../server/src/index.ts"),
+      "@jsmemento/core": src("../core/src/index.ts"),
+      "@jsmemento/lookups": src("../lookups/src/index.ts"),
+      "@jsmemento/server": src("../server/src/index.ts"),
     },
   },
   test: {

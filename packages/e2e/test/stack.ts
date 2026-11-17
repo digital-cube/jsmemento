@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
-import { loadConfig } from "@memento/server";
+import { loadConfig } from "@jsmemento/server";
 import type { TestProject } from "vitest/node";
 
 /**

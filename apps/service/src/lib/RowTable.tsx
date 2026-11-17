@@ -1,8 +1,8 @@
+import { MoreRows } from "@jsmemento/ui-shell";
 import type { Row } from "@jsudc/core";
 import { type RendererDefinition, type RendererProps, useI18n } from "@jsudc/react";
 import { Pager, tableRenderer } from "@jsudc/react/table";
 import { Spinner } from "@jsudc/react/ui";
-import { MoreRows } from "@memento/ui-shell";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { ComponentType, KeyboardEvent, ReactNode } from "react";
 

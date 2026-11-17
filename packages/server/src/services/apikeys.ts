@@ -7,7 +7,7 @@ import {
   parseScopes,
   type Scope,
   timingSafeEqual,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { TenantContext } from "../context.js";
 import type { Database } from "../db/index.js";

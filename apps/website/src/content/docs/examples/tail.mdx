@@ -28,7 +28,7 @@ memento simulate / cpu-monitor ──POST /events──▶ memento ──ws /mem
 
 ## The stream's own client
 
-`MementoStream` from `@memento/core` connects — the key as the subprotocol `bearer.<key>` next to
+`MementoStream` from `@jsmemento/core` connects — the key as the subprotocol `bearer.<key>` next to
 `memento.v1`, never in the URL — waits for the welcome and reconnects with backoff. The page
 hands it a `WebSocket` that listens in on the socket it opens, so it sees the raw text of every
 frame, not only the events `MementoStream` passes on. Two frames as the stream sends them, a

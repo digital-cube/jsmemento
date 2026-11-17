@@ -1,15 +1,5 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Row } from "@jsudc/core";
-import { UdcClient } from "@jsudc/core/client";
-import {
-  createUdcQueryClient,
-  FALLBACK_ICON,
-  LUCIDE_ICONS,
-  resolveIcon,
-  UdcI18nProvider,
-  UdcProvider,
-} from "@jsudc/react";
 import {
   activeLeaf,
   buildMenu,
@@ -22,7 +12,17 @@ import {
   saveMenuExpanded,
   visibleItems,
   withOpen,
-} from "@memento/ui-shell";
+} from "@jsmemento/ui-shell";
+import type { Row } from "@jsudc/core";
+import { UdcClient } from "@jsudc/core/client";
+import {
+  createUdcQueryClient,
+  FALLBACK_ICON,
+  LUCIDE_ICONS,
+  resolveIcon,
+  UdcI18nProvider,
+  UdcProvider,
+} from "@jsudc/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Circle, Kanban } from "lucide-react";

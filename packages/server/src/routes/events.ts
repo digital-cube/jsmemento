@@ -1,4 +1,4 @@
-import { FilterSchema, LocaleSchema, ok } from "@memento/core";
+import { FilterSchema, LocaleSchema, ok } from "@jsmemento/core";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { RouteDeps } from "../app.js";

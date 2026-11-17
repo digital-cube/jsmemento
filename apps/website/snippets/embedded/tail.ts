@@ -1,4 +1,4 @@
-import { MementoStream } from "@memento/core";
+import { MementoStream } from "@jsmemento/core";
 
 // What happens to user/42 from now on, rendered in Serbian. The key needs the read scope.
 const stream = new MementoStream({

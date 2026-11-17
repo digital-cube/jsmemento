@@ -4,7 +4,7 @@ import {
   ApiKeyUpdateSchema,
   type EventInput,
   type MementoEvent,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { and, count, eq, isNull } from "drizzle-orm";
 import type { LimitsConfig } from "../config.js";
 import { requireTenant } from "../context.js";

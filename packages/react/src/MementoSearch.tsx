@@ -1,4 +1,4 @@
-import { INSTANCE_TYPES, type MementoEvent } from "@memento/core";
+import { INSTANCE_TYPES, type MementoEvent } from "@jsmemento/core";
 import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { EventTable } from "./EventTable.js";
 import type { TimeFormat } from "./format.js";

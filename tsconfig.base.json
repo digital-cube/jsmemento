@@ -17,6 +17,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "customConditions": ["@memento/source"]
+    "customConditions": ["@jsmemento/source"]
   }
 }

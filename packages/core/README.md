@@ -1,4 +1,4 @@
-# @memento/core
+# @jsmemento/core
 
 The JSMemento protocol: Zod schemas and inferred types for events, tenants, API keys, chats and the Filter DSL; `MementoClient` (typed HTTP client) and `MementoStream` (WebSocket client with reconnect).
 

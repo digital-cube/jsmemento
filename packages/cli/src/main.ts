@@ -5,7 +5,7 @@ import {
   type EventPublisher,
   loadConfig,
   RedisPublisher,
-} from "@memento/server";
+} from "@jsmemento/server";
 import { runCli } from "./program.js";
 import { oraSpinner } from "./ui.js";
 

@@ -3,7 +3,7 @@ import {
   MementoStream,
   type StreamFilter,
   type StreamStatus,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { useEffect, useRef, useState } from "react";
 
 /** The dot in the header: green while both the stream and the server are up. */

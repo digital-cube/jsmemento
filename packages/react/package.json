@@ -1,5 +1,5 @@
 {
-  "name": "@memento/react",
+  "name": "@jsmemento/react",
   "version": "1.0.0",
   "description": "JSMemento React UI: provider, live event table, chat and search components.",
   "license": "MIT",
@@ -16,7 +16,7 @@
   ],
   "exports": {
     ".": {
-      "@memento/source": "./src/index.ts",
+      "@jsmemento/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
@@ -33,7 +33,7 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
-    "@memento/core": "workspace:*"
+    "@jsmemento/core": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

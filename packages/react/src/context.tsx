@@ -4,7 +4,7 @@ import {
   type MementoStreamOptions,
   type ReconnectOptions,
   type WebSocketConstructor,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 
 export interface MementoContextValue {

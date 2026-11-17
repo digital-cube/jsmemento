@@ -8,7 +8,7 @@
  *             else the `## [x.y.z] - <date>` heading of CHANGELOG.md for that version (a
  *             checkout without history or tags: a tarball, a shallow clone)
  *   builtAt   the time of the build, UTC (SOURCE_DATE_EPOCH when set)
- *   npm       per published @memento package, what the npm registry has (below)
+ *   npm       per published @jsmemento package, what the npm registry has (below)
  *
  * The registry is asked once per package, in parallel, with a short timeout, and never fails the
  * build. Each package ends in one of three states:

@@ -1,8 +1,8 @@
-import "@memento/react/styles.css";
+import "@jsmemento/react/styles.css";
+import { MementoChat, MementoProvider, useMemento } from "@jsmemento/react";
+import { useLive } from "@jsmemento/ui-shell";
 import { useI18n } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
-import { MementoChat, MementoProvider, useMemento } from "@memento/react";
-import { useLive } from "@memento/ui-shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { useSearchParams } from "react-router";
@@ -20,7 +20,7 @@ import {
 
 /**
  * The Chat example (`/examples/chat`): the room `memento simulate` talks in, shown with
- * `MementoChat` from `@memento/react` as one of its participants (a selector on top), live,
+ * `MementoChat` from `@jsmemento/react` as one of its participants (a selector on top), live,
  * read-only — the demo key may not write, so the composer is disabled.
  */
 export function ChatPage() {

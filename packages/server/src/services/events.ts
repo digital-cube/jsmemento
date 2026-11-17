@@ -14,7 +14,7 @@ import {
   FREE_TEXT_EVENT_TYPES,
   type MementoEvent,
   type PageMeta,
-} from "@memento/core";
+} from "@jsmemento/core";
 import { and, asc, desc, eq, gt, isNull, lt, or, type SQL } from "drizzle-orm";
 import { requireTenant } from "../context.js";
 import { compileFilter } from "../db/filter.js";

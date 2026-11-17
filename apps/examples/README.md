@@ -2,7 +2,7 @@
 
 Every memento example behind one sidebar — the site `examples.stage.memento-service.org`
 serves. A Vite + React 19 app on **`@jsudc/react`**: the sidebar is the **`menu` UDC
-collection** (the repository's [`menu.yaml`](../../menu.yaml), served by `@memento/server`),
+collection** (the repository's [`menu.yaml`](../../menu.yaml), served by `@jsmemento/server`),
 each example is a route, and every list on every page comes from UDC.
 
 ![The examples site: sidebar menu and the live CPU monitor](screenshot.png)
@@ -58,12 +58,12 @@ The page opens the CPU monitor, already **Live**: with no key of its own it asks
 To run against the Docker stack (`docker-compose.yaml`, memento on :3000), start the page with
 `MEMENTO_SERVER=http://localhost:3000 pnpm dev` — or skip Vite: the image serves the built site
 at `http://localhost:3000/` (`MEMENTO_UI_DIR=/app/ui`), same origin as the API. Outside Docker:
-`pnpm --filter @memento/examples build` and start the server with
+`pnpm --filter @jsmemento/examples build` and start the server with
 `MEMENTO_UI_DIR=apps/examples/dist`.
 
 ## The shell
 
-- **Sidebar** (`MenuTree` of `@memento/ui-shell`, `packages/ui-shell/src/MenuTree.tsx`, and
+- **Sidebar** (`MenuTree` of `@jsmemento/ui-shell`, `packages/ui-shell/src/MenuTree.tsx`, and
   `src/shell/menu.ts`, ported from the jsudc example's
   shell): every row of the `menu` collection in one `useUdcAllRows` list, built into a tree;
   the leaf of the current route is highlighted and the way to it opened; what is open is kept in
@@ -129,7 +129,7 @@ memento simulate / cpu-monitor ──POST /events──▶ memento_event
 - **The view**: chart tab first (a line per type, `y` from zero), then the table; an
   `event_type` select filter. The same rows open as a plain table from the sidebar's
   Collections branch (`/udc/activity`).
-- **Window selector** (15 min / 1 h / 6 h / 24 h, `ChartWindow` of `@memento/ui-shell`,
+- **Window selector** (15 min / 1 h / 6 h / 24 h, `ChartWindow` of `@jsmemento/ui-shell`,
   `packages/ui-shell/src/ChartWindow.tsx` and `chart.ts`; `src/examples/chart/chart.ts` re-exports it): writes
   `minute gte <start>` into the data view's `?f=` (it shows as a chip, like the CPU monitor's
   `instance_type`) and the choice into `?w=`; chips the visitor added are kept. The start is
@@ -186,7 +186,7 @@ packages/server/templates/*.hbs ──import.meta.glob(?raw), at build time─�
 
 ## Search
 
-How a search is expressed: **`MementoSearch`** from `@memento/react` on the left, and on the
+How a search is expressed: **`MementoSearch`** from `@jsmemento/react` on the left, and on the
 right, under **What was sent**, the request it made — read off the wire, not rebuilt.
 
 ```
@@ -199,7 +199,7 @@ MementoSearch ──POST /memento/events/query {filter: <Filter DSL>, limit: 100
 
 - **The form is the component's.** Instance type, instance id (exact, or a prefix with `*`:
   `T-1*`), from / to days (*to* inclusive). `MementoSearch` turns them into a Filter DSL tree
-  (`eventQueryToFilter` of `@memento/core`: `eq` / `prefix` per field, `occurred_at gte` the
+  (`eventQueryToFilter` of `@jsmemento/core`: `eq` / `prefix` per field, `occurred_at gte` the
   first day and `lt` the day after the last) and sends it to `POST /memento/events/query`.
   Results are its table; the Instance cell is a chip that links to the instance's
   [timeline](#entity-timeline). While the range has no end the results stay live (the stream).
@@ -238,7 +238,7 @@ memento simulate / cpu-monitor ──POST /events──▶ memento ──ws /mem
                                                           ──── memento.welcome · memento.event.new · memento.pong ──▶
 ```
 
-- **The stream's own client.** `MementoStream` from `@memento/core` connects (the key as the
+- **The stream's own client.** `MementoStream` from `@jsmemento/core` connects (the key as the
   subprotocol `bearer.<key>` next to `memento.v1`, never in the URL), waits for the welcome and
   reconnects with backoff. The page listens in on the socket it opens (`tapWebSocket`,
   `src/examples/tail/tail.ts`), so it sees the raw text of every frame, not only the events
@@ -274,7 +274,7 @@ memento simulate / cpu-monitor ──POST /events──▶ memento ──ws /mem
 ## Chat
 
 `memento simulate` also plays a chat: the team talks in one room, and the page shows that room
-with **`MementoChat`** from `@memento/react` — the component an app would embed — read-only,
+with **`MementoChat`** from `@jsmemento/react` — the component an app would embed — read-only,
 live.
 
 ```
@@ -332,14 +332,14 @@ memento simulate ──POST /events──▶ memento ──POST /udc/list {colle
 - **Rows from UDC.** `useUdcCollection` (`@jsudc/react`) over `events`, filter
   `event_type neq CPU_LOAD`, sorted `occurred_at desc`, infinite paging by offset (30 a page; the
   next page loads when the end of the list scrolls into view, or on **Older events**). Each line:
-  time, the actor's initials avatar (`initials` / `hue` of `@memento/react`) and id, the
+  time, the actor's initials avatar (`initials` / `hue` of `@jsmemento/react`) and id, the
   **rendered** text, the instance as a chip (`ticket/T-17`) that links to its
   [timeline](#entity-timeline), the event type as a muted tag.
 - **The language is the header's.** The app's `UdcClient` sends `X-Memento-Locale: <en|sr>` with
   every request; memento renders `rendered` in it (docs/TEMPLATES.md, "When it happens"). Switching
   EN / SR invalidates every UDC list, so the feed comes back in the other language without a
   reload. The choice is kept in `localStorage` (`udc-locale`).
-- **Live.** `useLive` (`@memento/ui-shell`, `packages/ui-shell/src/live.ts`) follows the whole
+- **Live.** `useLive` (`@jsmemento/ui-shell`, `packages/ui-shell/src/live.ts`) follows the whole
   stream; every event that is not a `CPU_LOAD` refetches the feed (at most once per 250 ms,
   `REFRESH_THROTTLE_MS` in `packages/ui-shell/src/refresh.ts`). New lines fade in.
 - **Empty** (no simulator running): one sentence on what pushes these events and the compose
@@ -410,9 +410,9 @@ How it is wired:
   `httpUrl: "/memento"` and `Authorization: Bearer <key>`, so `UdcDataView` calls
   `POST /memento/udc/describe` and `POST /memento/udc/list`. Filtering, sorting and paging are
   the jsudc filter DSL; there is no hand-written fetch of list data.
-- **The stream only says "refetch".** `useLive` (`@memento/ui-shell`, `packages/ui-shell/src/live.ts`) subscribes
+- **The stream only says "refetch".** `useLive` (`@jsmemento/ui-shell`, `packages/ui-shell/src/live.ts`) subscribes
   to `/memento/ws?event_type=CPU_LOAD&instance_type=server` with `MementoStream` from
-  `@memento/core`, and every event invalidates the collection's list queries (at most one
+  `@jsmemento/core`, and every event invalidates the collection's list queries (at most one
   refetch per 250 ms).
 - **The filter is the data view's own.** `src/settings.ts` writes the `instance_type` condition
   into the `?f=` parameter `UdcDataView` reads its filter tree from.

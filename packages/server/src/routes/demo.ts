@@ -1,4 +1,4 @@
-import { ok } from "@memento/core";
+import { ok } from "@jsmemento/core";
 import type { FastifyPluginAsync } from "fastify";
 import type { DemoKey } from "../demo.js";
 import { MementoError } from "../errors.js";

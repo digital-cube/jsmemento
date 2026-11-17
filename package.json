@@ -2,7 +2,7 @@
   "name": "jsmemento",
   "private": true,
   "type": "module",
-  "description": "JSMemento — self-hosted activity ledger (monorepo: @memento/core, @memento/server, @memento/cli)",
+  "description": "JSMemento — self-hosted activity ledger (monorepo: @jsmemento/core, @jsmemento/server, @jsmemento/cli)",
   "license": "MIT",
   "packageManager": "pnpm@11.21.0",
   "engines": {
@@ -18,12 +18,12 @@
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "dev": "pnpm --filter @memento/server dev",
+    "dev": "pnpm --filter @jsmemento/server dev",
     "db:up": "docker compose up -d postgres redis",
-    "db:generate": "pnpm --filter @memento/server db:generate",
-    "db:migrate": "pnpm --filter @memento/server db:migrate",
-    "db:migrate:test": "pnpm --filter @memento/server db:migrate:test",
-    "memento": "pnpm --filter @memento/cli exec tsx src/main.ts"
+    "db:generate": "pnpm --filter @jsmemento/server db:generate",
+    "db:migrate": "pnpm --filter @jsmemento/server db:migrate",
+    "db:migrate:test": "pnpm --filter @jsmemento/server db:migrate:test",
+    "memento": "pnpm --filter @jsmemento/cli exec tsx src/main.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",

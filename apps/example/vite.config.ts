@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     // Use the workspace packages' TypeScript sources: no build step before `pnpm dev`.
-    resolve: { conditions: ["@memento/source", ...defaultClientConditions] },
+    resolve: { conditions: ["@jsmemento/source", ...defaultClientConditions] },
     server: {
       port: 5173,
       // Same origin for the browser: the API and the WebSocket stream go through the proxy.

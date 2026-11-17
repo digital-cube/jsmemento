@@ -1,8 +1,8 @@
 {
-  "name": "@memento/example",
+  "name": "@jsmemento/example",
   "version": "1.0.0",
   "private": true,
-  "description": "JSMemento demo: a Vite + React app on @memento/react, proxied to a local memento server.",
+  "description": "JSMemento demo: a Vite + React app on @jsmemento/react, proxied to a local memento server.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@memento/react": "workspace:*",
+    "@jsmemento/react": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

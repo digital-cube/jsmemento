@@ -1,7 +1,7 @@
+import { hue, initials } from "@jsmemento/react";
+import { type Health, MoreRows, useLive, useThrottledRefresh } from "@jsmemento/ui-shell";
 import { intlLocaleOf, useI18n, useUdcCollection } from "@jsudc/react";
 import { Spinner } from "@jsudc/react/ui";
-import { hue, initials } from "@memento/react";
-import { type Health, MoreRows, useLive, useThrottledRefresh } from "@memento/ui-shell";
 import { type CSSProperties, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { useSettings } from "../../connection.js";
