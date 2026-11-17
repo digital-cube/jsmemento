@@ -36,6 +36,14 @@ share one version.
 - The website's `EXAMPLE_URL` and `SERVICE_URL` default to production,
   `https://examples.memento-service.org` and `https://service.memento-service.org`;
   `deploy/website/stage.sh` keeps passing stage's.
+- **npm releases through Trusted Publishing (OIDC).** The `npm` job of
+  `.github/workflows/release.yml` publishes `@jsmemento/*` with the workflow's OIDC identity
+  instead of the `NPM_TOKEN` secret, which npm revokes in January 2027. The token stays as a
+  fallback until the first release through OIDC has succeeded, with a warning when it is used.
+  Packages get a provenance statement again: pnpm 11 ignores `NPM_CONFIG_PROVENANCE`, so 1.1.0
+  went out without one, and the job now passes `--provenance`. A new last step checks the
+  registry for every package at the release's version, because 1.1.0's job was green while npm
+  had only staged the packages.
 
 ### Fixed
 

@@ -115,6 +115,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
 
+  # npm through Trusted Publishing (https://docs.npmjs.com/trusted-publishers): each of the five
+  # public packages has a trusted publisher on npmjs.com for digital-cube/jsmemento, workflow
+  # `release.yml`, no environment. pnpm (11.21, from `packageManager`) exchanges this job's OIDC
+  # token for a short-lived publish token per package — no stored secret — and the provenance
+  # statement is signed with the same identity. Re-runnable: `pnpm -r publish` skips every
+  # package whose version is already on the registry, and the last step checks the registry.
   npm:
     name: Publish @jsmemento/* to npm
     if: github.ref_type == 'tag'
@@ -122,24 +128,54 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      id-token: write # trusted publishing and provenance
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: pnpm
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false # npm's advice: no dependency cache in a release build
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build --filter="./packages/*"
-      - name: Publish (skipped without the NPM_TOKEN secret)
+      # NPM_TOKEN is only a FALLBACK until the first release through OIDC has succeeded: pnpm tries
+      # OIDC first and uses the token only when the exchange fails ("Skipped OIDC: …", turned into
+      # a warning below). npm revokes the token in January 2027; after a release published through
+      # OIDC, delete the NPM_TOKEN secret and this env line.
+      - name: Publish (trusted publishing, NPM_TOKEN as fallback)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::warning::NPM_TOKEN is not set: @jsmemento/* packages were not published"
-            exit 0
+          set -o pipefail
+          pnpm -r --filter "./packages/*" publish --access public --provenance --no-git-checks 2>&1 \
+            | tee "$RUNNER_TEMP/publish.log"
+          if grep -q "Skipped OIDC" "$RUNNER_TEMP/publish.log"; then
+            echo "::warning::Trusted publishing did not work for at least one package (see 'Skipped OIDC' above) — it was published with NPM_TOKEN, or not at all. Check the package's trusted publisher on npmjs.com: digital-cube / jsmemento / release.yml, no environment, 'Allow npm publish'."
           fi
-          pnpm -r --filter "./packages/*" publish --access public --no-git-checks
+      # A green publish is not proof: 1.1.0's job was green while npm had only staged the packages.
+      - name: Every public package is installable at this version
+        if: ${{ !cancelled() }} # also after a failed publish: says which packages made it
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          missing=0
+          for manifest in packages/*/package.json; do
+            name=$(node -p "const p = require('./$manifest'); p.private ? '' : p.name")
+            [ -n "$name" ] || continue
+            got=""
+            for _ in 1 2 3 4 5 6; do
+              got=$(npm view "$name@$VERSION" version --prefer-online 2>/dev/null || true)
+              [ "$got" = "$VERSION" ] && break
+              sleep 10
+            done
+            if [ "$got" != "$VERSION" ]; then
+              echo "::error::$name@$VERSION is not on npm. If npmjs.com lists it under Staged packages, approve it there (2FA) and re-run this job; otherwise read the Publish step above."
+              missing=1
+            elif [ -n "$(npm view "$name@$VERSION" dist.attestations.url 2>/dev/null)" ]; then
+              echo "$name@$VERSION is on npm, with provenance"
+            else
+              echo "::warning::$name@$VERSION is on npm without a provenance statement"
+            fi
+          done
+          exit "$missing"

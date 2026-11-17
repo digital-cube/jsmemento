@@ -174,6 +174,30 @@ All packages and the image share one version.
 
 The *Release* workflow then checks that the tag equals the package versions, pushes
 `ghcr.io/digital-cube/jsmemento:X.Y.Z` (and `X.Y`, `X`, `latest`), creates the GitHub release
-with the changelog section as notes, and publishes `@jsmemento/*` to npm with provenance — the
-last step needs the `NPM_TOKEN` repository secret (an npm automation token of an account
-that may publish to the `@jsmemento` scope) and is skipped with a warning without it.
+with the changelog section as notes, and publishes `@jsmemento/*` to npm with provenance.
+
+### npm: Trusted Publishing
+
+The `npm` job publishes through [Trusted Publishing](https://docs.npmjs.com/trusted-publishers):
+pnpm exchanges the job's OIDC token for a short-lived publish token per package. Nothing is
+stored in the repository. Each of the five public packages (`core`, `lookups`, `server`,
+`react`, `cli`) needs a trusted publisher on npmjs.com (package → **Settings** → **Trusted
+Publisher** → GitHub Actions):
+
+- organisation `digital-cube`, repository `jsmemento`, workflow `release.yml`, no environment;
+- **Allow npm publish** ticked. Without it, npm only stages the version, and it stays hidden
+  until a maintainer approves it with 2FA (npmjs.com → *Staged packages*).
+
+A **new** configuration expires if it hasn't published successfully within 2 days, so create it
+shortly before the tag. Once it has published, it stays.
+
+The job is re-runnable. `pnpm -r publish` skips every package whose version is already on the
+registry, and the job's last step fails, naming the package, when a version is not
+installable. A staged version is the usual cause: approve it, then re-run the job. A
+`Skipped OIDC` warning in the publish step means a trusted publisher's fields don't match the
+workflow. Fix them on npmjs.com and re-run.
+
+Until the first release through OIDC has succeeded, the `NPM_TOKEN` repository secret stays as
+a fallback; pnpm uses it only when the OIDC exchange fails. npm revokes that token in January
+2027. After a release published through OIDC, delete the secret and the `NODE_AUTH_TOKEN` line
+of the publish step.
