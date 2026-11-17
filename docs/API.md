@@ -391,11 +391,13 @@ registry.register({ name: "my_keys", source, view, auth: "session" });
 
 The signed-in user's keys, always of the session's tenant; an API key as credential is `401`,
 a key of another tenant (or a deleted one) `404`. Listing is the `api_keys` collection below.
-Writes need `Content-Type: application/json` (an empty body is `{}`).
+Writes need `Content-Type: application/json` (an empty body is `{}`). Creating a key needs a
+verified address: until the user opens the link from the verification mail, `POST /keys` is
+`403 forbidden` ("verify your address first") and no key is made.
 
 | route | body | answer |
 |---|---|---|
-| `POST /keys` | `{name, scopes: ("read"\|"write")[] (non-empty), expires_at?, daily_limit?}` | `201 {api_key, key}` — `key` is the plaintext `mk_…`, returned **this once** and never logged; `409 limit_reached` with `{max_keys}` when the tenant holds `max_keys ?? MEMENTO_DEFAULT_MAX_KEYS` live (not deleted, not revoked) keys |
+| `POST /keys` | `{name, scopes: ("read"\|"write")[] (non-empty), expires_at?, daily_limit?}` | `201 {api_key, key}` — `key` is the plaintext `mk_…`, returned **this once** and never logged; `403 forbidden` while the address is unverified; `409 limit_reached` with `{max_keys}` when the tenant holds `max_keys ?? MEMENTO_DEFAULT_MAX_KEYS` live (not deleted, not revoked) keys |
 | `PATCH /keys/:id` | `{name?, daily_limit?}` | `200 {api_key}`; `daily_limit` ≥ 1 and ≤ `MEMENTO_MAX_DAILY_LIMIT` when set (else `422`), `null` → the default |
 | `POST /keys/:id/disable` | — | `200 {api_key}` with `status: "disabled"`: paused, fails auth like a revoked key |
 | `POST /keys/:id/enable` | — | `200 {api_key}`: resumed |

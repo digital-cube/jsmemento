@@ -9,7 +9,7 @@ import { apiKeys, apiKeyUsage, events, tenants } from "../src/db/schema.js";
 import { MemoryMailer } from "../src/mail/mailer.js";
 import { MemoryPublisher } from "../src/publisher.js";
 import { quotaKey } from "../src/quota.js";
-import { setUserAdmin } from "../src/services/accounts.js";
+import { markUserVerified, setUserAdmin } from "../src/services/accounts.js";
 import { authenticateApiKey, createApiKey, revokeApiKey } from "../src/services/apikeys.js";
 import { applyRetention } from "../src/services/retention.js";
 import { createTenant } from "../src/services/tenants.js";
@@ -49,8 +49,11 @@ afterAll(async () => {
 const cookieOf = (response: LightMyRequestResponse) =>
   response.cookies.find((c) => c.name === "memento_session")?.value as string;
 
-/** Registers a user; returns the session cookie and the tenant slug. */
-async function register(email = "ana@example.com", name = "Ana") {
+/**
+ * Registers a user and marks the address verified (a key needs one) unless `verified: false`;
+ * returns the session cookie and the tenant slug.
+ */
+async function register(email = "ana@example.com", name = "Ana", { verified = true } = {}) {
   const response = await fx.app.inject({
     method: "POST",
     url: "/memento/auth/register",
@@ -58,6 +61,7 @@ async function register(email = "ana@example.com", name = "Ana") {
     payload: JSON.stringify({ email, password: "correct horse battery", name, terms: true }),
   });
   expect(response.statusCode, response.body).toBe(201);
+  if (verified) await markUserVerified(handle.db, email);
   return { cookie: cookieOf(response), tenant: response.json().data.tenant.slug as string };
 }
 
@@ -329,6 +333,34 @@ describe("key routes", () => {
       payload: JSON.stringify({ name: "x", scopes: ["read"] }),
     });
     expect(withKey.statusCode).toBe(401);
+  });
+
+  it("refuses a key to an unverified address with 403 and creates no row", async () => {
+    const { cookie, tenant } = await register("ana@example.com", "Ana", { verified: false });
+    const keysOf = async () => {
+      const [row] = await handle.db
+        .select({ n: count() })
+        .from(apiKeys)
+        .innerJoin(tenants, eq(apiKeys.tenantId, tenants.id))
+        .where(eq(tenants.slug, tenant));
+      return row?.n ?? 0;
+    };
+    const refused = await session(cookie, "POST", "/keys", {
+      name: "website",
+      scopes: ["read", "write"],
+    });
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json().error).toMatchObject({ code: "forbidden" });
+    expect(refused.json().error.message).toMatch(/verify your address first/);
+    expect(await keysOf()).toBe(0);
+
+    await markUserVerified(handle.db, "ana@example.com");
+    const created = await session(cookie, "POST", "/keys", {
+      name: "website",
+      scopes: ["read", "write"],
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    expect(await keysOf()).toBe(1);
   });
 
   it("refuses a key past max_keys with 409 limit_reached; deleted keys do not count", async () => {

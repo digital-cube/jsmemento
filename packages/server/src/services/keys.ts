@@ -9,7 +9,7 @@ import { and, count, eq, isNull } from "drizzle-orm";
 import type { LimitsConfig } from "../config.js";
 import { requireTenant } from "../context.js";
 import type { Database } from "../db/index.js";
-import { type ApiKeyRow, apiKeys, tenants } from "../db/schema.js";
+import { type ApiKeyRow, apiKeys, tenants, users } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 import type { QuotaGuard } from "../quota.js";
 import { parseInput } from "./accounts.js";
@@ -64,11 +64,16 @@ export class KeyService {
     return row;
   }
 
-  /** `POST /keys`: `limit_reached` when the tenant already holds `max_keys` live keys. */
+  /**
+   * `POST /keys`: `forbidden` while the session user's address is unverified (a key is a
+   * credential: an unconfirmed — possibly someone else's — address gets none), and
+   * `limit_reached` when the tenant already holds `max_keys` live keys.
+   */
   async create(body: unknown): Promise<{ apiKey: ApiKey; key: string }> {
-    const input = parseInput(ApiKeyCreateSchema, body);
     const context = requireTenant();
     const { db, limits } = this.options;
+    await this.requireVerified(context.userId);
+    const input = parseInput(ApiKeyCreateSchema, body);
     this.checkLimit(input.daily_limit);
     const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, context.tenantId) });
     if (!tenant) throw new MementoError("not_found", "tenant not found");
@@ -138,6 +143,19 @@ export class KeyService {
     const row = await this.get(id);
     const updated = await this.save(row.id, { deletedAt: new Date() });
     await this.lifecycle(updated, APIKEY_EVENT_TYPES.deleted);
+  }
+
+  /** The session user exists and has confirmed their address; `forbidden` otherwise. */
+  private async requireVerified(userId: string | undefined): Promise<void> {
+    const user = userId
+      ? await this.options.db.query.users.findFirst({ where: eq(users.id, userId) })
+      : undefined;
+    if (!user?.emailVerifiedAt) {
+      throw new MementoError(
+        "forbidden",
+        "verify your address first: open the link we mailed you, then create a key",
+      );
+    }
   }
 
   /** `daily_limit` ≥ 1 and at most `MEMENTO_MAX_DAILY_LIMIT` when one is configured. */
