@@ -52,10 +52,13 @@ jobs:
         run: pnpm lint
       - name: Type check
         run: pnpm typecheck
+      # --log-prefix=none: without turbo's "<package>:<task>: " before every line, Vitest's
+      # `::error file=…` lines reach GitHub, so a failing test shows as an annotation on the run
+      # (readable without a login) instead of only in the job log.
       - name: Unit tests + coverage (≥ 80 % per package)
-        run: pnpm test:coverage
+        run: pnpm test:coverage --log-prefix=none
       - name: E2E (built server ×2, PostgreSQL, Redis)
-        run: pnpm test:e2e
+        run: pnpm test:e2e --log-prefix=none
       - name: Coverage summary
         if: always()
         run: |
