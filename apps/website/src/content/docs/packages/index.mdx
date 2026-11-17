@@ -9,11 +9,9 @@ sidebar:
 import PackageTable from "../../../components/PackageTable.astro";
 
 memento is one monorepo with one version line: the five `@jsmemento/*` packages, the CLI and the
-Docker image share one version and release together. The packages go to npm with the first
-release tag; until it is pushed they install from
-[the repository](https://github.com/digital-cube/jsmemento) (built and packed, as
-[Embedded in Node](/get-started/embedded/) shows), and the image is on GitHub's registry from
-every commit of `main`.
+Docker image share one version and release together. Every release tag (the first: `v1.1.0`)
+puts the packages on npm and the image on GitHub's registry, which also carries the image of
+every commit of `main`; the source is [the repository](https://github.com/digital-cube/jsmemento).
 
 <PackageTable />
 
@@ -21,9 +19,8 @@ every commit of `main`.
   serves the server, the CLI, a browser and React. Its only dependency is `zod`.
 - **`@jsmemento/server`** brings Fastify and its WebSocket, cookie, static and rate-limit plugins,
   Drizzle and `pg`, and `@jsudc/server` for the UDC collections. It runs on PostgreSQL or on a
-  SQLite file through Node's built-in `node:sqlite`, with the migrations of both inside; SQLite is
-  in the changelog's `[Unreleased]` section, so it arrives on npm and in the image with the next
-  release.
+  SQLite file through Node's built-in `node:sqlite`, with the migrations of both inside (SQLite
+  since 1.1.0).
 - **`@jsmemento/react`** keeps React as a peer (`react` and `react-dom` 18 or newer) and ships a
   stylesheet, `@jsmemento/react/styles.css`.
 
@@ -45,7 +42,7 @@ one image, multi-arch (`linux/amd64`, `linux/arm64`), with a build provenance at
 
 | tag | built from |
 | --- | --- |
-| `1.0.0`, `1.0`, `1`, `latest` | the release tag `v1.0.0` — not pushed yet, so these tags do not exist yet |
+| `1.1.0`, `1.1`, `1`, `latest` | the release tag `v1.1.0`, the first tagged release (`latest` always follows the newest tag) |
 | `main`, `edge` | the newest commit on `main` |
 | `sha-<short>` | that commit |
 

@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/ui-shell",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "The shell the examples site and the service site share: menu sidebar, header, locale helpers, live/polling refetch, chart window, feed lines. Consumed as TypeScript source by the apps (Vite).",
   "type": "module",

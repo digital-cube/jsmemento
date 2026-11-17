@@ -13,10 +13,9 @@ Contents: [SQLite or PostgreSQL](#sqlite-or-postgresql) · [Quick start](#quick-
 [The CLI next to the server](#the-cli-next-to-a-running-server) · [Operations](#operations) ·
 [Limits](#limits-and-known-differences) · [Moving between the databases](#moving-between-the-databases)
 
-> SQLite support is in `CHANGELOG.md` `[Unreleased]`. The first release that has it (planned as
-> 1.1.0) publishes `@jsmemento/*` on npm and the image `ghcr.io/digital-cube/jsmemento` with it.
-> Until then, no npm package and no image tag has SQLite: build both from the repository.
-> This guide's runs did exactly that ([below](#installing-before-the-release)).
+> SQLite came with release 1.1.0 (`CHANGELOG.md`): `@jsmemento/*` 1.1.0 on npm and the image
+> `ghcr.io/digital-cube/jsmemento:1.1.0` have it, and so does every later release. To run a
+> commit that is not released yet, build from the repository ([below](#installing-from-a-clone)).
 
 ## SQLite or PostgreSQL
 
@@ -54,17 +53,17 @@ mkdir my-memento && cd my-memento
 npm install @jsmemento/server @jsmemento/cli
 ```
 
-### Installing before the release
+### Installing from a clone
 
-Until the release is on npm, build and pack the packages from a clone, then install the
-tarballs instead. This guide's runs installed them this way:
+For a commit that is not on npm yet, build and pack the packages from a clone, then install the
+tarballs instead:
 
 ```sh
 git clone https://github.com/digital-cube/jsmemento.git && cd jsmemento
 pnpm install && pnpm --filter "@jsmemento/cli..." build
 for p in core lookups server cli; do (cd packages/$p && pnpm pack --pack-destination ../../../memento-tarballs); done
 cd ../my-memento
-npm install ../memento-tarballs/memento-{core,lookups,server,cli}-1.0.0.tgz
+npm install ../memento-tarballs/jsmemento-{core,lookups,server,cli}-1.1.0.tgz
 ```
 
 ### The database URL
@@ -286,7 +285,7 @@ tenant and a key:
 
 ```sh
 mkdir ticket-desk && cd ticket-desk && npm init -y && npm pkg set type=module
-npm install fastify@5 @jsmemento/server     # before the release: the tarballs, as above
+npm install fastify@5 @jsmemento/server
 ```
 
 ```js

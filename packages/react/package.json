@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/react",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "JSMemento React UI: provider, live event table, chat and search components.",
   "license": "MIT",
   "repository": {

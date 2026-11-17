@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "JSMemento CLI: setup, tenants, API keys, templates, chats, lookups and a live tail.",
   "license": "MIT",
   "repository": {

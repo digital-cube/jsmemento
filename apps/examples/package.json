@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/examples",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "JSMemento examples site: a sidebar drawn from the `menu` UDC collection and one page per example (first: the live CPU monitor), on @jsudc/react, served by @jsmemento/server at / and /en/.",
   "type": "module",

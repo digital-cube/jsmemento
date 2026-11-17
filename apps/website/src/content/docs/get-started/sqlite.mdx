@@ -21,13 +21,10 @@ memento runs on PostgreSQL or on a single SQLite file. On SQLite the server need
 local disk, nothing else: no Docker, no database service, no Redis. The driver is Node's
 built-in `node:sqlite`, and the `memento` command line opens the same file directly.
 
-<Aside type="caution" title="Not on npm yet">
-SQLite support is in the changelog's [Unreleased](/packages/changelog/) section; the first
-release with it is planned as 1.1.0, and until then no npm package and no image tag has it.
-Build the packages from a clone and install the
-tarballs (`pnpm install && pnpm --filter "@jsmemento/cli..." build`, then `pnpm pack` in
-`packages/core`, `lookups`, `server` and `cli`), as [Embedded in Node](/get-started/embedded/)
-shows. The commands below were run that way.
+<Aside title="Since 1.1.0">
+SQLite came with release 1.1.0 ([changelog](/packages/changelog/)): the `@jsmemento/*` packages
+on npm and the image `ghcr.io/digital-cube/jsmemento:1.1.0` have it, and so does every later
+release.
 </Aside>
 
 <Steps>

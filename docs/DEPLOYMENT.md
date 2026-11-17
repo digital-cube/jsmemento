@@ -7,12 +7,12 @@ covers what both have in common and the PostgreSQL stack of `docker-compose.yaml
 
 | tag | built from |
 |---|---|
-| `1.0.0`, `1.0`, `1`, `latest` | the release tag `v1.0.0` — not pushed yet, so these tags do not exist yet |
+| `1.1.0`, `1.1`, `1`, `latest` | the release tag `v1.1.0`, the first tagged release (`latest` always follows the newest tag) |
 | `main`, `edge` | the newest commit on `main` |
 | `sha-<short>` | that commit |
 
 Images are multi-arch (`linux/amd64`, `linux/arm64`) and carry a build provenance attestation
-(`gh attestation verify oci://ghcr.io/digital-cube/jsmemento:1.0.0 -R digital-cube/jsmemento`).
+(`gh attestation verify oci://ghcr.io/digital-cube/jsmemento:1.1.0 -R digital-cube/jsmemento`).
 
 ## Quick start: `docker-compose.yaml`
 
@@ -20,11 +20,11 @@ The repository's `docker-compose.yaml` is a production-like stack: memento, Post
 Redis 7, with health checks and named volumes.
 
 ```bash
-# .env next to docker-compose.yaml. MEMENTO_IMAGE defaults to :latest, which the first release
-# tag publishes; until then use the image of main (or build it here with --build).
+# .env next to docker-compose.yaml. MEMENTO_IMAGE defaults to :latest (the newest release tag);
+# pin a release, or use :main for the newest commit (or build it here with --build).
 cat > .env <<'ENV'
 POSTGRES_PASSWORD=change-me
-MEMENTO_IMAGE=ghcr.io/digital-cube/jsmemento:main
+MEMENTO_IMAGE=ghcr.io/digital-cube/jsmemento:1.1.0
 ENV
 
 docker compose -f docker-compose.yaml up -d --wait memento   # + postgres and redis, its dependencies
@@ -60,7 +60,7 @@ full stack.
 
 PostgreSQL and Redis are published on `127.0.0.1` only; set `POSTGRES_BIND` / `REDIS_BIND`
 to change that, or remove their `ports:` when nothing outside the stack needs them.
-`MEMENTO_IMAGE` picks another image (e.g. a pinned `ghcr.io/digital-cube/jsmemento:1.0.0`).
+`MEMENTO_IMAGE` picks another image (e.g. a pinned `ghcr.io/digital-cube/jsmemento:1.1.0`).
 
 Upgrade: `docker compose -f docker-compose.yaml pull memento && docker compose -f docker-compose.yaml up -d`.
 The server applies pending migrations when it starts, under a PostgreSQL advisory lock, so
@@ -158,7 +158,7 @@ docker build -t jsmemento .                         # from the repository root
 docker run -d -p 3000:3000 \
   -e DATABASE_URL=postgresql://user:pass@db:5432/jsmemento \
   -e REDIS_URL=redis://redis:6379/0 \
-  ghcr.io/digital-cube/jsmemento:1.0.0
+  ghcr.io/digital-cube/jsmemento:1.1.0
 ```
 
 - Base `node:24-bookworm-slim` (Node 24 LTS); runs as the unprivileged `node` user.

@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/lookups",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "JSMemento lookups: controlled vocabularies from YAML, CSV translations, candidate recording and TypeScript/Zod codegen.",
   "license": "MIT",
   "repository": {

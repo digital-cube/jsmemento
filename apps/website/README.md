@@ -140,8 +140,8 @@ override `DocsFooter.astro`) and what the Packages list and table add:
 
 | shown | where it comes from |
 |---|---|
-| `v1.0.0` | the root `package.json` |
-| `released 2026-10-31` | the commit date of the newest `v<x.y.z>` tag reachable from the built commit (`git describe`, then `git log -1 --format=%cI <tag>`); without git history or without a tag (a tarball, a shallow clone, and this repository until its first tag, `v1.1.0`) the `## [x.y.z] - <date>` heading of `CHANGELOG.md` for that version, said so in the hover. Beside the image on the home page: the tag and its date, or "no release tag yet" and the changelog's date |
+| `v1.1.0` | the root `package.json` |
+| `released 2026-11-17` | the commit date of the newest `v<x.y.z>` tag reachable from the built commit (`git describe`, then `git log -1 --format=%cI <tag>`); without git history or without a tag (a tarball, a shallow clone) the `## [x.y.z] - <date>` heading of `CHANGELOG.md` for that version, said so in the hover. Beside the image on the home page: the tag and its date, or "no release tag yet" and the changelog's date |
 | `built 2026-11-16 17:01 UTC` | the clock of the build, UTC (`SOURCE_DATE_EPOCH` when set) |
 | `38705b6` | `git rev-parse HEAD`, linked to the commit on GitHub; left out without git |
 | *On npm* | `https://registry.npmjs.org/<name>`: `dist-tags.latest` and its `time`, asked once per package in parallel during the build, with npm's version beside the date when it differs from the repository's |

@@ -1,6 +1,6 @@
 {
   "name": "@jsmemento/service",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "The memento service site (https://service.stage.memento-service.org/): register, sign in, create and manage API keys, watch what each key writes. On @jsudc/react with the session cookie; served by a second @jsmemento/server container from MEMENTO_UI_DIR=/app/ui-service.",
   "type": "module",
