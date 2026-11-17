@@ -22,6 +22,9 @@ WorkingDirectory=/home/digital/sites/examples.memento-service.org
 EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
 Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
 UnsetEnvironment=MEMENTO_DEMO_API_KEY CPU_MONITOR_API_KEY
+# After= orders the start only (the server is "started" before it listens): wait up to 60 s
+# for its health check, so a cold start does not fail once and wait for Restart=.
+ExecStartPre=/bin/sh -c 'for i in $$(seq 1 60); do curl -sf -o /dev/null "$${MEMENTO_URL}/api/health" && exit 0; sleep 1; done; exit 1'
 ExecStart=/bin/sh -c 'MEMENTO_API_KEY="$$SIMULATOR_API_KEY" exec /home/digital/sites/examples.memento-service.org/node/node /home/digital/sites/examples.memento-service.org/src/packages/cli/dist/main.js simulate --interval "$${SIMULATOR_INTERVAL:-10}" --tenant "$${SIMULATOR_TENANT:-demo}"'
 Restart=always
 RestartSec=10
