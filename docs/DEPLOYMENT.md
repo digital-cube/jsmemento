@@ -351,9 +351,10 @@ deployment that never had accounts has no self-service tenants, so nothing there
 
 ## The website
 
-`https://stage.memento-service.org/` is `apps/website` (`@jsmemento/website`): memento's own
-website, Astro + Starlight, static files served by nginx on the stage VM like
-`stage.jsudc.dev`. It is **not part of the image** (the Dockerfile's turbo filters leave it
+`https://memento-service.org/` (production) and `https://stage.memento-service.org/` (stage)
+are `apps/website` (`@jsmemento/website`): memento's own website, Astro + Starlight, static
+files served by nginx — production on `digitalcube-production-websites` like `vol-a.com`
+([below](#production-memento-serviceorg)), stage on the stage VM like `stage.jsudc.dev`. It is **not part of the image** (the Dockerfile's turbo filters leave it
 out) and has no server: one build, swapped in under a symlink.
 
 The build reads three variables (`apps/website/src/site.mjs`); the defaults are production's:
@@ -361,11 +362,13 @@ The build reads three variables (`apps/website/src/site.mjs`); the defaults are 
 | variable | | default | stage |
 |---|---|---|---|
 | `SITE_URL` | the site's own origin (canonical links, sitemap) | `https://memento-service.org` | `https://stage.memento-service.org` |
-| `EXAMPLE_URL` | the examples site ("Open the live example") | `https://examples.stage.memento-service.org` | the same |
-| `SERVICE_URL` | the service site ("Get an API key") | `https://service.stage.memento-service.org` | the same |
+| `EXAMPLE_URL` | the examples site ("Open the live example") | `https://examples.memento-service.org` | `https://examples.stage.memento-service.org` |
+| `SERVICE_URL` | the service site ("Get an API key") | `https://service.memento-service.org` | `https://service.stage.memento-service.org` |
 
-The last two still default to stage; production's examples and service sites exist since
-2026-11-17 ([Production](#production)), and the defaults move with the production website.
+`deploy/website/stage.sh` passes stage's three, `deploy/website/prod.sh` production's (the
+examples and service sites of [Production](#production)).
+
+### Stage: `stage.memento-service.org`
 
 On the stage VM, from any copy of the repository:
 
@@ -390,7 +393,7 @@ The vhost is `deploy/website/nginx/stage.memento-service.org.conf`, linked into
 (TLS ends at the edge), `root …/current`, `/_astro/` cached for a year (content-hashed), the
 rest `no-cache`, `error_page 404 /404.html`, `absolute_redirect off`.
 
-**The name was taken.** The old Python mementoservice app's vhost,
+**The stage name was taken.** The old Python mementoservice app's vhost,
 `/etc/nginx/sites-available/nginx-stage.memento-service.org.conf` (a copy of
 `deploy/nginx-stage.memento-service.org.conf` in the mementoservice repository), served
 `server_name stage.memento-service.org *.stage.memento-service.org;` with a
@@ -401,6 +404,57 @@ from the `map` on the VM (by hand, with sudo). The wildcard stays: the old app's
 `examples.` / `service.` have exact vhosts of their own (`memento-stage`,
 `memento-service-stage`) that win over a wildcard. The same edit is still owed to the
 mementoservice repository's copy; a redeploy of that vhost from there would take the name back.
+
+### Production: `memento-service.org`
+
+`https://memento-service.org/` is served by nginx on **`digitalcube-production-websites`**
+(`ssh digitalcube-production-websites` from the stage VM, as `digital`), next to `jsudc.dev`
+and `vol-a.com`; `https://www.memento-service.org/` answers a **301** to the apex, path and
+query kept. Production serves **releases**: the newest `v<x.y.z>` tag by default, so the footer
+reads `v1.1.0 · released 2026-11-17 · built … · <sha>`. TLS ends at the edge, which forwards
+both names to this VM's `:80`.
+
+```bash
+# the first time, from a machine that has the repository (the stage VM):
+scp deploy/website/prod.sh digitalcube-production-websites:/tmp/
+ssh digitalcube-production-websites /tmp/prod.sh --install
+# every deploy after that, on the VM (a new release tag is picked up by itself):
+~/sites/memento-service.org/ops/deploy/website/prod.sh
+~/sites/memento-service.org/ops/deploy/website/prod.sh --ref v1.1.0   # a pinned build; a rollback is an older tag
+```
+
+Under `/home/digital/sites/memento-service.org/`, one clone of the repository in two checkouts
+(as `deploy/examples/prod.sh` has them):
+
+| path | |
+|---|---|
+| `src/` | the **site**, detached at `--ref` (default the newest release tag) — what is built |
+| `ops/` | a `git worktree` at `origin/main` (`--deploy-branch`): `prod.sh` and the vhost, which are newer than the tag they deploy (`v1.1.0` has no `deploy/website/prod.sh`) |
+| `releases/<short sha>/` | `apps/website/dist` of one build, with `.release` (commit, tag, the three URLs); three kept |
+| `current` | → `releases/<short sha>`, swapped with one `rename(2)`; nginx's root |
+| `node`, `corepack/` | the newest nvm Node 24; corepack's pnpm shim, **first on `PATH`** (the VM's nvm has a global pnpm of another version, and the build's `pnpm run gen` must be the pinned one) |
+
+Each run fetches with the tags (the footer's release date and the default ref come from them),
+installs `@jsmemento/website` and its dependencies only, builds with
+`SITE_URL=https://memento-service.org`, `EXAMPLE_URL=https://examples.memento-service.org`,
+`SERVICE_URL=https://service.memento-service.org`, and checks through nginx on `127.0.0.1` with
+the `Host` header (`/` this build, `www.` a 301 to the apex, a missing page the site's 404,
+`/get-started/sqlite/` 200) and through the edge (`/` 200 with this build's canonical link,
+`https://www.memento-service.org/get-started/` 301). Exit **6** means the VM is right and the
+edge is not. The same tag with the same variables rebuilds nothing; a new release tag rebuilds,
+and so does `--force` (a package published to npm since shows after a rebuild).
+`prod.sh --help` has the options and exit codes; it refuses root, another user and another host.
+
+The vhost is `deploy/website/nginx/memento-service.org.conf`:
+`/etc/nginx/sites-enabled/memento-service.org` → `sites-available/memento-service.org` →
+`ops/deploy/website/nginx/memento-service.org.conf`, so a change to it on `main` reaches nginx
+with the next run (`nginx -t`, reload). Two `server` blocks: `www.memento-service.org` →
+`return 301 https://memento-service.org$request_uri`, and `memento-service.org` with the static
+root, `/_astro/` immutable for a year, the rest `no-cache`, `error_page 404 /404.html`,
+`absolute_redirect off`. Logs: `/var/log/nginx/memento-service.org.{access,error}.log`.
+
+**Rollback:** `prod.sh --ref <older tag>` (or a commit). A release still among the three kept is
+swapped back without a build.
 
 ## The stage stack
 

@@ -18,6 +18,18 @@ share one version.
   `memento-prod-retention.timer`, and the vhosts `deploy/examples/nginx/*.memento-service.org.conf`
   ([DEPLOYMENT.md "Production"](docs/DEPLOYMENT.md#production)). The pushers run at 5 s / 10 s
   instead of stage's 1 s / 3 s, so production's database grows by ~20 MB a day, not ~90 MB.
+- **Production of the website**: `https://memento-service.org` serves `apps/website` at release
+  1.1.0 from `digitalcube-production-websites`, and `https://www.memento-service.org` answers a
+  301 to it — `deploy/website/prod.sh` (the newest release tag in `src/` by default, `--ref` for a
+  pinned build or a rollback, the script and the vhost from `main` in `ops/`, build-and-swap,
+  three releases kept, `--install`) and the vhost `deploy/website/nginx/memento-service.org.conf`
+  ([DEPLOYMENT.md "The website"](docs/DEPLOYMENT.md#production-memento-serviceorg)).
+
+### Changed
+
+- The website's `EXAMPLE_URL` and `SERVICE_URL` default to production,
+  `https://examples.memento-service.org` and `https://service.memento-service.org`;
+  `deploy/website/stage.sh` keeps passing stage's.
 
 ## [1.1.0] - 2026-11-17
 

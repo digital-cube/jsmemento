@@ -1,6 +1,7 @@
 # @jsmemento/website
 
-The website of memento: **memento-service.org** (stage: <https://stage.memento-service.org>).
+The website of memento: **<https://memento-service.org>** (`www.` redirects there; stage:
+<https://stage.memento-service.org>).
 Astro + Starlight, MDX content under `src/content/docs` (the sidebar follows the directory
 tree, groups registered in `astro.config.mjs`), Pagefind search, dark and light themes from
 memento's own tokens (`src/styles/theme.css`, the ones of the under-construction page). Private,
@@ -123,10 +124,11 @@ spelling a host. The defaults are production's:
 | variable | | default |
 |---|---|---|
 | `SITE_URL` | the site's own origin (Astro's `site`: canonical links, sitemap) | `https://memento-service.org` |
-| `EXAMPLE_URL` | the examples site every "live example" link opens | `https://examples.stage.memento-service.org` |
-| `SERVICE_URL` | the service site where a visitor gets an API key | `https://service.stage.memento-service.org` |
+| `EXAMPLE_URL` | the examples site every "live example" link opens | `https://examples.memento-service.org` |
+| `SERVICE_URL` | the service site where a visitor gets an API key | `https://service.memento-service.org` |
 
-No production examples or service instance exists yet; those two defaults move when one does.
+`deploy/website/stage.sh` passes stage's three (`https://stage.memento-service.org`,
+`https://examples.stage.memento-service.org`, `https://service.stage.memento-service.org`).
 In frontmatter, which cannot import, the hero writes `{EXAMPLE_URL}` / `{SERVICE_URL}` as a
 link; `src/components/Hero.astro` resolves them and `astro.config.mjs` keeps them out of
 `starlight-links-validator`.
@@ -165,7 +167,7 @@ CI's *Website build* job builds with `SITE_NPM=off`. Everything is read when the
 so the dates are as fresh as the build: `deploy/website/stage.sh` rebuilds for a new commit or a
 new release tag on it (or with `--force`; a package published to npm since shows after the next
 rebuild), and a `turbo run build` served from the cache keeps the build time of the cached run.
-`stage.sh` fetches the tags with the branch, so stage's release date comes from git.
+`stage.sh` and `prod.sh` fetch the tags, so the release date comes from git.
 
 ## Deploy: stage
 
@@ -181,3 +183,19 @@ Build-and-swap into `/home/digital/sites/stage.memento-service.org/releases/<sho
 `current` symlink nginx serves (`deploy/website/nginx/stage.memento-service.org.conf`), three
 releases kept, checked through nginx and the edge. Details, and the old mementoservice vhost
 that had the name: [docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md#the-website).
+
+## Deploy: production
+
+`https://memento-service.org` on `digitalcube-production-websites`, built from a **release
+tag** (the newest by default), `www.memento-service.org` a 301 to it:
+
+```sh
+scp deploy/website/prod.sh digitalcube-production-websites:/tmp/ && \
+  ssh digitalcube-production-websites /tmp/prod.sh --install          # once
+~/sites/memento-service.org/ops/deploy/website/prod.sh                 # on the VM: every deploy
+~/sites/memento-service.org/ops/deploy/website/prod.sh --ref v1.1.0    # a pinned build; a rollback is an older tag
+```
+
+The site is `src/` at the tag, the script and the vhost
+(`deploy/website/nginx/memento-service.org.conf`) are `ops/` at `main`; the same
+build-and-swap as stage. Details: [docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md#production-memento-serviceorg).

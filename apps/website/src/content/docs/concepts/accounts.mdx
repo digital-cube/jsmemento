@@ -49,7 +49,7 @@ password, or an administrator disabling the user, deletes every session of their
 
 ## The service site
 
-<a href={SERVICE_URL}>`service.stage.memento-service.org`</a> is `apps/service`. People
+<a href={SERVICE_URL}><code>{new URL(SERVICE_URL).host}</code></a> is `apps/service`. People
 register, verify their address and create API keys, each shown **once**; they watch per key what
 it writes — activity per minute, the events, hourly usage — and pause, resume, re-limit and
 delete keys. A public `/clients` page offers the [eight client programs](/clients/) as zips.
