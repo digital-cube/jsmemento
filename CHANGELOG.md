@@ -280,6 +280,12 @@ share one version.
   through the new `dialect.bytewise` (`COLLATE "C"` / `COLLATE BINARY`). Before, a PostgreSQL
   created with a linguistic collation (the `postgres` image's `en_US.utf8` default) listed
   `_generic` first, since such a collation ignores punctuation.
+- **Two server processes can start together on PostgreSQL.** The startup migrations run under
+  a session-level advisory lock (`pg_advisory_lock`, on one connection of the pool): one process
+  migrates, the others wait and find nothing pending. Before, two processes on a database with
+  pending migrations (two replicas, or `memento` and `service` started by one
+  `docker compose up`) both ran the same `CREATE …` and one exited with a unique violation.
+  SQLite is unchanged (one process per file).
 
 ## [1.0.0] - 2026-10-31
 

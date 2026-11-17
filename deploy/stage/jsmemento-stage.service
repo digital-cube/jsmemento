@@ -8,8 +8,9 @@
 # podman-restart.service only starts containers with `restart: always`; the compose file's
 # `unless-stopped` is not brought back after a reboot (stage stayed down 11 days, TCK7W7P9HK).
 #
-# `memento` first and healthy, the rest after it: both server containers run the database
-# migrations at startup, without a lock, and two of them on pending migrations race.
+# `memento` first and healthy, the rest after it. Both server containers run the database
+# migrations at startup; since TCKFETCQTN under an advisory lock, so they no longer race and
+# the order is kept only so a broken `memento` stops the start before the rest.
 [Unit]
 Description=jsmemento stage stack (examples :8200, service :8201)
 Wants=podman.socket

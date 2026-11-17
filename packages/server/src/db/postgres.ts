@@ -13,6 +13,13 @@ const UNIQUE_VIOLATION = "23505";
 const renderer = new PgDialect();
 
 /**
+ * The session-level advisory lock every process takes around its migrations: "memento" in
+ * ASCII, as a bigint. Two processes that start together on a database with pending migrations
+ * would otherwise both run the same `CREATE …`, and one of them die with a unique violation.
+ */
+export const MIGRATION_LOCK = 30792292989039727n;
+
+/**
  * PostgreSQL: SQLSTATE codes, `::` casts, `jsonb` operators, `ILIKE`, `date_trunc`, `to_char`,
  * `greatest`, `array_to_string`, `is distinct from`, `nulls last`. PostgreSQL's `LIKE` escapes
  * with a backslash by default, so the patterns `escapeLike` writes need no `ESCAPE` clause.
@@ -58,7 +65,22 @@ export const postgresDialect: Dialect = {
 
   async migrate(db, migrationsFolder) {
     // Every PostgreSQL `Database` this package opens is a node-postgres one (`openPostgres`).
-    await migrate(db as NodePgDatabase<typeof schema>, { migrationsFolder });
+    // The lock and the migrations share ONE connection checked out of the pool: a session lock
+    // belongs to its connection, and a pool of one (`migrate-cli`) has no second one to give.
+    // The process that waits finds nothing pending once it holds the lock. Should the
+    // connection die, the lock dies with it.
+    const pool = (db as NodePgDatabase<typeof schema> & { $client: pg.Pool }).$client;
+    const client = await pool.connect();
+    try {
+      await client.query("select pg_advisory_lock($1)", [MIGRATION_LOCK.toString()]);
+      try {
+        await migrate(drizzle(client, { schema }), { migrationsFolder });
+      } finally {
+        await client.query("select pg_advisory_unlock($1)", [MIGRATION_LOCK.toString()]);
+      }
+    } finally {
+      client.release();
+    }
   },
   render(query: SQL) {
     const { sql: text, params } = renderer.sqlToQuery(query);

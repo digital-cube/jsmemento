@@ -63,8 +63,9 @@ to change that, or remove their `ports:` when nothing outside the stack needs th
 `MEMENTO_IMAGE` picks another image (e.g. a pinned `ghcr.io/digital-cube/jsmemento:1.0.0`).
 
 Upgrade: `docker compose -f docker-compose.yaml pull memento && docker compose -f docker-compose.yaml up -d`.
-The server applies pending migrations when it starts, so roll out one process first when you
-run several.
+The server applies pending migrations when it starts, under a PostgreSQL advisory lock, so
+several processes (replicas, `memento` and `service` on one database) may start together: one
+migrates, the others wait for the lock and then find nothing pending.
 
 ## Demo pusher (profile `demo`)
 
@@ -162,7 +163,7 @@ docker run -d -p 3000:3000 \
 
 - Base `node:24-bookworm-slim` (Node 24 LTS); runs as the unprivileged `node` user.
 - Working directory `/app`, entrypoint `node dist/server.js`: applies pending Drizzle
-  migrations, loads lookups, listens. `SIGTERM` closes WebSocket clients (`1001`), Redis and
+  migrations (PostgreSQL: under an advisory lock, one process at a time), loads lookups, listens. `SIGTERM` closes WebSocket clients (`1001`), Redis and
   the pool, then exits 0.
 - `/usr/local/bin/memento` — the CLI (`create-tenant`, `create-key`, `revoke-key`,
   `create-template`, `lookups validate`, …; see [CLI.md](CLI.md)). It uses the same
@@ -397,8 +398,9 @@ option, for a single process).
 [`deploy/stage/jsmemento-stage.service`](../deploy/stage/jsmemento-stage.service), with
 lingering on. The restart policy alone does not do it: podman has no daemon, and its boot-time
 `podman-restart.service` starts only containers with `restart: always`, not the file's
-`unless-stopped`. The unit starts `memento` and waits until it is healthy, then the rest
-(`service` after it: both run the migrations at start, without a lock). Install it once:
+`unless-stopped`. The unit starts `memento` and waits until it is healthy, then the rest.
+That order is no longer needed for correctness (the migrations run under an advisory lock,
+TCKFETCQTN); it keeps a broken `memento` from taking the rest down with it. Install it once:
 
 ```bash
 cp deploy/stage/jsmemento-stage.service ~/.config/systemd/user/
