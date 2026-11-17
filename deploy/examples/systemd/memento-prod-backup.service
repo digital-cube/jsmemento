@@ -1,0 +1,22 @@
+# Daily dump of the production database `memento` (both memento-service.org sites share it):
+# ops/deploy/examples/backup.sh — `sudo -n -u postgres pg_dump -Fc memento` into
+# /home/digital/sites/examples.memento-service.org/backups/memento-<YYYY-MM-DD>.dump (mode 600,
+# the directory 700), checked with `pg_restore --list`, then rotated: the 7 newest daily dumps
+# and the newest dump of each of the 4 ISO weeks before them. A failed run deletes nothing and
+# leaves this unit failed: systemctl --user --failed.
+# The dumps are on this VM: they do not survive the loss of the VM (docs/DEPLOYMENT.md
+# "Production", Backup).
+# Started once a day by memento-prod-backup.timer. Run it by hand: systemctl --user start memento-prod-backup
+# sudo: passwordless for `digital`, as prod.sh needs; so no NoNewPrivileges= here.
+# Logs: journalctl --user -u memento-prod-backup
+[Unit]
+Description=memento database backup (pg_dump) for the memento-service.org sites
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/digital/sites/examples.memento-service.org
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/digital/sites/examples.memento-service.org/ops/deploy/examples/backup.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=2h

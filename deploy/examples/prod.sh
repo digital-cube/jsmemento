@@ -5,7 +5,9 @@
 #   https://examples.memento-service.org  memento-prod          127.0.0.1:8200  accounts off, demo key
 #   https://service.memento-service.org   memento-service-prod  127.0.0.1:8201  accounts on
 # plus the demo pushers memento-prod-cpu-monitor and memento-prod-simulator (tenant `demo`) and
-# the daily memento-prod-retention.timer: docker-compose.yaml's services as systemd user units.
+# the daily memento-prod-retention.timer: docker-compose.yaml's services as systemd user units;
+# and the daily memento-prod-backup.timer (deploy/examples/backup.sh: pg_dump of the database
+# into $ROOT/backups, 7 daily + 4 weekly).
 #
 # Two checkouts of digital-cube/jsmemento under $ROOT, one clone (src/ is the repository,
 # ops/ a `git worktree` of it):
@@ -44,6 +46,7 @@ NODE_LINK="$ROOT/node"             # -> the nvm bin dir the units and the build 
 SHIMS="$ROOT/corepack"             # corepack's pnpm shim: the version package.json pins
 MEMENTO_BIN="$ROOT/bin/memento"    # the CLI of src/ with this deployment's .env
 BUILT="$ROOT/.built"               # the commit src/ was last built at
+BACKUPS="$ROOT/backups"            # memento-<date>.dump, written by memento-prod-backup.service
 REPO_URL="${REPO_URL:-https://github.com/digital-cube/jsmemento.git}"
 DEFAULT_REF=v1.1.0
 EXAMPLES_HOST=examples.memento-service.org
@@ -56,8 +59,10 @@ SERVERS=(memento-prod memento-service-prod)
 PUSHERS=(memento-prod-cpu-monitor memento-prod-simulator)
 RUNNING=("${SERVERS[@]}" "${PUSHERS[@]}")
 UNIT_FILES=(memento-prod.service memento-service-prod.service memento-prod-cpu-monitor.service
-  memento-prod-simulator.service memento-prod-retention.service memento-prod-retention.timer)
-TIMER=memento-prod-retention.timer
+  memento-prod-simulator.service memento-prod-retention.service memento-prod-retention.timer
+  memento-prod-backup.service memento-prod-backup.timer)
+TIMERS=(memento-prod-retention.timer memento-prod-backup.timer)
+BACKUP_REL=deploy/examples/backup.sh # ExecStart= of memento-prod-backup.service, in ops/
 UNIT_REL=deploy/examples/systemd
 UNIT_DIR="$HOME/.config/systemd/user"
 VHOST_REL=deploy/examples/nginx
@@ -88,10 +93,11 @@ https://$SERVICE_HOST ($REPO_URL) into $ROOT:
   .env            mode 600: what every process shares (database, Redis, mail, quotas, keys)
   bin/memento     the memento CLI of src/ with .env loaded (users, keys, retention, --version)
   data/candidates MEMENTO_CANDIDATES_DIR
+  backups/        memento-<date>.dump, daily (memento-prod-backup.timer, ops/$BACKUP_REL)
   node -> ~/.nvm/…/bin   the Node the build and the units run (newest installed v24)
   corepack/       corepack's pnpm shim, first on PATH (the pnpm package.json pins)
 Units (systemctl --user, linked from ops/$UNIT_REL): ${SERVERS[0]} (127.0.0.1:$EXAMPLES_PORT),
-${SERVERS[1]} (127.0.0.1:$SERVICE_PORT), ${PUSHERS[*]}, $TIMER.
+${SERVERS[1]} (127.0.0.1:$SERVICE_PORT), ${PUSHERS[*]}, ${TIMERS[*]}.
 Then: /memento/api/health 200 on both ports, through nginx on 127.0.0.1 with each Host
 (the page titles, the demo key on $EXAMPLES_HOST only), and through the edge.
 
@@ -99,7 +105,7 @@ Then: /memento/api/health 200 on both ports, through nginx on 127.0.0.1 with eac
                          PostgreSQL role and database $DB_NAME with a generated password;
                          .env (missing variables are added, existing ones never changed);
                          the tenant $DEMO_TENANT, its read-only demo key and the pushers' write
-                         keys; loginctl enable-linger; link and enable the units and the timer;
+                         keys; loginctl enable-linger; link and enable the units and the timers;
                          the vhosts: a hand-written sites-available/<host> is kept as
                          <host>.coming-soon, sites-available/<host> -> ops/$VHOST_REL/<host>.conf,
                          sites-enabled/<host> -> sites-available/<host>, nginx -t, reload;
@@ -213,7 +219,7 @@ main() {
   git -C "$SRC" rev-parse --verify --quiet "origin/$DEPLOY_BRANCH" >/dev/null ||
     die 1 "origin has no branch $DEPLOY_BRANCH"
   local f
-  for f in "${UNIT_FILES[@]/#/$UNIT_REL/}" "$VHOST_REL/$EXAMPLES_HOST.conf" "$VHOST_REL/$SERVICE_HOST.conf"; do
+  for f in "${UNIT_FILES[@]/#/$UNIT_REL/}" "$BACKUP_REL" "$VHOST_REL/$EXAMPLES_HOST.conf" "$VHOST_REL/$SERVICE_HOST.conf"; do
     git -C "$SRC" cat-file -e "origin/$DEPLOY_BRANCH:$f" 2>/dev/null ||
       die 1 "origin/$DEPLOY_BRANCH has no $f, refusing to check it out"
   done
@@ -297,7 +303,7 @@ main() {
   [[ "$units_before" != "$units_after" && -n "$units_before" ]] && echo "    the unit files changed"
   # one transaction: After= starts memento-prod first, the rest once it runs
   timeout 120 systemctl --user restart "${RUNNING[@]}"
-  timeout 30 systemctl --user start "$TIMER"
+  timeout 30 systemctl --user start "${TIMERS[@]}"
   echo "    restarted ${RUNNING[*]}"
   wait_ready "${SERVERS[0]}" "$EXAMPLES_PORT"
   wait_ready "${SERVERS[1]}" "$SERVICE_PORT"
@@ -533,7 +539,7 @@ install_units() {
     ln -sfn "$OPS/$UNIT_REL/$f" "$dst"
   done
   timeout 30 systemctl --user daemon-reload
-  timeout 30 systemctl --user enable --quiet "${RUNNING[@]}" "$TIMER"
+  timeout 30 systemctl --user enable --quiet "${RUNNING[@]}" "${TIMERS[@]}"
   echo "    ${UNIT_FILES[*]} linked from ops/$UNIT_REL (enabled)"
 }
 
@@ -585,8 +591,29 @@ wait_active() {
     systemctl --user is-active --quiet "$unit" ||
       die 4 "$unit is not active: journalctl --user -u $unit -n 50"
   done
-  systemctl --user is-active --quiet "$TIMER" || die 4 "$TIMER is not active"
-  echo "    ${RUNNING[*]} $TIMER: active"
+  for unit in "${TIMERS[@]}"; do
+    systemctl --user is-active --quiet "$unit" || die 4 "$unit is not active"
+  done
+  echo "    ${RUNNING[*]} ${TIMERS[*]}: active"
+  backup_status
+}
+
+# The newest dump in backups/ and its age; a warning, not a failure, when there is none (the
+# first day after --install) or it is older than two days (the timer's run failed).
+backup_status() {
+  local newest age
+  newest="$(find "$BACKUPS" -maxdepth 1 -name 'memento-*.dump' -printf '%T@ %p\n' 2>/dev/null |
+    sort -n | tail -n 1 | cut -d' ' -f2-)"
+  if [[ -z "$newest" ]]; then
+    echo "    no backup in $BACKUPS yet (memento-prod-backup.timer: daily at 02:30 UTC;" \
+      "now: systemctl --user start memento-prod-backup)"
+    return
+  fi
+  age=$(($(date +%s) - $(stat -c %Y "$newest")))
+  echo "    newest backup: ${newest##*/}, $((age / 3600)) h old"
+  if ((age > 2 * 86400)); then
+    echo "prod.sh: WARNING — no backup for $((age / 86400)) days: journalctl --user -u memento-prod-backup" >&2
+  fi
 }
 
 local_get() { # local_get <host> <path>: the body, then the status on the last line

@@ -506,6 +506,7 @@ at the edge; the vhosts listen on `:80`. Production runs **releases** (a tag), n
 | `memento-prod-cpu-monitor` | `cpu-monitor` | `CPU_LOAD` of tenant `demo` every `CPU_MONITOR_INTERVAL` s (5) |
 | `memento-prod-simulator` | `simulator` | the ticket desk of tenant `demo`, one event every `SIMULATOR_INTERVAL` s (10) |
 | `memento-prod-retention.timer` | `retention` | `memento retention` daily at 03:30 UTC (a oneshot service) |
+| `memento-prod-backup.timer` | — | `pg_dump` of the database daily at 02:30 UTC into `backups/` (a oneshot service, [below](#production-backup)) |
 
 The pushers are slower than stage's (1 s and 3 s): events are immutable and retention only
 archives, so the database only grows. At stage's rates (~115 000 events, ~90 MB a day) it would
@@ -522,6 +523,7 @@ Everything lives under `/home/digital/sites/examples.memento-service.org/`:
 | `bin/memento` | the CLI of `src/` with `.env` loaded |
 | `node` | → the newest `~/.nvm/versions/node/v24.*/bin` |
 | `data/candidates/` | `MEMENTO_CANDIDATES_DIR` |
+| `backups/` | mode 700: `memento-<YYYY-MM-DD>.dump` (mode 600), the daily dumps of the database |
 
 **Why two checkouts.** The deploy files came after `v1.1.0`, so the tag cannot carry them: `ops/`
 follows `main` (`--deploy-branch`), `src/` is the release (`--ref`). A unit or vhost change
@@ -549,12 +551,49 @@ A deploy builds in `src/` while the old processes run, then restarts them (a few
 only go forward, and an older server refuses a schema it does not know. Take a dump first
 (below), and restore it when rolling back over a migration.
 
-**Backup** (nothing on the VM backs up PostgreSQL on a schedule):
+<a id="production-backup"></a>**Backup.** `memento-prod-backup.timer` runs
+`memento-prod-backup.service` once a day at **02:30 UTC** (± 15 min; `Persistent=`: a run missed while the VM was down happens at boot),
+an hour before retention. The service runs `ops/deploy/examples/backup.sh`:
+
+- `sudo -n -u postgres pg_dump -Fc memento` into
+  `~/sites/examples.memento-service.org/backups/memento-<YYYY-MM-DD>.dump` (UTC date; mode 600,
+  the directory 700; a second run the same day replaces that day's dump);
+- the dump is written to a temporary file and kept only when it is not empty, `pg_restore
+  --list` reads it and it holds the data of `memento_event`; otherwise the run fails, deletes
+  nothing and the unit shows in `systemctl --user --failed`;
+- then the rotation, by the date in the file names: the **7 newest** dumps, plus the newest
+  dump of each of the **4 ISO weeks** before them (about five weeks back, 11 files). It counts
+  files, not days, so when backups stop for a while the last good ones stay.
+
+The database was 12 MB on 2026-11-17 and grows ~20 MB a day with the demo pushers (a
+compressed dump is a fraction of that); the VM had 17 GB free. Every deploy prints the newest
+dump and warns when it is more than two days old.
 
 ```bash
-mkdir -p ~/backups && sudo -u postgres pg_dump -Fc memento > ~/backups/memento-$(date +%F).dump
-# restore into an empty database memento: sudo -u postgres pg_restore -d memento --no-owner --role=memento <file>
+systemctl --user list-timers memento-prod-backup.timer   # next and last run
+systemctl --user start memento-prod-backup                # a dump now (before a risky deploy)
+journalctl --user -u memento-prod-backup                  # what each run did
+ls -l ~/sites/examples.memento-service.org/backups/
+ops/deploy/examples/backup.sh --help                      # options (--keep-daily, --keep-weekly, --dir)
 ```
+
+**Restore** a dump into an empty database `memento` (the servers stopped; the role `memento`
+exists already, `--no-owner --role=memento` makes it the owner of what is restored):
+
+```bash
+systemctl --user stop memento-prod memento-service-prod     # the pushers stop with memento-prod
+sudo -u postgres psql -c 'alter database memento rename to memento_broken'   # keep the old one
+sudo -u postgres psql -c 'create database memento owner memento'
+sudo -u postgres pg_restore -d memento --no-owner --role=memento \
+  ~/sites/examples.memento-service.org/backups/memento-<YYYY-MM-DD>.dump
+systemctl --user start memento-prod memento-service-prod
+# once the sites work: sudo -u postgres psql -c 'drop database memento_broken'
+```
+
+**These dumps are on the same VM** as the database: they cover a dropped table, a bad
+migration or an operator's mistake, not the loss of the VM or its disk. Where an off-VM copy
+goes is not decided yet (it may be one decision for every database on this VM: `jsudc`, `vola`,
+`penkalo`, `oob_life`, `dcai` have no scheduled backup either).
 
 **First installation** (done once, 2026-11-17): `scp` the script to the VM and run it from
 `/tmp`; it clones everything else.
@@ -571,8 +610,10 @@ ssh digitalcube-production-websites sites/examples.memento-service.org/ops/deplo
 
 `--install` creates the role and database `memento`, `.env`, the tenant `demo` with a read-only
 demo key and one write key per pusher (production's own; a key is a hash in one database),
-turns linger on, links and enables the units, and keeps the hand-written "coming soon" vhosts as
-`sites-available/<host>.coming-soon`. Repeating it changes nothing that exists.
+turns linger on, links and enables the units and the timers, and keeps the hand-written
+"coming soon" vhosts as `sites-available/<host>.coming-soon`. Repeating it changes nothing
+that exists. A deploy whose `ops/` brings a new unit file (as `memento-prod-backup.*` did) stops
+with "not linked to ops/; run … --install": run it with `--install` once.
 
 **Quotas** (`.env`): `MEMENTO_DEFAULT_MAX_KEYS=10`, `MEMENTO_DEFAULT_DAILY_LIMIT=100000`, no
 `MEMENTO_MAX_DAILY_LIMIT` — stage's values (stage sets none, so the defaults). Change a line,

@@ -18,6 +18,12 @@ share one version.
   `memento-prod-retention.timer`, and the vhosts `deploy/examples/nginx/*.memento-service.org.conf`
   ([DEPLOYMENT.md "Production"](docs/DEPLOYMENT.md#production)). The pushers run at 5 s / 10 s
   instead of stage's 1 s / 3 s, so production's database grows by ~20 MB a day, not ~90 MB.
+- **Daily backup of production's database**: `memento-prod-backup.timer` (02:30 UTC) runs
+  `deploy/examples/backup.sh` — `pg_dump -Fc memento` into
+  `~/sites/examples.memento-service.org/backups/memento-<date>.dump` (mode 600), kept only when
+  `pg_restore --list` reads it, 7 daily + 4 weekly dumps; installed by `prod.sh --install`, and
+  every deploy reports the newest dump. The restore is in
+  [DEPLOYMENT.md "Production"](docs/DEPLOYMENT.md#production-backup). The dumps stay on the VM.
 - **Production of the website**: `https://memento-service.org` serves `apps/website` at release
   1.1.0 from `digitalcube-production-websites`, and `https://www.memento-service.org` answers a
   301 to it — `deploy/website/prod.sh` (the newest release tag in `src/` by default, `--ref` for a
