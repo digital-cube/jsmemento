@@ -364,8 +364,8 @@ The build reads three variables (`apps/website/src/site.mjs`); the defaults are 
 | `EXAMPLE_URL` | the examples site ("Open the live example") | `https://examples.stage.memento-service.org` | the same |
 | `SERVICE_URL` | the service site ("Get an API key") | `https://service.stage.memento-service.org` | the same |
 
-No production examples or service instance exists yet, so the last two default to stage; the
-defaults move when one does.
+The last two still default to stage; production's examples and service sites exist since
+2026-11-17 ([Production](#production)), and the defaults move with the production website.
 
 On the stage VM, from any copy of the repository:
 
@@ -431,6 +431,101 @@ jsmemento-postgres-1 sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' >
 running image for rollback, `podman build -t ghcr.io/digital-cube/jsmemento:latest -t
 ghcr.io/digital-cube/jsmemento:<short sha> .`, then `podman compose -f docker-compose.yaml up -d
 --wait memento` and `podman compose -f docker-compose.yaml up -d --wait`.
+
+## Production
+
+`https://examples.memento-service.org` (the examples site) and
+`https://service.memento-service.org` (the service site) run on the VM
+**`digitalcube-production-websites`** (`ssh digitalcube-production-websites` from the stage VM),
+**natively**: nothing on that VM runs in a container, so `docker-compose.yaml`'s services are
+systemd user units there, on the VM's own PostgreSQL 18 and Redis, behind its nginx. TLS ends
+at the edge; the vhosts listen on `:80`. Production runs **releases** (a tag), not `main`.
+
+| unit (`systemctl --user`) | compose service | |
+|---|---|---|
+| `memento-prod` | `memento` | 127.0.0.1:8200, the examples site, accounts off, the demo key |
+| `memento-service-prod` | `service` | 127.0.0.1:8201, the service site, accounts on (after `memento-prod`) |
+| `memento-prod-cpu-monitor` | `cpu-monitor` | `CPU_LOAD` of tenant `demo` every `CPU_MONITOR_INTERVAL` s (5) |
+| `memento-prod-simulator` | `simulator` | the ticket desk of tenant `demo`, one event every `SIMULATOR_INTERVAL` s (10) |
+| `memento-prod-retention.timer` | `retention` | `memento retention` daily at 03:30 UTC (a oneshot service) |
+
+The pushers are slower than stage's (1 s and 3 s): events are immutable and retention only
+archives, so the database only grows. At stage's rates (~115 000 events, ~90 MB a day) it would
+outgrow the VM's free disk within a year; at 5 s / 10 s it is ~26 000 events, ~20 MB a day.
+The intervals are in `.env`.
+
+Everything lives under `/home/digital/sites/examples.memento-service.org/`:
+
+| path | |
+|---|---|
+| `src/` | the application, a clone of the repository detached at the release tag, built in place (pnpm through corepack, the Dockerfile's turbo filters) |
+| `ops/` | a `git worktree` of `src/` at `origin/main`: `deploy/examples/` — `prod.sh`, `systemd/`, `nginx/`. The units in `~/.config/systemd/user/` and the vhosts in `/etc/nginx/sites-available/` are symlinks into it |
+| `.env` | mode 600, the **secrets** and what every process shares: `DATABASE_URL` (role and database `memento`, generated password), `REDIS_URL`, `REDIS_CHANNEL_PREFIX`, `MEMENTO_SERVICE_URL`, the Brevo key and `MEMENTO_MAIL_FROM`, the quotas, the demo key and the pushers' keys. Per-process variables (`PORT`, `MEMENTO_UI_DIR`, `MEMENTO_MENU_PATH`, `MEMENTO_ACCOUNTS`, `MEMENTO_TRUST_PROXY`) are in the units and must not be in `.env`. Not shell syntax: do not `source` it |
+| `bin/memento` | the CLI of `src/` with `.env` loaded |
+| `node` | → the newest `~/.nvm/versions/node/v24.*/bin` |
+| `data/candidates/` | `MEMENTO_CANDIDATES_DIR` |
+
+**Why two checkouts.** The deploy files came after `v1.1.0`, so the tag cannot carry them: `ops/`
+follows `main` (`--deploy-branch`), `src/` is the release (`--ref`). A unit or vhost change
+reaches production with the next `prod.sh` run, whatever release it deploys.
+
+**Redis** is shared with other projects on that VM: memento uses database 3 (quota counters
+`memento:quota:*`, auth rate limits `memento-auth-*`) and the channel prefix
+`memento-prod:events`, because pub/sub channels ignore the database number.
+
+```bash
+ssh digitalcube-production-websites
+cd ~/sites/examples.memento-service.org
+ops/deploy/examples/prod.sh                      # redeploy (the units, vhosts and checks); v1.1.0
+ops/deploy/examples/prod.sh --ref v1.2.0         # a new release: fetch, build, restart, check
+ops/deploy/examples/prod.sh --ref v1.1.0         # roll back to the previous release
+ops/deploy/examples/prod.sh --help               # options and exit codes
+```
+
+**The default `--ref`** is the release this script was written for; a run without `--ref`
+deploys it, so pass `--ref` every time after an upgrade (or move `DEFAULT_REF` in the script).
+A deploy builds in `src/` while the old processes run, then restarts them (a few seconds of
+502). Exit code 6 means the VM serves both sites but the edge does not route them.
+
+**A rollback** across a release that added migrations needs the database of before: migrations
+only go forward, and an older server refuses a schema it does not know. Take a dump first
+(below), and restore it when rolling back over a migration.
+
+**Backup** (nothing on the VM backs up PostgreSQL on a schedule):
+
+```bash
+mkdir -p ~/backups && sudo -u postgres pg_dump -Fc memento > ~/backups/memento-$(date +%F).dump
+# restore into an empty database memento: sudo -u postgres pg_restore -d memento --no-owner --role=memento <file>
+```
+
+**First installation** (done once, 2026-11-17): `scp` the script to the VM and run it from
+`/tmp`; it clones everything else.
+
+```bash
+scp deploy/examples/prod.sh digitalcube-production-websites:/tmp/memento-prod.sh
+ssh digitalcube-production-websites /tmp/memento-prod.sh --install
+# the Brevo key and sender, read from stage's .env into a variable and sent on stdin
+# (never on a command line, never printed):
+{ grep '^BREVO_API_KEY=' .env | sed 's/^/MEMENTO_/'; grep '^MAIL_FROM=' .env | sed 's/^/MEMENTO_/'; } |
+  ssh digitalcube-production-websites sites/examples.memento-service.org/ops/deploy/examples/prod.sh --import-env
+ssh digitalcube-production-websites sites/examples.memento-service.org/ops/deploy/examples/prod.sh
+```
+
+`--install` creates the role and database `memento`, `.env`, the tenant `demo` with a read-only
+demo key and one write key per pusher (production's own; a key is a hash in one database),
+turns linger on, links and enables the units, and keeps the hand-written "coming soon" vhosts as
+`sites-available/<host>.coming-soon`. Repeating it changes nothing that exists.
+
+**Quotas** (`.env`): `MEMENTO_DEFAULT_MAX_KEYS=10`, `MEMENTO_DEFAULT_DAILY_LIMIT=100000`, no
+`MEMENTO_MAX_DAILY_LIMIT` — stage's values (stage sets none, so the defaults). Change a line,
+then `systemctl --user restart memento-prod memento-service-prod`.
+
+**An administrator** of the service site: register on `https://service.memento-service.org`,
+then `~/sites/examples.memento-service.org/bin/memento make-admin <email>` on the VM
+(`verify-user`, `list-users`, `disable-user` likewise).
+
+Logs: `journalctl --user -u memento-prod -f` (and `-u memento-service-prod`, …); nginx's in
+`/var/log/nginx/{examples,service}.memento-service.org.*.log`.
 
 ## Retention
 

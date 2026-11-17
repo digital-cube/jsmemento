@@ -1,0 +1,46 @@
+# memento server, PRODUCTION examples site behind the nginx vhost examples.memento-service.org
+# (deploy/examples/nginx/examples.memento-service.org.conf -> 127.0.0.1:8200): the API under
+# /memento and the examples site (apps/examples/dist) at / and /en/, accounts off, the read-only
+# demo key of the tenant `demo` handed out at /memento/api/demo. The native form of
+# docker-compose.yaml's service `memento`. Applies pending migrations at start (under an
+# advisory lock, so its siblings may start at the same time).
+#
+# Runs packages/server/dist/server.js of the app checkout /home/digital/sites/examples.memento-service.org/src, which
+# deploy/examples/prod.sh builds at a release tag (default v1.1.0, --ref for another).
+# This file lives in the deploy checkout /home/digital/sites/examples.memento-service.org/ops (origin/main): a release tag older than
+# the deploy scripts has no deploy/examples/ of its own.
+#
+# Configuration: /home/digital/sites/examples.memento-service.org/.env (mode 600, written by `prod.sh --install`): the variables every
+# process shares (DATABASE_URL, REDIS_URL, REDIS_CHANNEL_PREFIX, HOST, the Brevo key, the quotas,
+# MEMENTO_SERVICE_URL for the quota mails). What differs per process is set HERE, and .env must
+# not name it (EnvironmentFile= wins over Environment=; prod.sh refuses such a .env).
+# Node: no shell profile, so no `nvm use`: /home/digital/sites/examples.memento-service.org/node links the newest nvm v24 bin dir.
+#
+# Installed by prod.sh as a symlink ~/.config/systemd/user/memento-prod.service -> this file.
+# Starts at boot via linger + WantedBy=default.target; PostgreSQL and Redis are system units a
+# user unit cannot order itself after, Restart=on-failure covers a boot race.
+# Restart: systemctl --user restart memento-prod   (its pushers follow, PartOf=)
+# Logs:    journalctl --user -u memento-prod -f
+[Unit]
+Description=memento server (127.0.0.1:8200) for examples.memento-service.org
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/digital/sites/examples.memento-service.org/src/packages/server
+EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
+Environment=PORT=8200
+Environment=MEMENTO_UI_DIR=/home/digital/sites/examples.memento-service.org/src/apps/examples/dist
+Environment=MEMENTO_MENU_PATH=/home/digital/sites/examples.memento-service.org/src/menu.yaml
+Environment=MEMENTO_TRUST_PROXY=true
+Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
+# the pushers' write keys are theirs only
+UnsetEnvironment=CPU_MONITOR_API_KEY SIMULATOR_API_KEY
+ExecStart=/home/digital/sites/examples.memento-service.org/node/node dist/server.js
+Restart=on-failure
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

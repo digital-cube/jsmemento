@@ -1,0 +1,18 @@
+# Event retention of the production database (both sites share it): `memento retention`
+# archives the events older than each tenant's retention_days. Harmless while no tenant has
+# retention_days (the default: keep forever). Archiving hides events, it does not free disk:
+# rows stay (immutable), only archived_at is set.
+# Started once a day by memento-prod-retention.timer: the native form of docker-compose.yaml's
+# `retention` (a `sleep 86400` loop). Run it by hand: systemctl --user start memento-prod-retention
+# Logs: journalctl --user -u memento-prod-retention
+[Unit]
+Description=memento retention (archive expired events) for the memento-service.org sites
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/digital/sites/examples.memento-service.org
+EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
+Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
+UnsetEnvironment=MEMENTO_DEMO_API_KEY CPU_MONITOR_API_KEY SIMULATOR_API_KEY
+ExecStart=/home/digital/sites/examples.memento-service.org/node/node /home/digital/sites/examples.memento-service.org/src/packages/cli/dist/main.js retention
+TimeoutStartSec=1h

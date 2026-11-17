@@ -1,0 +1,34 @@
+# Demo pusher of the examples site: the VM's load averages as CPU_LOAD events of the tenant
+# `demo`, for the CPU monitor (/ and /en/). `memento cpu-monitor` of the app checkout, the
+# native form of docker-compose.yaml's `cpu-monitor` (profile demo).
+#
+# Every CPU_MONITOR_INTERVAL seconds (.env, default 5; stage pushes every 1 s): production's
+# database grows forever (events are immutable, retention only archives) and one sample a
+# second is ~86 000 rows, ~65 MB a day. 5 s still moves the table visibly.
+# It writes to memento-prod (127.0.0.1:8200, MEMENTO_URL in .env), whose accounts are off, so
+# the CLI key of `demo` is neither metered nor limited. The key is CPU_MONITOR_API_KEY in .env,
+# handed to the CLI as MEMENTO_API_KEY by the shell ($$ is a literal $ for systemd), so it is
+# never on a command line. Pushes that fail while the server restarts are retried by the CLI.
+#
+# PartOf= memento-prod: a restart or stop of the server does the same to this unit.
+# Installed by deploy/examples/prod.sh as a symlink in ~/.config/systemd/user/.
+# Logs: journalctl --user -u memento-prod-cpu-monitor -f
+[Unit]
+Description=memento demo pusher (cpu-monitor) for examples.memento-service.org
+After=memento-prod.service
+Wants=memento-prod.service
+PartOf=memento-prod.service
+
+[Service]
+WorkingDirectory=/home/digital/sites/examples.memento-service.org
+EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
+Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
+UnsetEnvironment=MEMENTO_DEMO_API_KEY SIMULATOR_API_KEY
+ExecStart=/bin/sh -c 'MEMENTO_API_KEY="$$CPU_MONITOR_API_KEY" exec /home/digital/sites/examples.memento-service.org/node/node /home/digital/sites/examples.memento-service.org/src/packages/cli/dist/main.js cpu-monitor --interval "$${CPU_MONITOR_INTERVAL:-5}" --tenant "$${CPU_MONITOR_TENANT:-demo}" --instance-id "$${CPU_MONITOR_INSTANCE_ID:-production}"'
+Restart=always
+RestartSec=10
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

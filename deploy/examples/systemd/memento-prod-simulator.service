@@ -1,0 +1,32 @@
+# Demo pusher of the examples site: `memento simulate`, a small ticket desk (logins, tickets,
+# notes, the chat room chat-demo-room) for the Activity feed, the Chat example and the live tail
+# of the tenant `demo`. The native form of docker-compose.yaml's `simulator` (profile demo).
+#
+# One event every SIMULATOR_INTERVAL seconds (.env, default 10; stage: 3 s): the database grows
+# forever (events are immutable), and 10 s, ~8 600 events a day, still shows the feed moving
+# within a few seconds of opening it.
+# Writes to memento-prod (MEMENTO_URL in .env) with SIMULATOR_API_KEY, handed over as
+# MEMENTO_API_KEY by the shell ($$ is a literal $ for systemd), never on a command line.
+#
+# PartOf= memento-prod: a restart or stop of the server does the same to this unit.
+# Installed by deploy/examples/prod.sh as a symlink in ~/.config/systemd/user/.
+# Logs: journalctl --user -u memento-prod-simulator -f
+[Unit]
+Description=memento demo pusher (simulate) for examples.memento-service.org
+After=memento-prod.service
+Wants=memento-prod.service
+PartOf=memento-prod.service
+
+[Service]
+WorkingDirectory=/home/digital/sites/examples.memento-service.org
+EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
+Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
+UnsetEnvironment=MEMENTO_DEMO_API_KEY CPU_MONITOR_API_KEY
+ExecStart=/bin/sh -c 'MEMENTO_API_KEY="$$SIMULATOR_API_KEY" exec /home/digital/sites/examples.memento-service.org/node/node /home/digital/sites/examples.memento-service.org/src/packages/cli/dist/main.js simulate --interval "$${SIMULATOR_INTERVAL:-10}" --tenant "$${SIMULATOR_TENANT:-demo}"'
+Restart=always
+RestartSec=10
+KillMode=mixed
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

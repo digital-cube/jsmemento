@@ -1,0 +1,37 @@
+# memento server, PRODUCTION service site behind the nginx vhost service.memento-service.org
+# (deploy/examples/nginx/service.memento-service.org.conf -> 127.0.0.1:8201): the same build as
+# memento-prod.service with the service site (apps/service/dist) and its sidebar
+# (menu-service.yaml), accounts on (register, verify, keys, usage, /clients, admin). The native
+# form of docker-compose.yaml's service `service`. Same database and Redis as memento-prod: a
+# key made here writes through either hostname and is counted once.
+#
+# After= memento-prod: tidiness, not correctness (the migrations run under an advisory lock,
+# TCKFETCQTN). Wants= so that starting this one alone brings the examples server up too.
+# Configuration: /home/digital/sites/examples.memento-service.org/.env as memento-prod.service (MEMENTO_SERVICE_URL, the Brevo key and
+# MEMENTO_MAIL_FROM come from there; the links in mails point at MEMENTO_SERVICE_URL).
+# Installed by deploy/examples/prod.sh as a symlink in ~/.config/systemd/user/.
+# Logs: journalctl --user -u memento-service-prod -f
+[Unit]
+Description=memento service site (127.0.0.1:8201) for service.memento-service.org
+After=network-online.target memento-prod.service
+Wants=network-online.target memento-prod.service
+
+[Service]
+WorkingDirectory=/home/digital/sites/examples.memento-service.org/src/packages/server
+EnvironmentFile=/home/digital/sites/examples.memento-service.org/.env
+Environment=PORT=8201
+Environment=MEMENTO_UI_DIR=/home/digital/sites/examples.memento-service.org/src/apps/service/dist
+Environment=MEMENTO_MENU_PATH=/home/digital/sites/examples.memento-service.org/src/menu-service.yaml
+Environment=MEMENTO_ACCOUNTS=true
+Environment=MEMENTO_TRUST_PROXY=true
+Environment=PATH=/home/digital/sites/examples.memento-service.org/node:/usr/local/bin:/usr/bin:/bin
+# no demo key on the service site; the pushers' keys are theirs only
+UnsetEnvironment=MEMENTO_DEMO_API_KEY CPU_MONITOR_API_KEY SIMULATOR_API_KEY
+ExecStart=/home/digital/sites/examples.memento-service.org/node/node dist/server.js
+Restart=on-failure
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

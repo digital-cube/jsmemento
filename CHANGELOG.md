@@ -7,6 +7,18 @@ share one version.
 
 ## [Unreleased]
 
+### Added
+
+- **Production of the examples and service sites**: `https://examples.memento-service.org` and
+  `https://service.memento-service.org` run release 1.1.0 natively on
+  `digitalcube-production-websites` — `deploy/examples/prod.sh` (one script for both: a release
+  tag in `src/`, the deploy files from `main` in `ops/`, `--install`, `--ref` for an upgrade or a
+  rollback, `--import-env`), the systemd user units `memento-prod`, `memento-service-prod`,
+  `memento-prod-cpu-monitor`, `memento-prod-simulator` and the daily
+  `memento-prod-retention.timer`, and the vhosts `deploy/examples/nginx/*.memento-service.org.conf`
+  ([DEPLOYMENT.md "Production"](docs/DEPLOYMENT.md#production)). The pushers run at 5 s / 10 s
+  instead of stage's 1 s / 3 s, so production's database grows by ~20 MB a day, not ~90 MB.
+
 ## [1.1.0] - 2026-11-17
 
 **SQLite as a database option**, and everything built since the untagged 1.0.0 baseline:
