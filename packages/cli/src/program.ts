@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -85,6 +85,16 @@ export interface CliOptions {
   timeZone?: string;
 }
 
+/**
+ * The version of this package, read from its `package.json` (one directory above `src/` and
+ * `dist/` alike), so `memento --version` never repeats the number the release bumps.
+ */
+const VERSION = (
+  JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+  }
+).version;
+
 const defaultIO: CliIO = {
   out: (line) => process.stdout.write(`${line}\n`),
   err: (line) => process.stderr.write(`${line}\n`),
@@ -166,6 +176,7 @@ export function buildProgram(options: CliOptions): Command {
     .description(
       "JSMemento administration: tenants, API keys, templates, chats, lookups, live tail",
     )
+    .version(VERSION, "-V, --version", "print the version of memento")
     .option("--json", "print machine-readable JSON")
     .showHelpAfterError("(run `memento <command> --help` for the options and examples)")
     .configureOutput({

@@ -243,6 +243,19 @@ describe("other commands", () => {
     expect(await run("nope")).toBe(1);
   });
 
+  it("--version prints the package's version and never touches the database", async () => {
+    const { version } = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    const noDb = () => {
+      throw new Error("must not connect");
+    };
+    expect(await runCli(["--version"], { db: noDb, io })).toBe(0);
+    expect(await runCli(["-V"], { db: noDb, io })).toBe(0);
+    expect(out).toEqual([version, version]);
+    expect(buildProgram({ db: noDb, io }).helpInformation()).toContain("--version");
+  });
+
   it("reports unexpected errors without a stack trace", async () => {
     const code = await runCli(["list-tenants"], {
       db: () => {

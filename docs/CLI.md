@@ -6,6 +6,7 @@ users, templates, chats, lookups, retention, a live tail and the two demo pusher
 ```bash
 pnpm memento --help                 # every command, examples, environment
 pnpm memento <command> --help       # options and examples of one command
+pnpm memento --version              # the version (also -V), e.g. 1.1.0
 ```
 
 The admin commands talk to the database directly (`DATABASE_URL`: PostgreSQL, or a SQLite
