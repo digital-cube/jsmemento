@@ -266,10 +266,14 @@ export class SqlFilterCompiler {
     return field as SqlField & { expr: SQLWrapper };
   }
 
-  /** ORDER BY for `sort`, nulls last, then `tiebreak` (given the last key's direction). */
+  /**
+   * ORDER BY for `sort`, nulls last, then `tiebreak` (given the last key's direction). A text
+   * field sorts in code-point order (`dialect.bytewise`), the same on every database.
+   */
   orderBy(sort: SortKey[], tiebreak: (dir: "asc" | "desc") => SQL[]): SQL[] {
     const keys = sort.map(({ field, dir }) => {
-      const { expr, sortable } = this.field(field);
+      const { expr: column, kind, sortable } = this.field(field);
+      const expr = kind === "text" ? dialect.bytewise(column) : column;
       if (sortable === false) {
         throw new UdcError("validation_error", `field "${field}" cannot be sorted`, { field });
       }

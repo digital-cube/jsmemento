@@ -269,7 +269,10 @@ without the scope, is answered in-protocol: `{"kind":"udc.list.err","payload":{"
 Actions: `collections`, `describe`, `list` (filter DSL, sort, offset paging, exact `total`),
 `read`. A collection registered with `auth: "session" | "admin"` (`MementoRegistry`, see
 [Accounts](#session-collections)) takes the session cookie instead of a key. Every collection is read-only — events are immutable, push them with
-`POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`.
+`POST /memento/events`; `mutate` and the schema edits answer `unsupported_op`. A sort on a text
+field compares Unicode code points (`COLLATE "C"` on PostgreSQL, `BINARY` on SQLite), so the
+order is the same on every database whatever its collation: `USER_LOGIN` before `_generic`,
+upper case before lower case.
 
 ```bash
 curl -s localhost:8000/memento/udc/list -H "Authorization: Bearer mk_…" \

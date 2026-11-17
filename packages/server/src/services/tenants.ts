@@ -33,7 +33,11 @@ export async function getTenantBySlug(db: Database, slug: string): Promise<Tenan
   return serializeTenant(row);
 }
 
+/** Every tenant, by slug in code-point order (`dialect.bytewise`) on every database. */
 export async function listTenants(db: Database): Promise<Tenant[]> {
-  const rows = await db.select().from(tenants).orderBy(asc(tenants.slug));
+  const rows = await db
+    .select()
+    .from(tenants)
+    .orderBy(asc(dialect.bytewise(tenants.slug)));
   return rows.map(serializeTenant);
 }

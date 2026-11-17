@@ -271,6 +271,16 @@ share one version.
   `@memento/react` does not depend on `@jsudc/*` and is unaffected; no `@memento/*` package
   has `@jsudc/*` as a peer dependency.
 
+### Fixed
+
+- **Text sorts no longer depend on the database's collation.** `listTemplates` (by event type
+  then locale), `listTenants` and the retention sweep (by slug) and every UDC sort on a text
+  field (`event_type`, `source`, an API key's `name`, …) order in Unicode code-point order on
+  PostgreSQL and SQLite alike — `USER_LOGIN` before `_generic`, upper before lower case —
+  through the new `dialect.bytewise` (`COLLATE "C"` / `COLLATE BINARY`). Before, a PostgreSQL
+  created with a linguistic collation (the `postgres` image's `en_US.utf8` default) listed
+  `_generic` first, since such a collation ignores punctuation.
+
 ## [1.0.0] - 2026-10-31
 
 First stable release: a self-hosted, tenant-isolated activity ledger with an HTTP API,

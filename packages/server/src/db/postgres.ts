@@ -53,6 +53,8 @@ export const postgresDialect: Dialect = {
   isDistinctFrom: (a, b) => sql`${a} is distinct from ${b}`,
   nullsLast: (expr, dir) =>
     dir === "desc" ? sql`${expr} desc nulls last` : sql`${expr} asc nulls last`,
+  // "C" compares the UTF-8 bytes, which is code-point order.
+  bytewise: (expr) => sql<string>`(${expr}) collate "C"`,
 
   async migrate(db, migrationsFolder) {
     // Every PostgreSQL `Database` this package opens is a node-postgres one (`openPostgres`).

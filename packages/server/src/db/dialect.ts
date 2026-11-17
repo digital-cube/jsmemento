@@ -59,6 +59,14 @@ export interface Dialect {
   isDistinctFrom(a: Expr, b: Expr): SQL;
   /** `expr` as an ORDER BY key in direction `dir`, nulls after every value either way. */
   nullsLast(expr: Expr, dir: "asc" | "desc"): SQL;
+  /**
+   * The text `expr`, compared in Unicode code-point order whatever the database's or column's
+   * collation (`COLLATE "C"`, `COLLATE BINARY`): `USER_LOGIN` before `_generic` before `abc`.
+   * Every ORDER BY over a text column goes through it — a linguistic collation (PostgreSQL's
+   * `en_US.utf8` default) ignores punctuation and case at the first level and would order the
+   * same rows differently on another database.
+   */
+  bytewise(expr: Expr): SQL<string>;
 
   /** Applies every pending migration shipped with the package (idempotent). */
   migrate(db: Database, migrationsFolder: string): Promise<void>;

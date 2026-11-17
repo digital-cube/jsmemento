@@ -117,7 +117,10 @@ pnpm memento delete-template --tenant acme --event-type USER_LOGIN --locale en
 
 `create-template` refuses to overwrite an existing template for the same event type and locale
 unless `--replace` is passed. Library users call `saveTemplate` / `listTemplates` /
-`deleteTemplate` from `@memento/server`.
+`deleteTemplate` from `@memento/server`. `list-templates` and `listTemplates` order by event type,
+then locale, both in Unicode code-point order on every database, whatever its collation:
+`USER_LOGIN` before `_generic` (`U` is 0x55, `_` 0x5F), `sr-Latn` before `sr-cyrl` (upper case
+before lower case).
 
 ## 2. Lookups
 

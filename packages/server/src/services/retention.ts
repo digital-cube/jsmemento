@@ -1,5 +1,5 @@
 import { and, asc, count, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
-import type { Database } from "../db/index.js";
+import { type Database, dialect } from "../db/index.js";
 import { events, tenants } from "../db/schema.js";
 import { MementoError } from "../errors.js";
 
@@ -38,7 +38,11 @@ export async function applyRetention(
   const where = options.tenant
     ? eq(tenants.slug, options.tenant)
     : isNotNull(tenants.retentionDays);
-  const rows = await db.select().from(tenants).where(where).orderBy(asc(tenants.slug));
+  const rows = await db
+    .select()
+    .from(tenants)
+    .where(where)
+    .orderBy(asc(dialect.bytewise(tenants.slug)));
   if (options.tenant && rows.length === 0) {
     throw new MementoError("not_found", `tenant "${options.tenant}" not found`);
   }

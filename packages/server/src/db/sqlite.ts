@@ -127,6 +127,8 @@ export const sqliteDialect: Dialect = {
   isDistinctFrom: (a, b) => sql`(${a} is not ${b})`,
   nullsLast: (expr, dir) =>
     dir === "desc" ? sql`${expr} desc nulls last` : sql`${expr} asc nulls last`,
+  // BINARY (memcmp of the UTF-8) is SQLite's default; spelled out against a NOCASE column.
+  bytewise: (expr) => sql<string>`(${expr}) collate binary`,
 
   async migrate(db, migrationsFolder) {
     const state = stateOf(db);

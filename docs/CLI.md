@@ -21,14 +21,14 @@ machine-readable output.
 | `setup` | first run, step by step: migrate, create a tenant, create its first key (terminal only) |
 | `migrate` | apply pending migrations (the server does this at start too); on a SQLite `file:` URL it creates the file and its directory |
 | `create-tenant [slug] --name` | create a tenant |
-| `list-tenants` | list tenants |
+| `list-tenants` | list tenants, by slug (code-point order) |
 | `create-key --tenant --scopes --name [--expires-in-days]` | create an API key (printed once) |
 | `revoke-key <prefix>` | revoke a key |
 | `list-users` | self-service users: email, name, tenant slug, verified, admin, disabled, created ([Users](#users)) |
 | `make-admin <email>` / `revoke-admin <email>` | set / clear a user's `is_admin` |
 | `disable-user <email>` / `enable-user <email>` | a disabled user cannot sign in; disabling deletes every session |
 | `verify-user <email>` | mark the email verified without a mail (stage smoke tests) |
-| `create-template` / `list-templates` / `delete-template` | per-tenant Handlebars templates ([TEMPLATES.md](TEMPLATES.md)) |
+| `create-template` / `list-templates` / `delete-template` | per-tenant Handlebars templates ([TEMPLATES.md](TEMPLATES.md)); listed by event type, then locale (code-point order) |
 | `create-chat` / `send-message` | chats ([CHATS.md](CHATS.md)) |
 | `tail` | print new events as they are stored, like `tail -f` |
 | `cpu-monitor` | push this machine's CPU load averages as `CPU_LOAD` events, every `--interval` seconds |

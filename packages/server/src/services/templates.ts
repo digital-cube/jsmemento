@@ -95,14 +95,18 @@ export async function saveTemplate(
   return { template: serializeTemplate(row as TemplateRow), created: false };
 }
 
-/** A tenant's templates, by event type then locale. */
+/**
+ * A tenant's templates, by event type then locale, both in code-point order (`dialect.bytewise`)
+ * on every database: `USER_LOGIN` before `_generic` (`U` is 0x55, `_` 0x5F), upper case before
+ * lower case.
+ */
 export async function listTemplates(db: Database, tenantSlug: string): Promise<Template[]> {
   const tenant = await getTenantBySlug(db, tenantSlug);
   const rows = await db
     .select()
     .from(templates)
     .where(eq(templates.tenantId, tenant.id))
-    .orderBy(asc(templates.eventType), asc(templates.locale));
+    .orderBy(asc(dialect.bytewise(templates.eventType)), asc(dialect.bytewise(templates.locale)));
   return rows.map(serializeTemplate);
 }
 
