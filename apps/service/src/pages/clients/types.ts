@@ -3,6 +3,14 @@
  * `clients/<lang>/`, read when the site is built (and in dev), in the page's tab order.
  */
 
+/**
+ * The service the sources of `clients/<lang>/` name (default `MEMENTO_URL`, the keys page).
+ * The page shows them with this site's origin instead (`localizePrograms`), as the server
+ * serves their zips with its `MEMENTO_SERVICE_URL` — CLIENTS_SERVICE_URL of
+ * packages/server/src/client-zips.ts, the same value (test/clients-plugin.test.ts checks).
+ */
+export const CLIENTS_SERVICE_URL = "https://service.memento-service.org";
+
 /** One block of a README section: a paragraph (inline `code` and links kept) or a code fence. */
 export type ReadmeBlock =
   | { kind: "text"; text: string }

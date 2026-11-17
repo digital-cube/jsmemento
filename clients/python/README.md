@@ -10,8 +10,8 @@ Python 3.9 or newer; for the tail step also `pip install websockets` (without it
 ## Set the two variables
 
 ```bash
-export MEMENTO_API_KEY=mk_…   # a key with read and write: https://service.stage.memento-service.org/keys
-export MEMENTO_URL=https://service.stage.memento-service.org/memento   # optional, this is the default
+export MEMENTO_API_KEY=mk_…   # a key with read and write: https://service.memento-service.org/keys
+export MEMENTO_URL=https://service.memento-service.org/memento   # optional, this is the default
 ```
 
 ## Run

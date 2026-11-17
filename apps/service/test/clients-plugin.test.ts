@@ -1,9 +1,10 @@
 // @vitest-environment node
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
+import { CLIENTS_SERVICE_URL } from "../src/pages/clients/types.js";
 import {
   CLIENT_LANGUAGES,
   DEFAULT_CLIENTS_DIR,
@@ -13,6 +14,16 @@ import {
   zipClient,
   zipFilesOf,
 } from "../vite-plugin-clients.js";
+
+describe("CLIENTS_SERVICE_URL", () => {
+  it("is the server's: the page and the zips swap the same origin", () => {
+    const server = readFileSync(
+      new URL("../../../packages/server/src/client-zips.ts", import.meta.url),
+      "utf8",
+    );
+    expect(server).toContain(`export const CLIENTS_SERVICE_URL = "${CLIENTS_SERVICE_URL}";`);
+  });
+});
 
 const RUN_LINES: Record<string, string> = {
   javascript: "node memento.mjs",

@@ -10,8 +10,8 @@ Go 1.23 or newer; `go run` fetches the one dependency (`github.com/coder/websock
 ## Set the two variables
 
 ```bash
-export MEMENTO_API_KEY=mk_…   # a key with read and write: https://service.stage.memento-service.org/keys
-export MEMENTO_URL=https://service.stage.memento-service.org/memento   # optional, this is the default
+export MEMENTO_API_KEY=mk_…   # a key with read and write: https://service.memento-service.org/keys
+export MEMENTO_URL=https://service.memento-service.org/memento   # optional, this is the default
 ```
 
 ## Run

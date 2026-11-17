@@ -31,6 +31,20 @@ share one version.
   `https://examples.memento-service.org` and `https://service.memento-service.org`;
   `deploy/website/stage.sh` keeps passing stage's.
 
+### Fixed
+
+- **The client programs and the website's quick start name production, not stage**: the eight
+  programs of `clients/` default `MEMENTO_URL` to `https://service.memento-service.org/memento`
+  and send you to its `/keys`. The server answers the service site's `/clients/<lang>.zip` with
+  its own `MEMENTO_SERVICE_URL` in place of that origin (`localizeZip` in
+  `@jsmemento/server`), and the `/clients` page shows the site's origin, so stage's zips name
+  stage and production's name production. On the website, the client snippets and programs
+  (`?raw` imports of `snippets/` and `clients/`) show the build's `SERVICE_URL`, the prose links
+  it, and `scripts/check-hosts.mjs`, the last step of `build`, fails a build whose `SERVICE_URL`
+  is not stage's when a page still names a stage service host. The README, `.env.example`,
+  `docker-compose.yaml`, `menu-service.yaml` and the service site's package description name
+  production too.
+
 ## [1.1.0] - 2026-11-17
 
 **SQLite as a database option**, and everything built since the untagged 1.0.0 baseline:

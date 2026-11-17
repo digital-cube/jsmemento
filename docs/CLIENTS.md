@@ -41,7 +41,7 @@ Done.
 ```
 
 Environment: `MEMENTO_API_KEY` (required, `read` + `write`) and `MEMENTO_URL` (default
-`https://service.stage.memento-service.org/memento`). Exit codes: `2` without a key (with a
+`https://service.memento-service.org/memento`). Exit codes: `2` without a key (with a
 hint where to create one), `1` on any HTTP error (the status and the server's `error.message`,
 e.g. `HTTP 401: invalid or expired API key` or `HTTP 429: …` once the key's daily limit is
 used up), `0` otherwise.

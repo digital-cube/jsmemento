@@ -102,7 +102,14 @@ const app = await buildApp({
     heartbeatIntervalMs: config.stream.heartbeatIntervalMs,
     maxBufferedMessages: config.stream.maxBufferedMessages,
   },
-  ...(config.uiDir ? { ui: { root: config.uiDir } } : {}),
+  ...(config.uiDir
+    ? {
+        ui: {
+          root: config.uiDir,
+          ...(config.quotaMail ? { serviceUrl: config.quotaMail.serviceUrl } : {}),
+        },
+      }
+    : {}),
   ...(menu ? { menu } : {}),
   // Refuses to start (DemoKeyError) unless the key resolves and is read-only.
   ...(config.demoApiKey ? { demoApiKey: config.demoApiKey } : {}),

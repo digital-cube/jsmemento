@@ -19,6 +19,7 @@ export {
   type SessionAuth,
   type SessionOptions,
 } from "./auth.js";
+export { CLIENTS_SERVICE_URL, localizedClientZips, localizeZip } from "./client-zips.js";
 export {
   type AccountsConfig,
   type Config,

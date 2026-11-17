@@ -7,7 +7,7 @@
 //
 // Environment:
 //   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//   MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//   MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //
 // Run (single-file source launch, nothing to compile first):
 //   MEMENTO_API_KEY=mk_… java Memento.java
@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class Memento {
-    static final String DEFAULT_URL = "https://service.stage.memento-service.org/memento";
+    static final String DEFAULT_URL = "https://service.memento-service.org/memento";
     static final int TAIL_SECONDS = 10;
 
     static final String BASE_URL = env("MEMENTO_URL", DEFAULT_URL).replaceAll("/+$", "");
@@ -49,7 +49,7 @@ public class Memento {
 
     public static void main(String[] args) {
         if (API_KEY.isEmpty()) {
-            System.err.println("Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)");
+            System.err.println("Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)");
             System.exit(2);
         }
         String user = osUser();

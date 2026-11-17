@@ -205,7 +205,7 @@ What the server reads when it starts; the CLI in the image reads the same `DATAB
 | `MEMENTO_WS_HEARTBEAT_MS` | `30000` | WebSocket ping interval (min 1000). |
 | `MEMENTO_WS_MAX_BUFFERED` | `1000` | Unwritten messages per connection before it is closed `4008`. |
 | `MEMENTO_ACCOUNTS` | `false` | Self-service accounts: the `/auth/*` routes and the session cookie ([Self-service accounts](#self-service-accounts)). Off → none of it is reachable. Compose: `ACCOUNTS`. |
-| `MEMENTO_SERVICE_URL` | *(unset)* | Public origin of the service site (`https://service.stage.memento-service.org`): the links in verify / reset / quota mails. **Required** with accounts on. Without accounts it turns on the quota mails of that process ([Quotas](#quotas)); unset there → the process sends none. Compose: `SERVICE_URL`. |
+| `MEMENTO_SERVICE_URL` | *(unset)* | Public origin of the service site (`https://service.memento-service.org`): the links in verify / reset / quota mails, and the service the client zips under `/clients/*.zip` default to (`MEMENTO_URL`, the keys page) when the process serves the service site. **Required** with accounts on. Without accounts it turns on the quota mails of that process ([Quotas](#quotas)); unset there → the process sends none. Compose: `SERVICE_URL`. |
 | `MEMENTO_BREVO_API_KEY` | *(unset)* | Brevo transactional mail key. Unset → mails are logged at info level with their full text (`LogMailer`). Compose: `BREVO_API_KEY`. |
 | `MEMENTO_MAIL_FROM` | *(unset)* | `Name <address>`, required with the Brevo key; the address must be a **sender verified in Brevo**. Compose: `MAIL_FROM`. |
 | `MEMENTO_TRUST_PROXY` | `false` | Fastify `trustProxy`: client IP from `X-Forwarded-For` (rate limits), https from `X-Forwarded-Proto` (`Secure` cookie). `true` only behind a proxy that sets them. Compose: `TRUST_PROXY`. |
@@ -228,7 +228,7 @@ What the server reads when it starts; the CLI in the image reads the same `DATAB
 
 ```bash
 ACCOUNTS=true
-SERVICE_URL=https://service.stage.memento-service.org
+SERVICE_URL=https://service.memento-service.org
 BREVO_API_KEY=xkeysib-…          # never into the repository
 MAIL_FROM=memento <info@example.com>
 TRUST_PROXY=true                 # behind nginx
@@ -256,7 +256,7 @@ TRUST_PROXY=true                 # behind nginx
 
 ## The service site
 
-`https://service.stage.memento-service.org/` is `apps/service`: people register, verify their
+`https://service.memento-service.org/` (stage: `https://service.stage.memento-service.org/`) is `apps/service`: people register, verify their
 address, create API keys (each shown **once**), and watch per key what it writes — activity per
 minute, the events, hourly usage — pause, resume, re-limit and delete keys; administrators see
 every user and key. It is a **second container of the same image**, `service` in
@@ -275,8 +275,8 @@ the service site *instead of* the examples site, with the same variables
 ([SQLITE.md § Accounts and the service site](SQLITE.md#accounts-and-the-service-site)).
 
 Both share `DATABASE_URL`, `REDIS_URL` and the lookups, so a key created on the service site
-pushes events to either container (`MEMENTO_URL=https://service.stage.memento-service.org/memento`
-is what the once-view prints). The `service` container takes `SERVICE_URL` (the links in mails;
+pushes events to either container (`MEMENTO_URL=https://service.memento-service.org/memento`
+is what the once-view prints on production). The `service` container takes `SERVICE_URL` (the links in mails;
 default `http://localhost:8201`), `BREVO_API_KEY`, `MAIL_FROM` and the quota variables. `memento`
 gets `SERVICE_URL`, the Brevo and the quota variables too, with `ACCOUNTS` empty: a key made on
 the service site is metered and held to its daily limit on whichever container it writes
@@ -292,6 +292,10 @@ stores the event ([Quotas](#quotas)).
   takes a key *or* the cookie). Writes are `/auth/*`, `/keys*`, `/admin/*`.
 - **No live stream:** `/memento/ws` takes an API key and the site has only the cookie, so the
   key page polls its collections every 10 s instead.
+- **Client programs:** `/clients` shows the eight programs of `clients/` and serves each as
+  `/clients/<lang>.zip`. Their sources name the production service; the server answers the zips
+  with its own `SERVICE_URL` (`MEMENTO_SERVICE_URL`) in its place, and the page shows the
+  site's origin, so stage's zips name stage. Unset → the zips are served as built.
 - An administrator: `docker compose exec service memento make-admin ana@example.com`; the
   sidebar then shows *Administration* (`/admin/users`).
 

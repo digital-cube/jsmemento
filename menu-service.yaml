@@ -1,5 +1,5 @@
 # JSMemento — the service site's menu (apps/service): the sidebar of a signed-in user at
-# https://service.stage.memento-service.org/.
+# https://service.memento-service.org/ (and its stage, service.stage.memento-service.org).
 #
 # Served by the service instance of @jsmemento/server as its `menu` UDC collection
 # (MEMENTO_MENU_PATH=/app/config/menu-service.yaml in the image). With MEMENTO_ACCOUNTS the

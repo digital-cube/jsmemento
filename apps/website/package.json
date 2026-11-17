@@ -7,7 +7,7 @@
   "scripts": {
     "gen": "node scripts/gen-reference.mjs && node scripts/gen-changelog.mjs",
     "dev": "pnpm run gen && astro dev",
-    "build": "pnpm run gen && astro build",
+    "build": "pnpm run gen && astro build && node scripts/check-hosts.mjs",
     "preview": "astro preview",
     "typecheck": "pnpm run gen && astro check && node scripts/check-snippets.mjs",
     "shots": "node scripts/shots.mjs",

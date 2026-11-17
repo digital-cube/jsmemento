@@ -7,7 +7,7 @@
 //
 // Environment:
 //   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//   MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//   MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //
 // Build and run:
 //   cmake -B build && cmake --build build
@@ -34,7 +34,7 @@
 
 namespace {
 
-const char* DEFAULT_URL = "https://service.stage.memento-service.org/memento";
+const char* DEFAULT_URL = "https://service.memento-service.org/memento";
 
 struct ApiError : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -330,7 +330,7 @@ std::string env(const char* name, const std::string& fallback) {
 int main() {
     g_api_key = env("MEMENTO_API_KEY", "");
     if (g_api_key.empty()) {
-        std::cerr << "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)\n";
+        std::cerr << "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)\n";
         return 2;
     }
     g_base_url = env("MEMENTO_URL", DEFAULT_URL);

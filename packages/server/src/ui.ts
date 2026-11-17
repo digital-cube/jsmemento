@@ -3,6 +3,7 @@ import { join } from "node:path";
 import fastifyStatic from "@fastify/static";
 import { ERROR_CODES, fail } from "@jsmemento/core";
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import { localizedClientZips } from "./client-zips.js";
 
 export interface UiOptions {
   /** A built single-page app (`vite build` output): a directory with `index.html`. */
@@ -14,6 +15,12 @@ export interface UiOptions {
   mounts?: string[];
   /** The API prefix (e.g. `/memento`): unknown paths under it stay JSON 404s, never the page. */
   apiPrefix?: string;
+  /**
+   * This instance's service site (`MEMENTO_SERVICE_URL`). When set, the client programs'
+   * zips under `/clients/*.zip` default to it instead of the origin their sources name
+   * (`CLIENTS_SERVICE_URL`, production): stage's zips name stage. Unset → served as built.
+   */
+  serviceUrl?: string;
 }
 
 /** `index.html` is revalidated on every load; hashed `assets/*` are cached for a year. */
@@ -35,6 +42,21 @@ export const uiRoutes: FastifyPluginAsync<UiOptions> = async (app, options) => {
   }
   const apiPrefix = (options.apiPrefix ?? "/memento").replace(/\/+$/, "");
   const mounts = (options.mounts ?? ["/en"]).map((mount) => `/${mount.replace(/^\/+|\/+$/g, "")}`);
+
+  // The client zips localized once, at start (eight small files), and answered instead of the
+  // static file of the same path: the hook is added before the static routes. Same cache rule
+  // as that file (not under assets/: no-cache).
+  const zips = options.serviceUrl
+    ? localizedClientZips(options.root, options.serviceUrl)
+    : new Map<string, Buffer>();
+  if (zips.size > 0) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (request.method !== "GET" && request.method !== "HEAD") return;
+      const zip = zips.get(request.url.split("?")[0] ?? "");
+      if (!zip) return;
+      return reply.header("cache-control", "no-cache").type("application/zip").send(zip);
+    });
+  }
 
   await app.register(fastifyStatic, {
     root: options.root,

@@ -31,10 +31,10 @@ Every program does the same three steps, in this order, with the same event:
 | variable | |
 | --- | --- |
 | `MEMENTO_API_KEY` | a key with the `read` and `write` scopes (required) |
-| `MEMENTO_URL` | the API base; default `https://service.stage.memento-service.org/memento` |
+| `MEMENTO_URL` | the API base; default `https://service.memento-service.org/memento` |
 
 No key, URL or secret is in any file. Without `MEMENTO_API_KEY` every program prints
-`Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)` and exits
+`Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)` and exits
 with code 2; an HTTP error prints the status and the server's `error.message`
 (`HTTP 401: invalid or expired API key`, `HTTP 429: this API key wrote its daily limit …`) and
 exits with 1.

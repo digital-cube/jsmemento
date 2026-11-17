@@ -56,7 +56,7 @@ services:
       start_period: 20s
       retries: 5
 
-  # The service site (apps/service, https://service.stage.memento-service.org/): the same image
+  # The service site (apps/service, https://service.memento-service.org/): the same image
   # with MEMENTO_UI_DIR=/app/ui-service and its own sidebar (menu-service.yaml), accounts on.
   # People register, verify their address, create API keys and watch what each key writes;
   # the keys work on either container (same database). No demo key. nginx proxies the vhost to
@@ -80,7 +80,7 @@ services:
       MEMENTO_MENU_PATH: /app/config/menu-service.yaml
       MEMENTO_ACCOUNTS: "true"
       MEMENTO_TRUST_PROXY: "true"
-      # The verify / reset links in mails point here.
+      # The verify / reset links in mails point here, and the client zips (/clients/*.zip) name it.
       MEMENTO_SERVICE_URL: ${SERVICE_URL:-http://localhost:8201}
       # Without a Brevo key mails are only logged (`docker compose logs service`).
       MEMENTO_BREVO_API_KEY: ${BREVO_API_KEY:-}

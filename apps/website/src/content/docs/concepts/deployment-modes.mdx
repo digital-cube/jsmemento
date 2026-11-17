@@ -1,6 +1,6 @@
 ---
 title: Deployment modes
-description: The same server three ways — a plugin inside your own Fastify app, the standalone server or container on PostgreSQL or one SQLite file, or the hosted stage service with a key.
+description: The same server three ways — a plugin inside your own Fastify app, the standalone server or container on PostgreSQL or one SQLite file, or the hosted service with a key.
 sidebar:
   order: 8
 ---
@@ -11,14 +11,14 @@ import { SERVICE_URL } from "../../../site.mjs";
 
 memento is one Fastify plugin, `mementoPlugin` from `@jsmemento/server`. Where it runs is up to
 you: inside an application you already have, as its own container, or not at all on your side —
-on the stage service, with a key. Where you run it, the database is PostgreSQL or a single
+on the hosted service, with a key. Where you run it, the database is PostgreSQL or a single
 SQLite file ([below](#postgresql-or-sqlite)).
 
 | | you run | you get |
 | --- | --- | --- |
 | **Embedded** | your Node app, your PostgreSQL or a SQLite file | memento's routes under a prefix of your app, its `memento_*` tables in your database |
 | **Standalone** | the image or `@jsmemento/server`; PostgreSQL (optionally Redis) or a SQLite file | the server, the CLI, the examples site and the service site |
-| **Hosted** | nothing | a tenant on the stage service and keys for it |
+| **Hosted** | nothing | a tenant on the hosted service and keys for it |
 
 ## Embedded
 
@@ -130,14 +130,14 @@ backups and the limits.
 
 ## Hosted
 
-The stage service runs memento for anyone with a key: <a href={`${SERVICE_URL}/register`}>register</a>,
+The hosted service runs memento for anyone with a key: <a href={`${SERVICE_URL}/register`}>register</a>,
 verify the address, create a key on the <a href={`${SERVICE_URL}/keys`}>Keys</a> page, and push
-to `https://service.stage.memento-service.org/memento`. The account comes with its own tenant;
+to <code>{`${SERVICE_URL}/memento`}</code>. The account comes with its own tenant;
 the key is held to a daily limit (100 000 events by default) and its usage is metered
 ([Tenants and API keys](/concepts/tenants-and-keys/)).
 
 Nothing in a program changes between the three: the [client programs](/clients/) read
-`MEMENTO_URL` and `MEMENTO_API_KEY`, and point at the stage service, a container or an embedded
+`MEMENTO_URL` and `MEMENTO_API_KEY`, and point at the hosted service, a container or an embedded
 server alike.
 
 <LinkCard

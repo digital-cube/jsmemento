@@ -8,12 +8,12 @@
 //
 // Environment:
 //   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//   MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//   MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //
 // Run:
 //   MEMENTO_API_KEY=mk_… php memento.php
 
-const DEFAULT_URL = 'https://service.stage.memento-service.org/memento';
+const DEFAULT_URL = 'https://service.memento-service.org/memento';
 
 final class ApiError extends RuntimeException {}
 
@@ -95,7 +95,7 @@ function osUser(): string
 }
 
 if ($apiKey === '') {
-    fwrite(STDERR, "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)\n");
+    fwrite(STDERR, "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)\n");
     exit(2);
 }
 $user = osUser();

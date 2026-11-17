@@ -133,6 +133,13 @@ In frontmatter, which cannot import, the hero writes `{EXAMPLE_URL}` / `{SERVICE
 link; `src/components/Hero.astro` resolves them and `astro.config.mjs` keeps them out of
 `starlight-links-validator`.
 
+The client programs (`clients/`) and the snippets (`snippets/`) are files the pages import
+`?raw`, so they cannot import `SERVICE_URL`: they name the production service
+(`https://service.memento-service.org`) and a Vite plugin in `astro.config.mjs` swaps it for
+`SERVICE_URL` (`forService` in `src/site.mjs`); recorded output (`*.out.*`, `output.txt`) stays
+as recorded. After `astro build`, `scripts/check-hosts.mjs` fails the build when a page names a
+`service.stage.` host while `SERVICE_URL` is not stage's.
+
 ## Build info: the footer line and "On npm"
 
 `src/build-info.mjs` works out, once per build, what the footer shows

@@ -1,4 +1,4 @@
-import CLIENTS from "virtual:clients";
+import BUILT from "virtual:clients";
 import { storage, useI18n } from "@jsudc/react";
 import { Download } from "lucide-react";
 import { Tabs } from "radix-ui";
@@ -7,10 +7,29 @@ import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { API_BASE } from "../../lib/api.js";
 import { CopyButton } from "../../lib/ui.js";
 import { useMe } from "../../session.js";
-import type { ClientFile, ClientProgram, ReadmeBlock } from "./types.js";
+import {
+  CLIENTS_SERVICE_URL,
+  type ClientFile,
+  type ClientProgram,
+  type ReadmeBlock,
+} from "./types.js";
 
 /** The language picked last, for the next visit to `/clients`. */
 export const CLIENTS_LANG_STORAGE_KEY = "memento.service.clients.lang";
+
+/**
+ * The programs as this site serves them: the service their sources name
+ * ({@link CLIENTS_SERVICE_URL}) replaced by `origin` in every text, README block and
+ * highlighted HTML — what the server does to the zips with MEMENTO_SERVICE_URL, so the page and
+ * the zip of one site name the same service.
+ */
+export function localizePrograms(programs: ClientProgram[], origin: string): ClientProgram[] {
+  const target = origin.replace(/\/+$/, "");
+  if (!target || target === CLIENTS_SERVICE_URL) return programs;
+  return JSON.parse(JSON.stringify(programs).replaceAll(CLIENTS_SERVICE_URL, target));
+}
+
+const CLIENTS = localizePrograms(BUILT, globalThis.location?.origin ?? "");
 
 const byId = (id: string | undefined) => CLIENTS.find((p) => p.id === id);
 

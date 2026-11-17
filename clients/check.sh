@@ -100,7 +100,7 @@ run() {
   env -u MEMENTO_API_KEY timeout 120 bash -c "$cmd" >"$out" 2>&1 || code=$?
   cat "$out"
   [[ $code -eq 2 ]] || fail "$lang: expected exit code 2 without a key, got $code"
-  grep -qF "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)" "$out" \
+  grep -qF "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)" "$out" \
     || fail "$lang: no hint about MEMENTO_API_KEY"
 
   echo "== $lang: with a wrong key"

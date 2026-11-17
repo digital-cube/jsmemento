@@ -381,6 +381,9 @@ importers:
       fastify:
         specifier: ^5.12.7
         version: 5.12.7
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       handlebars:
         specifier: ^4.7.10
         version: 4.7.10

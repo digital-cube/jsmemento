@@ -8,7 +8,7 @@
 // Environment:
 //
 //	MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//	MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//	MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //
 // Run:
 //
@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	defaultURL  = "https://service.stage.memento-service.org/memento"
+	defaultURL  = "https://service.memento-service.org/memento"
 	tailSeconds = 10
 )
 
@@ -200,7 +200,7 @@ func envOr(name, fallback string) string {
 
 func main() {
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)")
+		fmt.Fprintln(os.Stderr, "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)")
 		os.Exit(2)
 	}
 	who := osUser()

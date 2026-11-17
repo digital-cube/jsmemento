@@ -3,7 +3,13 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceRoutes } from "../src/App.js";
-import { CLIENTS_LANG_STORAGE_KEY, envLines, inline } from "../src/pages/clients/ClientsPage.js";
+import {
+  CLIENTS_LANG_STORAGE_KEY,
+  envLines,
+  inline,
+  localizePrograms,
+} from "../src/pages/clients/ClientsPage.js";
+import { CLIENTS_SERVICE_URL } from "../src/pages/clients/types.js";
 import { fakeServer, me, renderAt, SERVED_MENU } from "./fake.js";
 
 function Where() {
@@ -93,6 +99,33 @@ describe("/clients", () => {
       expect(program.files[0]?.source).toBeTruthy();
       expect(program.files.map((f) => f.source).join("")).not.toMatch(/mk_[A-Za-z0-9]{8,}/);
     }
+  });
+});
+
+describe("localizePrograms", () => {
+  it("the sources name the production service, never stage", () => {
+    const text = JSON.stringify(CLIENTS);
+    expect(text).not.toContain("service.stage.");
+    for (const p of CLIENTS)
+      expect(p.files[0]?.source, p.id).toContain(`${CLIENTS_SERVICE_URL}/memento`);
+  });
+
+  it("names this site's origin in every source, README block and run line", () => {
+    const local = localizePrograms(CLIENTS, "https://memento.test.example/");
+    const text = JSON.stringify(local);
+    expect(text).not.toContain(CLIENTS_SERVICE_URL);
+    for (const p of local) {
+      expect(p.files[0]?.source, p.id).toContain("https://memento.test.example/memento");
+      expect(p.files[0]?.source, p.id).toContain("https://memento.test.example/keys");
+    }
+    expect(localizePrograms(CLIENTS, CLIENTS_SERVICE_URL)).toBe(CLIENTS);
+  });
+
+  it("the page shows the program with this origin", async () => {
+    renderAt(routes, fakeServer({ me: null }), "/clients/python");
+    const panel = await screen.findByTestId("clients-panel-python");
+    expect(panel.textContent).toContain(`${location.origin}/memento`);
+    expect(panel.textContent).not.toContain(CLIENTS_SERVICE_URL);
   });
 });
 

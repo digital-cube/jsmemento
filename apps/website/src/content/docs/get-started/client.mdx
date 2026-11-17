@@ -11,7 +11,7 @@ import output from "../../../../snippets/client/output.txt?raw";
 import run from "../../../../snippets/client/run.sh?raw";
 import { SERVICE_URL } from "../../../site.mjs";
 
-No server of your own needed: the stage service runs memento for anyone with a key. The
+No server of your own needed: the hosted service runs memento for anyone with a key. The
 programs under `clients/` talk to it the way any integration would, with the language's own HTTP
 client and a WebSocket, no SDK.
 
@@ -36,7 +36,7 @@ client and a WebSocket, no SDK.
 
    <Code code={run} lang="sh" title="Terminal" />
 
-   `MEMENTO_URL` defaults to the service's API, `https://service.stage.memento-service.org/memento`;
+   `MEMENTO_URL` defaults to the service's API, <code>{`${SERVICE_URL}/memento`}</code>;
    point it at your own server ([Docker](/get-started/docker/): `http://localhost:3000/memento`)
    and the program does not notice.
 
@@ -81,4 +81,4 @@ exits with 1. All eight run in CI against a real server on every change of `clie
 
 - The routes the programs use, and every other one: the [API section](/#the-api) of the home
   page and [docs/API.md](https://github.com/digital-cube/jsmemento/blob/main/docs/API.md).
-- Your own memento instead of the stage service: [Run it with Docker](/get-started/docker/).
+- Your own memento instead of the hosted service: [Run it with Docker](/get-started/docker/).

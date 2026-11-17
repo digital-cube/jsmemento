@@ -7,14 +7,14 @@
 //
 // Environment:
 //   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//   MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//   MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //
 // Run:
 //   MEMENTO_API_KEY=mk_… node memento.mjs
 
 import { userInfo } from "node:os";
 
-const DEFAULT_URL = "https://service.stage.memento-service.org/memento";
+const DEFAULT_URL = "https://service.memento-service.org/memento";
 const BASE_URL = (process.env.MEMENTO_URL || DEFAULT_URL).replace(/\/+$/, "");
 const API_KEY = process.env.MEMENTO_API_KEY;
 const TAIL_SECONDS = 10;
@@ -119,9 +119,7 @@ function osUser() {
 
 async function main() {
   if (!API_KEY) {
-    console.error(
-      "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)",
-    );
+    console.error("Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)");
     process.exit(2);
   }
   const user = osUser();

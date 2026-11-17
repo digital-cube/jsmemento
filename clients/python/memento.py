@@ -9,7 +9,7 @@ It does three things, in this order:
 
 Environment:
   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-  MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+  MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 
 Run:
   MEMENTO_API_KEY=mk_… python3 memento.py
@@ -24,7 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-DEFAULT_URL = "https://service.stage.memento-service.org/memento"
+DEFAULT_URL = "https://service.memento-service.org/memento"
 BASE_URL = (os.environ.get("MEMENTO_URL") or DEFAULT_URL).rstrip("/")
 API_KEY = os.environ.get("MEMENTO_API_KEY", "")
 TAIL_SECONDS = 10
@@ -127,7 +127,7 @@ def tail(user):
 def main():
     if not API_KEY:
         print(
-            "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)",
+            "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)",
             file=sys.stderr,
         )
         sys.exit(2)

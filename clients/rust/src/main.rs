@@ -7,7 +7,7 @@
 //!
 //! Environment:
 //!   MEMENTO_API_KEY  your API key with the read and write scopes (required)
-//!   MEMENTO_URL      the API base, default https://service.stage.memento-service.org/memento
+//!   MEMENTO_URL      the API base, default https://service.memento-service.org/memento
 //!
 //! Run:
 //!   MEMENTO_API_KEY=mk_… cargo run
@@ -23,7 +23,7 @@ use tungstenite::client::IntoClientRequest;
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::Message;
 
-const DEFAULT_URL: &str = "https://service.stage.memento-service.org/memento";
+const DEFAULT_URL: &str = "https://service.memento-service.org/memento";
 const TAIL_SECONDS: u64 = 10;
 
 struct Client {
@@ -191,7 +191,7 @@ fn main() {
     let api_key = env::var("MEMENTO_API_KEY").unwrap_or_default();
     if api_key.is_empty() {
         eprintln!(
-            "Set MEMENTO_API_KEY (create one at https://service.stage.memento-service.org/keys)"
+            "Set MEMENTO_API_KEY (create one at https://service.memento-service.org/keys)"
         );
         process::exit(2);
     }

@@ -2,14 +2,31 @@
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 import starlightLinksValidator from "starlight-links-validator";
-import { SITE_URL } from "./src/site.mjs";
+import { forService, SITE_URL } from "./src/site.mjs";
 
 /* The hero's placeholders for the other memento sites (src/components/Hero.astro resolves them
    from src/site.mjs, which frontmatter cannot import). */
 const PLACEHOLDERS = new Set(["{EXAMPLE_URL}", "{SERVICE_URL}"]);
 
+/* The client programs and the snippets are imported `?raw` and name the production service
+   (src/site.mjs): a build for another SERVICE_URL shows that one instead. What a snippet
+   printed (`*.out.*`, `output.txt`) stays as it was recorded. */
+const serviceUrl = {
+  name: "memento-service-url",
+  /** @param {string} code @param {string} id */
+  transform(code, id) {
+    const [path = "", query = ""] = id.split("?");
+    if (!/(^|&)raw(&|$)/.test(query)) return undefined;
+    if (!/[\\/](clients|snippets)[\\/]/.test(path)) return undefined;
+    if (/\.out\.|[\\/]output\.txt$/.test(path)) return undefined;
+    const out = forService(code);
+    return out === code ? undefined : { code: out, map: null };
+  },
+};
+
 export default defineConfig({
   site: SITE_URL,
+  vite: { plugins: [serviceUrl] },
   integrations: [
     starlight({
       title: "memento",
